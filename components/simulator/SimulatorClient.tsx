@@ -267,6 +267,7 @@ export function SimulatorClient({
     isLoading: isChatLoading,
   } = useChat({
     api: "/api/chat",
+    streamProtocol: "data",
     body: {
       casePrompt: initialCaseData.patientPrompt,
       caseId: initialCaseData.id,
