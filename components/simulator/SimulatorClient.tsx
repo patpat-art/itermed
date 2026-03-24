@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useChat } from "@ai-sdk/react";
 import {
   Activity,
   ArrowLeft,
@@ -33,6 +32,12 @@ type Exam = {
   name: string;
   cost: number;
   timeMinutes: number;
+};
+
+type ChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
 };
 
 const AVAILABLE_EXAMS: Exam[] = [
@@ -156,6 +161,9 @@ export function SimulatorClient({
   const [effectiveSessionId, setEffectiveSessionId] = useState<string | undefined>(sessionId);
   const [isStartingEmergency, setIsStartingEmergency] = useState(false);
   const [dismissLoading, setDismissLoading] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
 
   const ensureSessionId = async (): Promise<string | null> => {
     if (effectiveSessionId) return effectiveSessionId;
@@ -259,21 +267,93 @@ export function SimulatorClient({
     };
   }, [effectiveSessionId]);
 
-  const {
-    messages,
-    input,
-    handleInputChange,
-    handleSubmit,
-    isLoading: isChatLoading,
-  } = useChat({
-    api: "/api/chat",
-    streamProtocol: "data",
-    body: {
-      casePrompt: initialCaseData.patientPrompt,
-      caseId: initialCaseData.id,
-      sessionId: effectiveSessionId,
-    },
-  });
+  const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(event.target.value);
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmed = input.trim();
+    if (!trimmed || isChatLoading) return;
+
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      content: trimmed,
+    };
+    const assistantId = `assistant-${Date.now()}`;
+
+    setMessages((prev) => [...prev, userMessage, { id: assistantId, role: "assistant", content: "" }]);
+    setInput("");
+    setIsChatLoading(true);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          casePrompt: initialCaseData.patientPrompt,
+          caseId: initialCaseData.id,
+          sessionId: effectiveSessionId,
+          messages: [...messages, userMessage].map((m) => ({ role: m.role, content: m.content })),
+        }),
+      });
+
+      if (!res.ok || !res.body) {
+        throw new Error("Chat request failed");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let assistantText = "";
+
+      const flushLine = (line: string) => {
+        // AI SDK data stream v1 text delta: 0:"..."
+        if (line.startsWith("0:")) {
+          const payload = line.slice(2);
+          try {
+            const chunk = JSON.parse(payload);
+            if (typeof chunk === "string" && chunk.length > 0) {
+              assistantText += chunk;
+              setMessages((prev) =>
+                prev.map((m) => (m.id === assistantId ? { ...m, content: assistantText } : m)),
+              );
+            }
+          } catch {
+            // ignore malformed stream line
+          }
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine) continue;
+          flushLine(trimmedLine);
+        }
+      }
+
+      if (buffer.trim()) {
+        flushLine(buffer.trim());
+      }
+    } catch {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantId
+            ? { ...m, content: "Errore nella chat. Riprova tra qualche secondo." }
+            : m,
+        ),
+      );
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
 
   const selectedExams = useMemo(
     () => AVAILABLE_EXAMS.filter((exam) => selectedExamIds.includes(exam.id)),
