@@ -1123,7 +1123,8 @@ type HistoryChatProps = {
   messages: {
     id: string;
     role: "user" | "assistant" | "system" | "function" | "data" | "tool";
-    content: string;
+    content?: string;
+    parts?: Array<{ type?: string; text?: string }>;
   }[];
   input: string;
   onInputChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
@@ -1138,6 +1139,20 @@ function HistoryChat({
   onSubmit,
   isLoading,
 }: HistoryChatProps) {
+  const messageText = (message: HistoryChatProps["messages"][number]): string => {
+    if (typeof message.content === "string" && message.content.trim()) {
+      return message.content;
+    }
+    if (Array.isArray(message.parts)) {
+      const text = message.parts
+        .filter((part) => part?.type === "text" && typeof part.text === "string")
+        .map((part) => part.text as string)
+        .join("");
+      if (text.trim()) return text;
+    }
+    return "";
+  };
+
   const visibleMessages = messages.filter(
     (m) => m.role === "user" || m.role === "assistant",
   );
@@ -1152,6 +1167,8 @@ function HistoryChat({
         )}
         {visibleMessages.map((message) => {
           const isDoctor = message.role === "user";
+          const text = messageText(message);
+          if (!text) return null;
           return (
             <div
               key={message.id}
@@ -1164,7 +1181,7 @@ function HistoryChat({
                     : "max-w-[70%] rounded-2xl bg-zinc-100 text-zinc-900 text-xs px-3 py-2 border border-zinc-200/80"
                 }
               >
-                {message.content}
+                {text}
               </div>
             </div>
           );
