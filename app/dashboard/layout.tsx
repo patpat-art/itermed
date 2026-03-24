@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { LayoutDashboard, BookOpen, Sparkles, Settings, UserCircle2, Database } from "lucide-react";
 import { authOptions } from "../../lib/auth-options";
@@ -19,9 +20,12 @@ const adminNavItem = { href: "/admin/knowledge", label: "Knowledge base", icon: 
 
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
   const session = await getServerSession(authOptions);
-  const label = session?.user?.name || session?.user?.email || "Account";
+  if (!session?.user?.id) {
+    redirect("/login?callbackUrl=/dashboard");
+  }
+  const label = session.user.name || session.user.email || "Account";
   const navItems =
-    session?.user?.role === "ADMIN" ? [...baseNavItems, adminNavItem] : baseNavItems;
+    session.user.role === "ADMIN" ? [...baseNavItems, adminNavItem] : baseNavItems;
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-950">
