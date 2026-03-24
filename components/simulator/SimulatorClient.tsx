@@ -1123,7 +1123,7 @@ type HistoryChatProps = {
   messages: {
     id: string;
     role: "user" | "assistant" | "system" | "function" | "data" | "tool";
-    content?: string;
+    content?: string | Array<{ type?: string; text?: string } | string>;
     parts?: Array<{ type?: string; text?: string }>;
   }[];
   input: string;
@@ -1142,6 +1142,16 @@ function HistoryChat({
   const messageText = (message: HistoryChatProps["messages"][number]): string => {
     if (typeof message.content === "string" && message.content.trim()) {
       return message.content;
+    }
+    if (Array.isArray(message.content)) {
+      const text = message.content
+        .map((part) => {
+          if (typeof part === "string") return part;
+          if (part && typeof part === "object" && typeof part.text === "string") return part.text;
+          return "";
+        })
+        .join("");
+      if (text.trim()) return text;
     }
     if (Array.isArray(message.parts)) {
       const text = message.parts
