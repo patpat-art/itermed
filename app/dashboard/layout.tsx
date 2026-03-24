@@ -1,0 +1,86 @@
+import type { ReactNode } from "react";
+import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { LayoutDashboard, BookOpen, Sparkles, Settings, UserCircle2, Database } from "lucide-react";
+import { authOptions } from "../../lib/auth-options";
+import { SignOutButton } from "../../components/auth/SignOutButton";
+
+type DashboardLayoutProps = {
+  children: ReactNode;
+};
+
+const baseNavItems = [
+  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/dashboard/decks", label: "Casi & Deck", icon: BookOpen },
+  { href: "/dashboard/simulator", label: "Simulatore", icon: Sparkles },
+];
+
+const adminNavItem = { href: "/admin/knowledge", label: "Knowledge base", icon: Database };
+
+export default async function DashboardLayout({ children }: DashboardLayoutProps) {
+  const session = await getServerSession(authOptions);
+  const label = session?.user?.name || session?.user?.email || "Account";
+  const navItems =
+    session?.user?.role === "ADMIN" ? [...baseNavItems, adminNavItem] : baseNavItems;
+
+  return (
+    <div className="min-h-screen bg-zinc-50 text-zinc-950">
+      <div className="flex h-screen max-w-7xl mx-auto px-6 py-10 gap-10">
+        <aside className="flex flex-col w-72 rounded-3xl bg-white/80 border border-zinc-200/80 backdrop-blur-xl p-5 shadow-[0_18px_60px_rgba(0,0,0,0.06)]">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-zinc-950 text-zinc-50 text-xl font-semibold">
+              IM
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold tracking-tight">IterMed</span>
+              <span className="text-xs text-zinc-500">Diagnostic & medico-legal lab</span>
+            </div>
+          </div>
+
+          <nav className="flex-1 space-y-1 text-sm">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex items-center gap-3 px-3 py-2 rounded-xl text-zinc-700 hover:text-zinc-950 hover:bg-zinc-100 transition-colors"
+                >
+                  <Icon className="h-4 w-4 text-zinc-600" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="mt-6 border-t border-zinc-200/80 pt-4 space-y-2 text-xs text-zinc-600">
+            <p className="truncate px-1 text-[11px] text-zinc-500" title={label}>
+              {label}
+            </p>
+            <div className="flex items-center justify-between gap-2">
+              <Link
+                href="/dashboard/profile"
+                className="inline-flex items-center gap-2 rounded-xl px-2.5 py-1.5 hover:bg-zinc-100 transition-colors"
+              >
+                <UserCircle2 className="h-4 w-4" />
+                <span>Profilo</span>
+              </Link>
+              <Link
+                href="/dashboard/settings"
+                className="inline-flex items-center justify-center rounded-xl p-1.5 hover:bg-zinc-100 transition-colors"
+              >
+                <Settings className="h-4 w-4" />
+              </Link>
+            </div>
+            <SignOutButton />
+          </div>
+        </aside>
+
+        <main className="flex-1 flex flex-col gap-8 min-h-0 overflow-y-auto">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}
+

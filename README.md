@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+IterMed – piattaforma di simulazione clinico–medico-legale basata su IA.
 
-## Getting Started
+### Stack
 
-First, run the development server:
+- **Frontend**: Next.js App Router, React, Tailwind (utility classes)
+- **UI**: componenti custom stile shadcn (card, dialog, tabs), Lucide Icons, Recharts
+- **Backend**: Route Handlers Next.js / API routes
+- **Database**: PostgreSQL + Prisma ORM
+- **AI**: Vercel AI SDK (`ai`, `@ai-sdk/openai`), OpenAI
+
+### 1. Setup variabili d’ambiente
+
+1. Copia il file di esempio:
+
+```bash
+cp .env.example .env
+```
+
+2. Modifica `.env` con i tuoi valori:
+
+- `DATABASE_URL` → stringa di connessione PostgreSQL, ad es.  
+  `postgresql://postgres:password@localhost:5432/itermed?schema=public`
+- `OPENAI_API_KEY` → la tua API key OpenAI.
+
+Assicurati che il db `itermed` esista nel tuo Postgres locale.
+
+### 2. Installazione dipendenze
+
+```bash
+npm install
+```
+
+### 3. Migrazioni Prisma
+
+Genera lo schema e le tabelle nel database:
+
+```bash
+npx prisma migrate dev --name init
+```
+
+Puoi anche ispezionare il db con:
+
+```bash
+npx prisma studio
+```
+
+### 4. Avvio in sviluppo
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Poi apri `http://localhost:3000` nel browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Dashboard: `http://localhost:3000/dashboard`
+- Simulatore caso demo: `http://localhost:3000/case/demo`
+  - Accetta il disclaimer.
+  - Usa la chat anamnestica (LLM paziente).
+  - Seleziona esami per vedere tempo/costo.
+  - Compila il referto e clicca **“Concludi caso”**.
+- Report risultati: dopo la conclusione verrai reindirizzato a  
+  `http://localhost:3000/case/[id]/results?sessionId=...` con spider chart e feedback.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 5. Note
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Il `userId` usato per ora nella valutazione è un placeholder (`"demo-user"`).  
+  Quando integrerai l’autenticazione potrai collegarlo a `User` in Prisma.
+- L’IA paziente e il giudice di valutazione richiedono una `OPENAI_API_KEY` valida.  
+  Senza questa variabile le chiamate /api/chat e /api/evaluate falliranno.

@@ -4,22 +4,37 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "postinstall": "prisma generate",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^1.1.6",
+    "@ai-sdk/react": "^0.0.18",
+    "@pinecone-database/pinecone": "^7.1.0",
+    "@prisma/client": "^6.2.1",
+    "ai": "^4.0.20",
+    "bcryptjs": "^3.0.3",
+    "lucide-react": "^0.469.0",
     "next": "16.1.6",
+    "next-auth": "^4.24.13",
+    "pdf-parse": "^2.4.5",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "recharts": "^2.12.7",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
+    "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "prisma": "^6.2.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

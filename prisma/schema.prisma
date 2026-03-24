@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  INSTRUCTOR
+  ADMIN
+}
+
+enum CaseDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum CaseNodeType {
+  TRIAGE
+  HISTORY
+  PHYSICAL_EXAM
+  INVESTIGATION
+  REPORT
+  NOTE
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      UserRole @default(STUDENT)
+  passwordHash String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdCases ClinicalCase[] @relation("CreatedCases")
+  decks        CaseDeck[]
+  sessions     SessionReport[]
+  liveSessions CaseSession[]  @relation("UserLiveSessions")
+}
+
+model CaseDeck {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  isPublic    Boolean       @default(false)
+
+  ownerId String
+  owner   User          @relation(fields: [ownerId], references: [id])
+
+  cases   ClinicalCase[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ClinicalCase {
+  id          String         @id @default(cuid())
+  title       String
+  description String
+  specialty   String?
+  difficulty  CaseDifficulty @default(MEDIUM)
+
+  estimatedDurationMinutes Int? // rough expected time to complete the case
+  isActive                 Boolean @default(true)
+
+  // Dati clinici strutturati aggiuntivi
+  pastMedicalHistory String? // comorbilità / patologie pregresse rilevanti
+  correctSolution    String? // soluzione attesa del caso (diagnosi + gestione)
+
+  // Valori di esame obiettivo / parametri vitali di base per il caso,
+  // salvati come JSON strutturato (es. vitals, torace, addome, neurologico).
+  baselineExamFindings Json?
+
+  deckId String?
+  deck   CaseDeck? @relation(fields: [deckId], references: [id])
+
+  createdById String
+  createdBy   User        @relation("CreatedCases", fields: [createdById], references: [id])
+
+  nodes        CaseNode[]
+  sessions     SessionReport[]
+  liveSessions CaseSession[] @relation("CaseLiveSessions")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CaseNode {
+  id      String       @id @default(cuid())
+  caseId  String
+  case    ClinicalCase @relation(fields: [caseId], references: [id])
+
+  order   Int
+  type    CaseNodeType
+
+  // Flexible JSON payload to describe the node content (prompt, options, expected answers, etc.)
+  content  Json
+  // Additional configuration, scoring weights, timing constraints, etc.
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([caseId, order])
+}
+
+model SessionReport {
+  id        String   @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  caseId String
+  case   ClinicalCase @relation(fields: [caseId], references: [id])
+
+  // Five core evaluation dimensions (0–100). We can later enforce ranges at application level.
+  clinicalAccuracy          Float
+  legalComplianceGelliBianco Float
+  prescribingAppropriateness Float
+  economicSustainability     Float
+  empathy                    Float
+
+  totalScore Float
+
+  // Serialized trace of the session useful for audit / medico-legal reconstruction.
+  rawTrace Json?
+  notes    String?
+
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([caseId])
+}
+
+model CaseSession {
+  id String @id @default(cuid())
+
+  userId String
+  user   User @relation("UserLiveSessions", fields: [userId], references: [id])
+
+  caseId String
+  case   ClinicalCase @relation("CaseLiveSessions", fields: [caseId], references: [id])
+
+  isVariant       Boolean @default(false)
+  variantPrompt   String?
+  variantSolution String?
+  examOverrides   Json?
+  currentTargetCondition String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([caseId])
+}
+

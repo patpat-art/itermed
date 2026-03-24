@@ -1,0 +1,158 @@
+import { openai } from "@ai-sdk/openai";
+import { generateObject } from "ai";
+import { z } from "zod";
+import { prisma } from "../../../../lib/prisma";
+import { getSessionUserId } from "../../../../lib/api-session";
+import { userCanPlayCase, verifyLiveSessionOwner } from "../../../../lib/access";
+
+export const runtime = "nodejs";
+
+const bodySchema = z.object({
+  caseId: z.string().min(1),
+  sessionId: z.string().optional(),
+  diagnosisText: z.string().min(1),
+});
+
+const verdictSchema = z.object({
+  isCorrect: z.boolean(),
+  rationale: z.string(),
+  expectedCondition: z.string().optional(),
+});
+
+function normalizeText(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export async function POST(req: Request) {
+  const userId = await getSessionUserId();
+  if (!userId) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const json = await req.json();
+  const { caseId, sessionId, diagnosisText } = bodySchema.parse(json);
+
+  if (sessionId) {
+    const owns = await verifyLiveSessionOwner(sessionId, userId);
+    if (!owns) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  } else {
+    const allowed = await userCanPlayCase(userId, caseId);
+    if (!allowed) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
+
+  const session = sessionId
+    ? await prisma.caseSession.findUnique({
+        where: { id: sessionId },
+        include: { case: true },
+      })
+    : null;
+
+  const clinicalCase = session?.case
+    ? {
+        title: session.case.title,
+        description: session.case.description,
+        correctSolution: (session.case as any).correctSolution as string | null,
+      }
+    : await prisma.clinicalCase.findUnique({
+        where: { id: caseId },
+        select: { correctSolution: true, title: true, description: true },
+      });
+
+  if (!clinicalCase) {
+    return new Response(JSON.stringify({ error: "Case not found" }), {
+      status: 404,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const expectedRaw =
+    (session as any)?.currentTargetCondition ??
+    (session as any)?.variantSolution ??
+    (clinicalCase.correctSolution ?? "");
+  const expected = String(expectedRaw ?? "").trim();
+  const userDx = diagnosisText.trim();
+
+  // Heuristic first: if the user diagnosis is a clear substring (or vice versa), treat as correct.
+  // This prevents obvious correct diagnoses (e.g. "appendicite") from being marked wrong.
+  const nExpected = normalizeText(expected);
+  const nUser = normalizeText(userDx);
+  if (nExpected && nUser) {
+    if (nExpected.includes(nUser) || nUser.includes(nExpected)) {
+      return new Response(
+        JSON.stringify({
+          isCorrect: true,
+          rationale: "Match testuale evidente tra diagnosi e soluzione attesa.",
+          expectedCondition: expected ? expected : undefined,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  }
+
+  // If there is no expected solution saved, we cannot judge deterministically.
+  if (!expected) {
+    return new Response(
+      JSON.stringify({
+        isCorrect: true,
+        rationale:
+          "Nessuna soluzione corretta salvata per il caso: per ora consideriamo la diagnosi valida.",
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const system = `
+Sei un valutatore clinico. Devi stabilire se la diagnosi finale dell'utente corrisponde alla SOLUZIONE CORRETTA ATTESA del caso.
+Rispondi SOLO JSON con:
+- isCorrect: true/false
+- rationale: 1 frase in italiano (molto breve)
+- expectedCondition: 1 riga con la patologia/diagnosi corretta (anche sintetica)
+
+Regole:
+- Se la diagnosi è equivalente (sinonimi comuni) -> true.
+- Se è chiaramente diversa/errata -> false.
+- Se è troppo generica e non identifica il problema principale -> false.
+`.trim();
+
+  const { object } = await generateObject({
+    model: openai("gpt-4o-mini"),
+    system,
+    schema: verdictSchema,
+    prompt: `
+CASO:
+Titolo: ${clinicalCase.title}
+Descrizione: ${clinicalCase.description}
+
+SOLUZIONE CORRETTA ATTESA:
+"""${expected}"""
+
+DIAGNOSI INSERITA DALL'UTENTE:
+"""${userDx}"""
+`.trim(),
+  });
+
+  return new Response(JSON.stringify(object), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+

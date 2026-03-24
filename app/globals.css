@@ -22,5 +22,14 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Apple-style polish: crisp selection + focus rings */
+::selection {
+  background: rgba(59, 130, 246, 0.22);
+}
+
+:focus-visible {
+  outline: none;
 }
