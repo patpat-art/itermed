@@ -109,12 +109,6 @@ export default async function DashboardCasesPage() {
               {(cases ??
                 [
                   {
-                    id: "demo",
-                    title: "Scenario demo PS – dolore toracico",
-                    specialty: "Emergenza / Cardiologia",
-                    deck: { title: "Core – Urgenze" },
-                  },
-                  {
                     id: "cs_001",
                     title: "Dolore toracico in PS",
                     specialty: "Emergenza",

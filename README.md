@@ -53,7 +53,7 @@ npm run dev
 Poi apri `http://localhost:3000` nel browser.
 
 - Dashboard: `http://localhost:3000/dashboard`
-- Simulatore caso demo: `http://localhost:3000/case/demo`
+- Simulatore: scegli un caso da `http://localhost:3000/dashboard/cases`
   - Accetta il disclaimer.
   - Usa la chat anamnestica (LLM paziente).
   - Seleziona esami per vedere tempo/costo.

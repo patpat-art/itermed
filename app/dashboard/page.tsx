@@ -104,10 +104,10 @@ export default async function DashboardPage() {
               Hub simulatore
             </Button>
           </Link>
-          <Link href="/case/demo">
+          <Link href="/dashboard/cases">
             <Button size="lg" className="shadow-sm">
               <Play className="h-4 w-4" />
-              Avvia Caso Casuale
+              Vai ai casi
             </Button>
           </Link>
         </div>
@@ -135,13 +135,13 @@ export default async function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Link href="/case/demo" className="block">
+              <Link href="/dashboard/cases" className="block">
                 <div className="rounded-3xl border border-zinc-200 bg-zinc-950 text-zinc-50 px-5 py-4 shadow-sm hover:bg-zinc-900 transition-colors">
                   <div className="flex items-center justify-between gap-4">
                     <div className="space-y-1">
-                      <p className="text-sm font-semibold tracking-tight">Avvia Caso Casuale</p>
+                      <p className="text-sm font-semibold tracking-tight">Apri libreria casi</p>
                       <p className="text-xs text-zinc-300">
-                        Caso demo ottimizzato per allenare decisioni e documentazione difendibile.
+                        Scegli un caso disponibile e avvia la simulazione.
                       </p>
                     </div>
                     <Play className="h-5 w-5" />

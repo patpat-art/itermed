@@ -45,21 +45,21 @@ export default async function DashboardSimulatorPage() {
         <CardHeader>
           <CardTitle className="text-sm font-medium text-zinc-950">Avvio rapido</CardTitle>
           <CardDescription>
-            Usa un caso demo per verificare chat (LLM paziente), selezione esami, referto e valutazione finale.
+            Apri la libreria casi per iniziare rapidamente una simulazione.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-between gap-4">
           <div className="space-y-1">
-            <p className="text-sm font-medium text-zinc-950">Caso demo: dolore toracico in PS</p>
+            <p className="text-sm font-medium text-zinc-950">Seleziona un caso dalla libreria</p>
             <p className="text-xs text-zinc-500">
-              Consigliato per verificare che tutto l&apos;stack (API + DB) sia operativo.
+              Scegli un caso reale disponibile per il tuo utente.
             </p>
           </div>
           <Link
-            href="/case/demo"
+            href="/dashboard/cases"
             className="inline-flex items-center justify-center rounded-full bg-zinc-950 text-zinc-50 px-4 py-2 text-sm font-medium hover:bg-zinc-900 transition-colors"
           >
-            Apri simulatore
+            Vai ai casi
           </Link>
         </CardContent>
       </Card>
@@ -73,12 +73,6 @@ export default async function DashboardSimulatorPage() {
           <div className="divide-y divide-zinc-200/80">
             {(cases ??
               [
-                {
-                  id: "demo",
-                  title: "Scenario demo PS – dolore toracico",
-                  specialty: "Emergenza / Cardiologia",
-                  difficulty: "MEDIUM",
-                },
                 {
                   id: "cs_001",
                   title: "Dolore toracico in PS",

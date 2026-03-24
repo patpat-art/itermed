@@ -17,17 +17,6 @@ const FALLBACK_CASES: Record<
     patientPrompt: string;
   }
 > = {
-  demo: {
-    id: "demo",
-    title: "Scenario demo PS – dolore toracico",
-    description:
-      "Accesso in PS per dolore toracico oppressivo; obiettivo: anamnesi, scelta esami, referto e gestione difendibile.",
-    specialty: "Emergenza / Cardiologia",
-    difficulty: "MEDIUM",
-    estimatedDurationMinutes: 12,
-    patientPrompt:
-      "Uomo 58 anni, dolore toracico oppressivo retrosternale irradiato al braccio sinistro, ansioso, sudorazione. Non dare diagnosi.",
-  },
   cs_001: {
     id: "cs_001",
     title: "Dolore toracico in PS",
@@ -79,7 +68,7 @@ export default async function CasePage(props: CasePageProps) {
 
   // Se il database non è configurato, usiamo direttamente i casi demo.
   if (!hasDatabase) {
-    const fallback = FALLBACK_CASES[idNormalized] ?? FALLBACK_CASES.demo;
+    const fallback = FALLBACK_CASES[idNormalized];
     if (fallback) {
       return (
         <SimulatorClient
