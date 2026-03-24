@@ -3,13 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 
 export function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
 
@@ -32,8 +31,8 @@ export function LoginForm() {
       setError("Email o password non validi.");
       return;
     }
-    router.push(callbackUrl);
-    router.refresh();
+    // Full page navigation per assicurarsi che la sessione sia letta correttamente in produzione
+    window.location.href = callbackUrl;
   }
 
   return (
