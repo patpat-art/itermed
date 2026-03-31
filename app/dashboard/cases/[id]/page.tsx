@@ -21,6 +21,7 @@ async function updateCase(formData: FormData) {
   "use server";
 
   const user = await requireUser();
+  const canPublishGlobal = user.role === "ADMIN";
   const id = formData.get("id");
   const title = formData.get("title");
   const description = formData.get("description");
@@ -88,6 +89,7 @@ async function updateCase(formData: FormData) {
         typeof correctSolution === "string" && correctSolution.trim()
           ? correctSolution.trim()
           : null,
+      isGlobal: canPublishGlobal ? formData.get("isGlobal") === "on" : undefined,
       baselineExamFindings,
     },
   });
@@ -146,6 +148,19 @@ export default async function EditCasePage({
         <CardContent>
           <form action={updateCase} className="space-y-4 text-xs">
             <input type="hidden" name="id" value={clinicalCase.id} />
+            {user.role === "ADMIN" ? (
+              <div className="rounded-2xl border border-zinc-200/80 bg-white px-3 py-2.5">
+                <label className="inline-flex items-center gap-2 text-[11px] font-medium text-zinc-700">
+                  <input
+                    type="checkbox"
+                    name="isGlobal"
+                    defaultChecked={clinicalCase.isGlobal}
+                    className="h-3.5 w-3.5"
+                  />
+                  <span>Caso globale (visibile a tutti gli utenti)</span>
+                </label>
+              </div>
+            ) : null}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-1.5">

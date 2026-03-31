@@ -3,6 +3,7 @@ import { embedMany } from "ai";
 import { z } from "zod";
 import { getPineconeIndex } from "../../../../lib/pinecone";
 import { requireAdminApi } from "../../../../lib/require-admin-api";
+import { prisma } from "../../../../lib/prisma";
 
 export const runtime = "nodejs";
 
@@ -135,16 +136,18 @@ export async function POST(req: Request) {
 
     // 4. Upsert su Pinecone a batch
     const namespace = "guidelines";
-    const now = Date.now().toString();
+    const docId = crypto.randomUUID();
+    const vectorIds = embeddings.map((_, i) => `${docId}-${i}`);
     const BATCH_SIZE = 64;
 
     for (let i = 0; i < embeddings.length; i += BATCH_SIZE) {
       const batchRecords = embeddings.slice(i, i + BATCH_SIZE).map((vector, localIndex) => {
         const globalIndex = i + localIndex;
         return {
-          id: `${now}-${globalIndex}`,
+          id: vectorIds[globalIndex],
           values: vector,
           metadata: {
+            documentId: docId,
             title,
             tags: tagsArray,
             content: chunks[globalIndex],
@@ -162,6 +165,20 @@ export async function POST(req: Request) {
       console.log("Pinecone PDF upsert batchRecords length:", batchRecords.length);
       await index.namespace(namespace).upsert({ records: batchRecords });
     }
+
+    await prisma.guidelineDocument.create({
+      data: {
+        id: docId,
+        title,
+        tags: tagsArray,
+        sourceType: "PDF",
+        sourceName: file.name,
+        text: rawText,
+        chunkCount: chunks.length,
+        vectorIds,
+        isActive: true,
+      },
+    });
 
     return new Response(
       JSON.stringify({

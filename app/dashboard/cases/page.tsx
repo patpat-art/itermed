@@ -24,6 +24,8 @@ export default async function DashboardCasesPage() {
         id: string;
         title: string;
         specialty: string | null;
+        createdById: string;
+        isGlobal: boolean;
         deck: { title: string } | null;
       }[]
     | null = null;
@@ -102,26 +104,35 @@ export default async function DashboardCasesPage() {
         <Card className="bg-white/80 border-zinc-200/80">
           <CardHeader>
             <CardTitle className="text-sm font-medium text-zinc-950">Casi disponibili</CardTitle>
-            <CardDescription>Apri un caso per avviare il simulatore.</CardDescription>
+            <CardDescription>
+              Divisi in 2 gruppi: globali (per tutti) e individuali (solo tuoi).
+            </CardDescription>
           </CardHeader>
           <CardContent className="text-sm">
-            <div className="divide-y divide-zinc-200/80">
-              {(cases ??
+            {(() => {
+              const source =
+                cases ??
                 [
                   {
                     id: "cs_001",
                     title: "Dolore toracico in PS",
                     specialty: "Emergenza",
+                    createdById: "seed",
+                    isGlobal: true,
                     deck: { title: "Core – Urgenze" },
                   },
                   {
                     id: "cs_002",
                     title: "Febbre persistente in paziente anziano",
                     specialty: "Medicina interna",
-                    deck: { title: "Core – Urgenze" },
+                    createdById: user.id,
+                    isGlobal: false,
+                    deck: null,
                   },
-                ]
-              ).map((c) => (
+                ];
+              const globalCases = source.filter((c) => c.isGlobal);
+              const personalCases = source.filter((c) => !c.isGlobal && c.createdById === user.id);
+              const renderCase = (c: (typeof source)[number]) => (
                 <div
                   key={c.id}
                   className="py-3 px-2 -mx-2 rounded-2xl hover:bg-zinc-100 transition-colors flex flex-col gap-1"
@@ -130,13 +141,42 @@ export default async function DashboardCasesPage() {
                     <p className="font-medium text-zinc-950">{c.title}</p>
                     <p className="text-xs text-zinc-500">
                       {c.specialty ?? "Specialità N/D"}
-                      {c.deck?.title ? ` · Deck: ${c.deck.title}` : ""}
+                      {c.isGlobal
+                        ? c.deck?.title
+                          ? ` · Globale · ${c.deck.title}`
+                          : " · Globale"
+                        : " · Individuale"}
                     </p>
                   </div>
                   <StartCaseButtons caseId={c.id} />
                 </div>
-              ))}
-            </div>
+              );
+
+              return (
+                <div className="space-y-4">
+                  <section>
+                    <p className="text-xs font-medium text-zinc-600 mb-1.5">Globali (tutti)</p>
+                    <div className="divide-y divide-zinc-200/80">
+                      {globalCases.length === 0 ? (
+                        <p className="text-xs text-zinc-500 py-2">Nessun caso globale disponibile.</p>
+                      ) : (
+                        globalCases.map(renderCase)
+                      )}
+                    </div>
+                  </section>
+                  <section>
+                    <p className="text-xs font-medium text-zinc-600 mb-1.5">I tuoi casi individuali</p>
+                    <div className="divide-y divide-zinc-200/80">
+                      {personalCases.length === 0 ? (
+                        <p className="text-xs text-zinc-500 py-2">Non hai ancora creato casi individuali.</p>
+                      ) : (
+                        personalCases.map(renderCase)
+                      )}
+                    </div>
+                  </section>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       </section>

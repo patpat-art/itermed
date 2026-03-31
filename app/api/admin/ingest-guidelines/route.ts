@@ -3,6 +3,7 @@ import { embedMany } from "ai";
 import { z } from "zod";
 import { getPineconeIndex } from "../../../../lib/pinecone";
 import { requireAdminApi } from "../../../../lib/require-admin-api";
+import { prisma } from "../../../../lib/prisma";
 
 const IngestBodySchema = z.object({
   title: z.string().min(1),
@@ -77,13 +78,15 @@ export async function POST(req: Request) {
     });
 
     // 3. Upsert su Pinecone
-    const now = Date.now().toString();
     const namespace = "guidelines";
+    const docId = crypto.randomUUID();
+    const vectorIds = embeddings.map((_, i) => `${docId}-${i}`);
 
     const records = embeddings.map((vector, i) => ({
-      id: `${now}-${i}`,
+      id: vectorIds[i],
       values: vector,
       metadata: {
+        documentId: docId,
         title,
         tags,
         content: chunks[i],
@@ -115,6 +118,19 @@ export async function POST(req: Request) {
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
     }
+
+    await prisma.guidelineDocument.create({
+      data: {
+        id: docId,
+        title,
+        tags,
+        sourceType: "TEXT",
+        text: normalized,
+        chunkCount: chunks.length,
+        vectorIds,
+        isActive: true,
+      },
+    });
 
     return new Response(
       JSON.stringify({

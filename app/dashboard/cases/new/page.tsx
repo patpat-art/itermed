@@ -20,6 +20,7 @@ async function createCase(formData: FormData) {
   "use server";
 
   const user = await requireUser();
+  const canPublishGlobal = user.role === "ADMIN";
   const title = formData.get("title");
   const description = formData.get("description");
   const specialty = formData.get("specialty");
@@ -92,6 +93,7 @@ async function createCase(formData: FormData) {
           : null,
       deckId: null,
       createdById: user.id,
+      isGlobal: canPublishGlobal && formData.get("isGlobal") === "on",
       baselineExamFindings,
       nodes: {
         create: [
@@ -109,6 +111,7 @@ async function createCase(formData: FormData) {
 }
 
 export default function NewCasePage() {
+  const roleHint = "Gli admin possono rendere un caso globale.";
   return (
     <div className="flex flex-col gap-6">
       <header className="space-y-1">
@@ -131,6 +134,13 @@ export default function NewCasePage() {
         </CardHeader>
         <CardContent>
           <form action={createCase} className="space-y-4 text-xs">
+            <div className="rounded-2xl border border-zinc-200/80 bg-white px-3 py-2.5">
+              <label className="inline-flex items-center gap-2 text-[11px] font-medium text-zinc-700">
+                <input type="checkbox" name="isGlobal" className="h-3.5 w-3.5" />
+                <span>Caso globale (visibile a tutti gli utenti)</span>
+              </label>
+              <p className="mt-1 text-[11px] text-zinc-500">{roleHint}</p>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-[11px] font-medium text-zinc-700" htmlFor="title">

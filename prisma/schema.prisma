@@ -65,6 +65,7 @@ model ClinicalCase {
   description String
   specialty   String?
   difficulty  CaseDifficulty @default(MEDIUM)
+  isGlobal    Boolean        @default(false)
 
   estimatedDurationMinutes Int? // rough expected time to complete the case
   isActive                 Boolean @default(true)
@@ -160,5 +161,20 @@ model CaseSession {
 
   @@index([userId])
   @@index([caseId])
+}
+
+model GuidelineDocument {
+  id         String   @id @default(cuid())
+  title      String
+  tags       String[] @default([])
+  sourceType String   @default("TEXT")
+  sourceName String?
+  text       String
+  chunkCount Int      @default(0)
+  vectorIds  Json?
+  isActive   Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 

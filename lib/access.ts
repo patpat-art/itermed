@@ -1,23 +1,19 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 
-/** Casi visibili in libreria / simulatore: propri, nel proprio deck, o in deck pubblico. */
+/** Casi visibili: globali (deck pubblico) + individuali dell'utente. */
 export function visibleCasesWhere(userId: string): Prisma.ClinicalCaseWhereInput {
   return {
     isActive: true,
-    OR: [
-      { createdById: userId },
-      { deck: { ownerId: userId } },
-      { deck: { isPublic: true } },
-    ],
+    OR: [{ createdById: userId }, { isGlobal: true }],
   };
 }
 
-/** Casi che l’utente può associare a un proprio deck (non “rubare” da deck altrui privati). */
+/** Casi che l’utente può gestire/associare: solo i propri individuali. */
 export function attachableCasesWhere(userId: string): Prisma.ClinicalCaseWhereInput {
   return {
     isActive: true,
-    OR: [{ createdById: userId }, { deck: { ownerId: userId } }],
+    createdById: userId,
   };
 }
 
@@ -34,14 +30,9 @@ export async function userOwnsDeck(userId: string, deckId: string): Promise<bool
 }
 
 export async function userCanManageCase(userId: string, caseId: string): Promise<boolean> {
-  const c = await prisma.clinicalCase.findUnique({
-    where: { id: caseId },
-    include: { deck: true },
-  });
+  const c = await prisma.clinicalCase.findUnique({ where: { id: caseId } });
   if (!c) return false;
-  if (c.createdById === userId) return true;
-  if (c.deck?.ownerId === userId) return true;
-  return false;
+  return c.createdById === userId;
 }
 
 export async function verifyLiveSessionOwner(

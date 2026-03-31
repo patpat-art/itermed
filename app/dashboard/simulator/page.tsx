@@ -14,6 +14,9 @@ export default async function DashboardSimulatorPage() {
         title: string;
         specialty: string | null;
         difficulty: string;
+        createdById: string;
+        isGlobal: boolean;
+        deck: { title: string } | null;
       }[]
     | null = null;
 
@@ -22,6 +25,7 @@ export default async function DashboardSimulatorPage() {
       const rows = await prisma.clinicalCase.findMany({
         where: visibleCasesWhere(user.id),
         orderBy: { updatedAt: "desc" },
+        include: { deck: true },
         take: 12,
       });
       cases = rows;
@@ -67,26 +71,36 @@ export default async function DashboardSimulatorPage() {
       <Card className="bg-white/80 border-zinc-200/80">
         <CardHeader>
           <CardTitle className="text-sm font-medium text-zinc-950">Scegli un caso</CardTitle>
-          <CardDescription>Elenco casi attivi disponibili.</CardDescription>
+          <CardDescription>Globali per tutti + individuali personali.</CardDescription>
         </CardHeader>
         <CardContent className="text-sm">
-          <div className="divide-y divide-zinc-200/80">
-            {(cases ??
+          {(() => {
+            const source =
+              cases ??
               [
                 {
                   id: "cs_001",
                   title: "Dolore toracico in PS",
                   specialty: "Emergenza",
                   difficulty: "MEDIUM",
+                  createdById: "seed",
+                  isGlobal: true,
+                  deck: { title: "Core – Urgenze" },
                 },
                 {
                   id: "cs_002",
                   title: "Febbre persistente in paziente anziano",
                   specialty: "Medicina interna",
                   difficulty: "EASY",
+                  createdById: user.id,
+                  isGlobal: false,
+                  deck: null,
                 },
-              ]
-            ).map((c) => (
+              ];
+
+            const globalCases = source.filter((c) => c.isGlobal);
+            const personalCases = source.filter((c) => !c.isGlobal && c.createdById === user.id);
+            const renderRow = (c: (typeof source)[number]) => (
               <Link
                 key={c.id}
                 href={`/case/${c.id}`}
@@ -94,14 +108,44 @@ export default async function DashboardSimulatorPage() {
               >
                 <div className="min-w-0">
                   <p className="truncate font-medium text-zinc-950">{c.title}</p>
-                  <p className="text-xs text-zinc-500">{c.specialty ?? "Specialità N/D"}</p>
+                  <p className="text-xs text-zinc-500">
+                    {c.specialty ?? "Specialità N/D"}
+                    {c.isGlobal
+                      ? c.deck?.title
+                        ? ` · Globale · ${c.deck.title}`
+                        : " · Globale"
+                      : " · Individuale"}
+                  </p>
                 </div>
-                <Badge className="shrink-0">
-                  {String(c.difficulty)}
-                </Badge>
+                <Badge className="shrink-0">{String(c.difficulty)}</Badge>
               </Link>
-            ))}
-          </div>
+            );
+
+            return (
+              <div className="space-y-4">
+                <section>
+                  <p className="text-xs font-medium text-zinc-600 mb-1.5">Globali (tutti)</p>
+                  <div className="divide-y divide-zinc-200/80">
+                    {globalCases.length === 0 ? (
+                      <p className="text-xs text-zinc-500 py-2">Nessun caso globale disponibile.</p>
+                    ) : (
+                      globalCases.map(renderRow)
+                    )}
+                  </div>
+                </section>
+                <section>
+                  <p className="text-xs font-medium text-zinc-600 mb-1.5">I tuoi casi individuali</p>
+                  <div className="divide-y divide-zinc-200/80">
+                    {personalCases.length === 0 ? (
+                      <p className="text-xs text-zinc-500 py-2">Non hai casi individuali.</p>
+                    ) : (
+                      personalCases.map(renderRow)
+                    )}
+                  </div>
+                </section>
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
     </div>
