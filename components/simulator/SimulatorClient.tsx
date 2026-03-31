@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -68,6 +68,7 @@ type SimulatorClientProps = {
   initialCaseData: InitialCaseData;
   isVariant?: boolean;
   sessionId?: string;
+  isAdmin?: boolean;
   /** Se false (casi demo senza DB), l’abbandono non crea SessionReport e torna solo al dashboard. */
   persistReports?: boolean;
 };
@@ -107,6 +108,7 @@ export function SimulatorClient({
   initialCaseData,
   isVariant,
   sessionId,
+  isAdmin = false,
   persistReports = true,
 }: SimulatorClientProps) {
   const router = useRouter();
@@ -867,7 +869,7 @@ export function SimulatorClient({
               <CardContent className="space-y-3 text-xs">
                 {gameStatus === "playing" && (
                   <div className="space-y-4">
-                    {debugTargetCondition && (
+                    {isAdmin && debugTargetCondition && (
                       <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] text-amber-900">
                         <span className="font-medium">Debug – patologia target (sessione):</span>{" "}
                         {debugTargetCondition}
@@ -885,49 +887,53 @@ export function SimulatorClient({
                       />
                     </div>
 
-                    <div className="rounded-2xl border border-zinc-200/80 bg-white px-3 py-2.5">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="space-y-0.5">
-                          <p className="text-[11px] font-medium text-zinc-800">
-                            Abilita Imprevisti AI (20% probabilità)
-                          </p>
-                          <p className="text-[11px] text-zinc-500">
-                            Se attivo, può comparire una complicazione improvvisa.
-                          </p>
+                    {isAdmin && (
+                      <>
+                        <div className="rounded-2xl border border-zinc-200/80 bg-white px-3 py-2.5">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="space-y-0.5">
+                              <p className="text-[11px] font-medium text-zinc-800">
+                                Abilita Imprevisti AI (20% probabilità)
+                              </p>
+                              <p className="text-[11px] text-zinc-500">
+                                Se attivo, può comparire una complicazione improvvisa.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setEnableAiSurprises((v) => !v)}
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors ${
+                                enableAiSurprises
+                                  ? "bg-emerald-500/90 border-emerald-600"
+                                  : "bg-zinc-200 border-zinc-300"
+                              }`}
+                              aria-pressed={enableAiSurprises}
+                            >
+                              <span
+                                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
+                                  enableAiSurprises ? "translate-x-5" : "translate-x-1"
+                                }`}
+                              />
+                            </button>
+                          </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setEnableAiSurprises((v) => !v)}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors ${
-                            enableAiSurprises
-                              ? "bg-emerald-500/90 border-emerald-600"
-                              : "bg-zinc-200 border-zinc-300"
-                          }`}
-                          aria-pressed={enableAiSurprises}
-                        >
-                          <span
-                            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
-                              enableAiSurprises ? "translate-x-5" : "translate-x-1"
-                            }`}
-                          />
-                        </button>
-                      </div>
-                    </div>
 
-                    <div className="flex items-center justify-end">
-                      <button
-                        type="button"
-                        onClick={() => setForceAiSurprise((v) => !v)}
-                        className={`text-[11px] font-medium rounded-full border px-3 py-1.5 transition-colors ${
-                          forceAiSurprise
-                            ? "bg-amber-50 border-amber-200 text-amber-900"
-                            : "bg-white border-zinc-200/80 text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100"
-                        }`}
-                        title="Solo test: forza sempre l'imprevisto quando la diagnosi è corretta"
-                      >
-                        {forceAiSurprise ? "Forza imprevisto: ON" : "Forza imprevisto: OFF"}
-                      </button>
-                    </div>
+                        <div className="flex items-center justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setForceAiSurprise((v) => !v)}
+                            className={`text-[11px] font-medium rounded-full border px-3 py-1.5 transition-colors ${
+                              forceAiSurprise
+                                ? "bg-amber-50 border-amber-200 text-amber-900"
+                                : "bg-white border-zinc-200/80 text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100"
+                            }`}
+                            title="Solo test: forza sempre l'imprevisto quando la diagnosi è corretta"
+                          >
+                            {forceAiSurprise ? "Forza imprevisto: ON" : "Forza imprevisto: OFF"}
+                          </button>
+                        </div>
+                      </>
+                    )}
 
                     <Button
                       type="button"
@@ -1220,6 +1226,8 @@ function HistoryChat({
   onSubmit,
   isLoading,
 }: HistoryChatProps) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
   const messageText = (message: HistoryChatProps["messages"][number]): string => {
     if (typeof message.content === "string" && message.content.trim()) {
       return message.content;
@@ -1248,9 +1256,22 @@ function HistoryChat({
     (m) => m.role === "user" || m.role === "assistant",
   );
 
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [visibleMessages.length, isLoading]);
+
   return (
     <div className="flex flex-col gap-3 rounded-2xl bg-white/70 border border-zinc-200/80 p-3 h-[420px] overflow-hidden">
-      <div className="flex-1 space-y-2.5 overflow-y-auto pr-1.5">
+      <div
+        ref={scrollRef}
+        className="flex-1 space-y-2.5 overflow-y-auto pr-1.5"
+        onWheel={(event) => {
+          // Some mouse wheels on Arc do not scroll nested containers reliably.
+          if (!scrollRef.current) return;
+          scrollRef.current.scrollTop += event.deltaY;
+        }}
+      >
         {visibleMessages.length === 0 && (
           <p className="text-[11px] text-zinc-500">
             Inizia l&apos;anamnesi ponendo una domanda aperta al paziente (es. &quot;Mi racconti cosa è successo da quando sono iniziati i sintomi&quot;).

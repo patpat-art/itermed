@@ -74,6 +74,7 @@ export default async function CasePage(props: CasePageProps) {
         <SimulatorClient
           initialCaseData={fallback}
           sessionId={sessionId}
+          isAdmin={false}
           persistReports={false}
         />
       );
@@ -146,6 +147,7 @@ export default async function CasePage(props: CasePageProps) {
           initialCaseData={initialCaseData}
           isVariant={isVariant}
           sessionId={session?.id ?? sessionId}
+          isAdmin={authSession.user.role === "ADMIN"}
           persistReports
         />
       );

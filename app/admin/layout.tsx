@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../lib/auth-options";
+import DashboardLayout from "../dashboard/layout";
 
 export default async function AdminLayout({
   children,
@@ -14,5 +15,5 @@ export default async function AdminLayout({
   if (session.user.role !== "ADMIN") {
     redirect("/dashboard");
   }
-  return <>{children}</>;
+  return <DashboardLayout>{children}</DashboardLayout>;
 }

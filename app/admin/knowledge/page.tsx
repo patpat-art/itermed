@@ -74,19 +74,29 @@ export default function KnowledgeAdminPage() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <header className="shrink-0 space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">
-          Knowledge Base · Admin
-        </h1>
-        <p className="text-sm text-zinc-600 max-w-xl">
+    <div className="flex flex-col gap-6">
+      <header className="space-y-1">
+        <h1 className="text-xl font-semibold tracking-tight text-zinc-950">Knowledge base</h1>
+        <p className="text-sm text-zinc-500 max-w-3xl">
           Carica PDF di linee guida e manualistica medico-legale. Il testo verrà spezzato in
           chunk, indicizzato in Pinecone e usato dal motore di valutazione RAG.
         </p>
       </header>
 
-      <main className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="bg-white/80 border-zinc-200/80 h-full">
+      {message && (
+        <div
+          className={
+            message.type === "success"
+              ? "rounded-2xl border border-emerald-200/80 bg-emerald-50/80 px-4 py-2 text-xs text-emerald-700"
+              : "rounded-2xl border border-rose-200/80 bg-rose-50/80 px-4 py-2 text-xs text-rose-700"
+          }
+        >
+          {message.text}
+        </div>
+      )}
+
+      <main className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+        <Card className="bg-white/80 border-zinc-200/80">
           <CardHeader>
             <CardTitle className="text-sm font-medium text-zinc-950">
               Carica documento PDF
@@ -96,7 +106,7 @@ export default function KnowledgeAdminPage() {
               disabilitato. Usa il pannello &quot;Incolla testo linee guida&quot; a destra.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 max-w-xl">
+          <CardContent className="space-y-4">
             <form
               onSubmit={handleSubmit}
               className="space-y-5"
@@ -156,7 +166,7 @@ export default function KnowledgeAdminPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white/80 border-zinc-200/80 h-full">
+        <Card className="bg-white/80 border-zinc-200/80">
           <CardHeader>
             <CardTitle className="text-sm font-medium text-zinc-950">
               Incolla testo linee guida
@@ -165,7 +175,7 @@ export default function KnowledgeAdminPage() {
               Incolla il testo estratto dal PDF (o da altre fonti) per indicizzarlo nel motore RAG.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-5 max-w-xl">
+          <CardContent className="space-y-5">
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
@@ -305,17 +315,6 @@ export default function KnowledgeAdminPage() {
                   )}
                 </Button>
 
-                {message && (
-                  <div
-                    className={
-                      message.type === "success"
-                        ? "rounded-full border border-emerald-200/80 bg-emerald-50/80 px-3 py-1 text-[11px] text-emerald-700"
-                        : "rounded-full border border-rose-200/80 bg-rose-50/80 px-3 py-1 text-[11px] text-rose-700"
-                    }
-                  >
-                    {message.text}
-                  </div>
-                )}
               </div>
             </form>
           </CardContent>

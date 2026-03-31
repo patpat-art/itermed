@@ -2,7 +2,15 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { LayoutDashboard, BookOpen, Sparkles, Settings, UserCircle2, Database } from "lucide-react";
+import {
+  LayoutDashboard,
+  BookOpen,
+  Sparkles,
+  Settings,
+  UserCircle2,
+  Database,
+  Users,
+} from "lucide-react";
 import { authOptions } from "../../lib/auth-options";
 import { SignOutButton } from "../../components/auth/SignOutButton";
 
@@ -16,7 +24,10 @@ const baseNavItems = [
   { href: "/dashboard/simulator", label: "Simulatore", icon: Sparkles },
 ];
 
-const adminNavItem = { href: "/admin/knowledge", label: "Knowledge base", icon: Database };
+const adminNavItems = [
+  { href: "/admin/knowledge", label: "Guidelines", icon: Database },
+  { href: "/admin/users", label: "Utenti", icon: Users },
+];
 
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
   const session = await getServerSession(authOptions);
@@ -25,11 +36,11 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   }
   const label = session.user.name || session.user.email || "Account";
   const navItems =
-    session.user.role === "ADMIN" ? [...baseNavItems, adminNavItem] : baseNavItems;
+    session.user.role === "ADMIN" ? [...baseNavItems, ...adminNavItems] : baseNavItems;
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-950">
-      <div className="flex h-screen max-w-7xl mx-auto px-6 py-10 gap-10">
+      <div className="flex min-h-screen max-w-7xl mx-auto px-6 py-10 gap-10">
         <aside className="flex flex-col w-72 rounded-3xl bg-white/80 border border-zinc-200/80 backdrop-blur-xl p-5 shadow-[0_18px_60px_rgba(0,0,0,0.06)]">
           <div className="flex items-center gap-3 mb-8">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-zinc-950 text-zinc-50 text-xl font-semibold">
@@ -80,7 +91,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
           </div>
         </aside>
 
-        <main className="flex-1 flex flex-col gap-8 min-h-0 overflow-y-auto">
+        <main className="flex-1 flex flex-col gap-8 min-h-0">
           {children}
         </main>
       </div>
