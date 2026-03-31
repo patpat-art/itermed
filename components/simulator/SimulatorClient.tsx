@@ -9,8 +9,10 @@ import {
   Clock,
   EuroIcon,
   HeartPulse,
+  Search,
   Sparkles,
   FolderOpen,
+  X,
 } from "lucide-react";
 import {
   Dialog,
@@ -40,13 +42,159 @@ type ChatMessage = {
   content: string;
 };
 
-const AVAILABLE_EXAMS: Exam[] = [
-  { id: "cbc", name: "Emocromo completo", cost: 15, timeMinutes: 20 },
-  { id: "ecg", name: "ECG 12 derivazioni", cost: 60, timeMinutes: 15 },
-  { id: "ct-chest", name: "TAC Torace con mezzo di contrasto", cost: 180, timeMinutes: 90 },
-  { id: "cxr", name: "Rx Torace", cost: 35, timeMinutes: 25 },
-  { id: "abg", name: "Emogasanalisi arteriosa", cost: 25, timeMinutes: 10 },
+type ExamGroup = { id: string; label: string; exams: Exam[] };
+type ExamMacroCategory = { id: string; label: string; groups: ExamGroup[] };
+
+const EXAM_CATALOG: ExamMacroCategory[] = [
+  {
+    id: "lab",
+    label: "Laboratorio",
+    groups: [
+      { id: "chimica", label: "Chimica Clinica e Indici di Flogosi", exams: [
+        { id: "lattati", name: "Acido lattico (Lattati)", cost: 18, timeMinutes: 20 },
+        { id: "ammoniemia", name: "Ammoniemia", cost: 20, timeMinutes: 25 },
+        { id: "amilasi-lipasi", name: "Amilasemia e Lipasemia", cost: 24, timeMinutes: 25 },
+        { id: "assetto-lipidico", name: "Assetto lipidico (Col Tot, HDL, LDL, TG)", cost: 22, timeMinutes: 20 },
+        { id: "bilirubina", name: "Bilirubina (Totale e Frazionata)", cost: 16, timeMinutes: 20 },
+        { id: "creat-urea-gfr", name: "Creatinina e Urea (Azotemia) con stima GFR", cost: 18, timeMinutes: 20 },
+        { id: "elettroliti", name: "Elettroliti sierici (Na, K, Ca, Mg, Cl, P)", cost: 20, timeMinutes: 20 },
+        { id: "protidogramma", name: "Elettroforesi proteica (Protidogramma)", cost: 28, timeMinutes: 35 },
+        { id: "hba1c", name: "Emoglobina Glicata (HbA1c)", cost: 22, timeMinutes: 25 },
+        { id: "glicemia", name: "Glicemia basale", cost: 12, timeMinutes: 15 },
+        { id: "enzimi-epatici", name: "Indici di citolisi e colestasi (AST, ALT, GGT, FA)", cost: 24, timeMinutes: 25 },
+        { id: "ldh", name: "Lattato deidrogenasi (LDH)", cost: 15, timeMinutes: 20 },
+        { id: "mioglobina", name: "Mioglobina", cost: 25, timeMinutes: 25 },
+        { id: "nt-probnp", name: "NT-proBNP (o BNP)", cost: 40, timeMinutes: 30 },
+        { id: "pcr-pct", name: "Proteina C Reattiva (PCR) e Procalcitonina (PCT)", cost: 30, timeMinutes: 30 },
+        { id: "troponina-hs", name: "Troponina (alta sensibilità)", cost: 35, timeMinutes: 25 },
+        { id: "uricemia", name: "Uricemia", cost: 12, timeMinutes: 20 },
+        { id: "vitamine", name: "Vitamine (D, B12, Folati)", cost: 38, timeMinutes: 35 },
+      ]},
+      { id: "ematologia", label: "Ematologia e Coagulazione", exams: [
+        { id: "antitrombina", name: "Antitrombina III", cost: 32, timeMinutes: 35 },
+        { id: "ddimero", name: "D-Dimero", cost: 28, timeMinutes: 25 },
+        { id: "emocromo", name: "Emocromo completo con formula", cost: 14, timeMinutes: 20 },
+        { id: "assetto-marziale", name: "Ferritina e assetto marziale", cost: 28, timeMinutes: 30 },
+        { id: "fibrinogeno", name: "Fibrinogeno", cost: 20, timeMinutes: 25 },
+        { id: "gruppo-rh", name: "Gruppo sanguigno e fattore Rh", cost: 20, timeMinutes: 20 },
+        { id: "pt-ptt-inr", name: "Coagulazione (PT, PTT, INR)", cost: 22, timeMinutes: 20 },
+        { id: "reticolociti", name: "Reticolociti", cost: 15, timeMinutes: 20 },
+        { id: "ves", name: "VES", cost: 12, timeMinutes: 20 },
+      ]},
+      { id: "endocrino", label: "Endocrinologia e Marcatori", exams: [
+        { id: "acth-cortisolo", name: "ACTH e Cortisolo", cost: 36, timeMinutes: 40 },
+        { id: "aldosterone-renina", name: "Aldosterone e Renina (ARR)", cost: 38, timeMinutes: 40 },
+        { id: "beta-hcg", name: "Beta-HCG (sierica/urinaria)", cost: 18, timeMinutes: 20 },
+        { id: "catecolamine", name: "Catecolamine urinarie/plasmatiche", cost: 42, timeMinutes: 45 },
+        { id: "fsh-lh-prl", name: "FSH, LH, Prolattina", cost: 26, timeMinutes: 30 },
+        { id: "insulina-cpep", name: "Insulina e C-peptide", cost: 30, timeMinutes: 35 },
+        { id: "gh-igf1", name: "GH e IGF-1", cost: 35, timeMinutes: 35 },
+        { id: "tiroide", name: "Ormoni tiroidei (TSH, FT3, FT4)", cost: 25, timeMinutes: 25 },
+        { id: "pth", name: "Paratormone (PTH)", cost: 24, timeMinutes: 25 },
+        { id: "ormoni-sessuali", name: "Testosterone, Estradiolo, Progesterone", cost: 30, timeMinutes: 30 },
+      ]},
+      { id: "immuno", label: "Immunologia e Sierologia", exams: [
+        { id: "hiv-hcv-hbv", name: "Ab anti HIV, HCV, HBV", cost: 30, timeMinutes: 30 },
+        { id: "anca", name: "ANCA (p-ANCA e c-ANCA)", cost: 34, timeMinutes: 35 },
+        { id: "anti-ccp", name: "Anti-CCP", cost: 30, timeMinutes: 35 },
+        { id: "anti-dna", name: "Anti-DNA nativo", cost: 30, timeMinutes: 35 },
+        { id: "ana-ena", name: "Autoanticorpi (ANA, ENA panel)", cost: 36, timeMinutes: 40 },
+        { id: "c3-c4", name: "Complemento (C3, C4)", cost: 22, timeMinutes: 25 },
+        { id: "fr", name: "Fattore Reumatoide", cost: 18, timeMinutes: 25 },
+        { id: "immunoglobuline", name: "Immunoglobuline (IgA, IgG, IgM, IgE)", cost: 28, timeMinutes: 30 },
+        { id: "torch", name: "Monotest e sierologia TORCH", cost: 38, timeMinutes: 40 },
+        { id: "quantiferon", name: "Quantiferon", cost: 45, timeMinutes: 45 },
+        { id: "sifilide", name: "Sifilide (VDRL, TPHA)", cost: 20, timeMinutes: 25 },
+      ]},
+      { id: "micro", label: "Microbiologia, Urine e Tossicologia", exams: [
+        { id: "coprocultura", name: "Coprocultura e ricerca parassiti/uova", cost: 28, timeMinutes: 60 },
+        { id: "emocolture", name: "Emocoltura (da due o più siti)", cost: 40, timeMinutes: 60 },
+        { id: "urine-sed", name: "Esame urine chimico-fisico e sedimento", cost: 15, timeMinutes: 20 },
+        { id: "cdiff", name: "Ricerca Tossina Clostridium Difficile", cost: 26, timeMinutes: 35 },
+        { id: "tox-screen", name: "Screening tossicologico (urine/sangue)", cost: 35, timeMinutes: 30 },
+        { id: "tamponi", name: "Specie microbiche da tampone", cost: 22, timeMinutes: 35 },
+        { id: "urinocoltura", name: "Urinocoltura con antibiogramma", cost: 24, timeMinutes: 40 },
+      ]},
+      { id: "tumor", label: "Marcatori Tumorali", exams: [
+        { id: "afp", name: "Alfa-fetoproteina (AFP)", cost: 24, timeMinutes: 30 },
+        { id: "beta-hcg-onco", name: "Beta-HCG (marker oncologico)", cost: 20, timeMinutes: 25 },
+        { id: "ca-markers", name: "CA 125, CA 15-3, CA 19-9", cost: 42, timeMinutes: 35 },
+        { id: "cea", name: "CEA", cost: 22, timeMinutes: 30 },
+        { id: "calcitonina", name: "Calcitonina", cost: 24, timeMinutes: 30 },
+        { id: "nse", name: "Enolasi neurone-specifica (NSE)", cost: 26, timeMinutes: 30 },
+        { id: "psa", name: "PSA (Totale, Libero e Ratio)", cost: 26, timeMinutes: 30 },
+      ]},
+    ],
+  },
+  {
+    id: "img",
+    label: "Immagini",
+    groups: [
+      { id: "rad-eco", label: "Radiologia Tradizionale ed Ecografia", exams: [
+        { id: "ecocolordoppler", name: "Ecocolordoppler (TSA, venoso/arterioso arti, aorta)", cost: 90, timeMinutes: 35 },
+        { id: "ecografia", name: "Ecografia (addome, tiroide, mammella, muscolotendinea, pelvica)", cost: 75, timeMinutes: 30 },
+        { id: "fast", name: "Ecografia FAST", cost: 55, timeMinutes: 15 },
+        { id: "mammografia", name: "Mammografia", cost: 80, timeMinutes: 25 },
+        { id: "moc", name: "MOC (DEXA)", cost: 70, timeMinutes: 20 },
+        { id: "rx-addome", name: "RX Addome (diretta)", cost: 35, timeMinutes: 20 },
+        { id: "rx-ossa", name: "RX Articolazioni e segmenti ossei", cost: 35, timeMinutes: 20 },
+        { id: "rx-colonna", name: "RX Colonna vertebrale", cost: 40, timeMinutes: 25 },
+        { id: "rx-torace", name: "RX Torace (2 proiezioni)", cost: 35, timeMinutes: 20 },
+      ]},
+      { id: "avanzate", label: "Tecniche Avanzate (TC, RM, Medicina Nucleare)", exams: [
+        { id: "angio", name: "Angio-TC e Angio-RM", cost: 220, timeMinutes: 80 },
+        { id: "colangio-rm", name: "Colangio-RM", cost: 200, timeMinutes: 70 },
+        { id: "pet-tc", name: "PET-TC", cost: 380, timeMinutes: 120 },
+        { id: "rm", name: "RM Addome/Pelvi/Encefalo/Colonna/Articolare", cost: 230, timeMinutes: 90 },
+        { id: "rm-prostata", name: "RM Prostatica Multiparametrica", cost: 260, timeMinutes: 95 },
+        { id: "scintigrafia", name: "Scintigrafia (ossea/miocardica/polmonare/tiroidea)", cost: 260, timeMinutes: 110 },
+        { id: "tc", name: "TC Addome/Encefalo/Torace/Rachide (con-senza mdc)", cost: 200, timeMinutes: 70 },
+        { id: "uro-tc", name: "Uro-TC", cost: 220, timeMinutes: 80 },
+      ]},
+    ],
+  },
+  {
+    id: "strum",
+    label: "Strumentale",
+    groups: [
+      { id: "funzionale", label: "Diagnostica Strumentale e Funzionale", exams: [
+        { id: "audiometria", name: "Audiometria", cost: 45, timeMinutes: 30 },
+        { id: "coronarografia", name: "Coronarografia (Invasiva)", cost: 500, timeMinutes: 120 },
+        { id: "ecocardio", name: "Ecocardiografia (Transtoracica/Transesofagea)", cost: 120, timeMinutes: 40 },
+        { id: "ecg", name: "ECG (riposo/sforzo/Holter)", cost: 60, timeMinutes: 20 },
+        { id: "eeg", name: "Elettroencefalogramma (EEG)", cost: 90, timeMinutes: 45 },
+        { id: "emg", name: "Elettromiografia (EMG)", cost: 110, timeMinutes: 50 },
+        { id: "ega", name: "Emogasanalisi arteriosa (EGA)", cost: 25, timeMinutes: 10 },
+        { id: "fundus", name: "Fundus Oculi", cost: 60, timeMinutes: 20 },
+        { id: "abpm", name: "Monitoraggio pressorio 24h (ABPM)", cost: 70, timeMinutes: 25 },
+        { id: "oct", name: "OCT (Tomografia Ottica)", cost: 95, timeMinutes: 25 },
+        { id: "polisonnografia", name: "Polisonnografia", cost: 180, timeMinutes: 480 },
+        { id: "pot-evocati", name: "Potenziali Evocati", cost: 120, timeMinutes: 50 },
+        { id: "spirometria", name: "Spirometria (semplice/globale)", cost: 65, timeMinutes: 25 },
+        { id: "6mwt", name: "Test del cammino (6MWT)", cost: 35, timeMinutes: 20 },
+      ]},
+    ],
+  },
+  {
+    id: "endo",
+    label: "Endoscopia",
+    groups: [
+      { id: "endo-biopsie", label: "Endoscopia, Biopsie e Liquidi", exams: [
+        { id: "fna", name: "Agoaspirato (FNA)", cost: 120, timeMinutes: 45 },
+        { id: "biopsia", name: "Biopsia (osteomidollare o tissutale mirata)", cost: 180, timeMinutes: 60 },
+        { id: "broncoscopia", name: "Broncoscopia (e BAL)", cost: 220, timeMinutes: 70 },
+        { id: "cistoscopia", name: "Cistoscopia", cost: 180, timeMinutes: 50 },
+        { id: "colonscopia", name: "Colonscopia", cost: 190, timeMinutes: 60 },
+        { id: "egds", name: "Esofagogastroduodenoscopia (EGDS)", cost: 170, timeMinutes: 45 },
+        { id: "laringoscopia", name: "Laringoscopia", cost: 95, timeMinutes: 30 },
+        { id: "liquidi", name: "Liquidi biologici (liquor/pleurico/ascitico/sinoviale)", cost: 75, timeMinutes: 35 },
+        { id: "pap-test", name: "Pap-test e Citologia", cost: 50, timeMinutes: 25 },
+      ]},
+    ],
+  },
 ];
+
+const AVAILABLE_EXAMS: Exam[] = EXAM_CATALOG.flatMap((m) => m.groups.flatMap((g) => g.exams));
 
 type InitialCaseData = {
   id: string;
@@ -116,6 +264,7 @@ export function SimulatorClient({
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
   const [activeTab, setActiveTab] = useState<"history" | "exam" | "tests">("history");
   const [selectedExamIds, setSelectedExamIds] = useState<string[]>([]);
+  const [examsConfirmed, setExamsConfirmed] = useState(false);
   const [reportText, setReportText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPatientChartOpen, setIsPatientChartOpen] = useState(false);
@@ -395,6 +544,7 @@ export function SimulatorClient({
   };
 
   const toggleExam = (examId: string) => {
+    if (examsConfirmed) return;
     setSelectedExamIds((current) =>
       current.includes(examId)
         ? current.filter((id) => id !== examId)
@@ -760,9 +910,11 @@ export function SimulatorClient({
                   className="mt-3"
                 >
                   <ExamsPanel
-                    availableExams={AVAILABLE_EXAMS}
                     selectedExamIds={selectedExamIds}
                     onToggleExam={toggleExam}
+                    isConfirmed={examsConfirmed}
+                    onConfirm={() => setExamsConfirmed(true)}
+                    onUnlock={() => setExamsConfirmed(false)}
                   />
                 </TabsContent>
               </Tabs>
@@ -1329,44 +1481,207 @@ function HistoryChat({
 }
 
 type ExamsPanelProps = {
-  availableExams: Exam[];
   selectedExamIds: string[];
   onToggleExam: (id: string) => void;
+  isConfirmed: boolean;
+  onConfirm: () => void;
+  onUnlock: () => void;
 };
 
-function ExamsPanel({ availableExams, selectedExamIds, onToggleExam }: ExamsPanelProps) {
+function ExamsPanel({
+  selectedExamIds,
+  onToggleExam,
+  isConfirmed,
+  onConfirm,
+  onUnlock,
+}: ExamsPanelProps) {
+  const [query, setQuery] = useState("");
+  const [openMacroId, setOpenMacroId] = useState<string | null>(EXAM_CATALOG[0]?.id ?? null);
+  const [openGroupIds, setOpenGroupIds] = useState<Record<string, string | null>>({});
+
+  const selectedExams = useMemo(
+    () => AVAILABLE_EXAMS.filter((exam) => selectedExamIds.includes(exam.id)),
+    [selectedExamIds],
+  );
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return AVAILABLE_EXAMS.filter((exam) => exam.name.toLowerCase().includes(q));
+  }, [query]);
+
+  const highlight = (text: string, q: string) => {
+    if (!q.trim()) return text;
+    const normalized = q.trim().toLowerCase();
+    const i = text.toLowerCase().indexOf(normalized);
+    if (i < 0) return text;
+    return (
+      <>
+        {text.slice(0, i)}
+        <mark className="bg-amber-200/80 rounded px-0.5">{text.slice(i, i + normalized.length)}</mark>
+        {text.slice(i + normalized.length)}
+      </>
+    );
+  };
+
+  const toggleGroup = (macroId: string, groupId: string) => {
+    setOpenGroupIds((prev) => ({
+      ...prev,
+      [macroId]: prev[macroId] === groupId ? null : groupId,
+    }));
+  };
+
   return (
-    <div className="flex flex-col gap-3 rounded-2xl bg-white/70 border border-zinc-200/80 p-3 h-[420px] overflow-y-auto text-xs">
-      <p className="text-zinc-600 mb-1">
-        Seleziona gli esami che ritieni appropriati. Il monitor a destra aggiornerà in tempo reale
-        il costo e il tempo procedurale simulato.
-      </p>
-      <div className="space-y-2">
-        {availableExams.map((exam) => {
-          const isSelected = selectedExamIds.includes(exam.id);
-          return (
-            <button
-              key={exam.id}
-              type="button"
-              onClick={() => onToggleExam(exam.id)}
-              className={
-                isSelected
-                  ? "flex w-full items-center justify-between rounded-2xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-[11px] text-zinc-900"
-                  : "flex w-full items-center justify-between rounded-2xl border border-zinc-200/80 bg-white px-3 py-2 text-[11px] text-zinc-900 hover:bg-zinc-100 transition-colors"
-              }
-            >
-              <div className="flex flex-col items-start">
-                <span className="font-medium">{exam.name}</span>
-                <span className="text-[10px] text-zinc-500">
-                  Tempo stimato: {exam.timeMinutes} min
-                </span>
+    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)] gap-3 h-[420px]">
+      <div className="rounded-2xl bg-white/70 border border-zinc-200/80 p-3 overflow-y-auto text-xs">
+        <div className="relative mb-3">
+          <Search className="h-3.5 w-3.5 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Cerca esami (es. troponina, TC torace, colonscopia...)"
+            className="w-full h-9 rounded-xl border border-zinc-200/80 bg-white pl-8 pr-3 text-xs text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-300"
+          />
+        </div>
+
+        {query.trim() ? (
+          <div className="space-y-1.5">
+            {filtered.length === 0 ? (
+              <p className="text-zinc-500">Nessun esame trovato.</p>
+            ) : (
+              filtered.map((exam) => {
+                const isSelected = selectedExamIds.includes(exam.id);
+                return (
+                  <button
+                    key={exam.id}
+                    type="button"
+                    onClick={() => onToggleExam(exam.id)}
+                    disabled={isConfirmed}
+                    className={
+                      "w-full text-left rounded-xl border px-3 py-2 transition-colors " +
+                      (isSelected
+                        ? "border-emerald-300 bg-emerald-50"
+                        : "border-zinc-200/80 bg-white hover:bg-zinc-50") +
+                      (isConfirmed ? " opacity-70 cursor-not-allowed" : "")
+                    }
+                  >
+                    <p className="text-[11px] font-medium text-zinc-900">{highlight(exam.name, query)}</p>
+                    <p className="text-[10px] text-zinc-500 mt-0.5">€ {exam.cost} · {exam.timeMinutes} min</p>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {EXAM_CATALOG.map((macro) => {
+              const macroOpen = openMacroId === macro.id;
+              return (
+                <div key={macro.id} className="rounded-2xl border border-zinc-200/80 bg-white">
+                  <button
+                    type="button"
+                    onClick={() => setOpenMacroId(macroOpen ? null : macro.id)}
+                    className="w-full flex items-center justify-between px-3 py-2.5 text-[11px] font-semibold text-zinc-900"
+                  >
+                    <span>{macro.label}</span>
+                    <span className="text-zinc-500">{macroOpen ? "−" : "+"}</span>
+                  </button>
+                  {macroOpen ? (
+                    <div className="px-2 pb-2 space-y-2">
+                      {macro.groups.map((group) => {
+                        const groupOpen = openGroupIds[macro.id] === group.id;
+                        return (
+                          <div key={group.id} className="rounded-xl border border-zinc-200/80 bg-zinc-50/70">
+                            <button
+                              type="button"
+                              onClick={() => toggleGroup(macro.id, group.id)}
+                              className="w-full flex items-center justify-between px-2.5 py-2 text-[11px] font-medium text-zinc-800"
+                            >
+                              <span>{group.label}</span>
+                              <span className="text-zinc-500">{groupOpen ? "−" : "+"}</span>
+                            </button>
+                            {groupOpen ? (
+                              <div className="px-2 pb-2 space-y-1.5">
+                                {group.exams.map((exam) => {
+                                  const isSelected = selectedExamIds.includes(exam.id);
+                                  return (
+                                    <button
+                                      key={exam.id}
+                                      type="button"
+                                      onClick={() => onToggleExam(exam.id)}
+                                      disabled={isConfirmed}
+                                      className={
+                                        "w-full text-left rounded-lg border px-2.5 py-2 transition-colors " +
+                                        (isSelected
+                                          ? "border-emerald-300 bg-emerald-50"
+                                          : "border-zinc-200/80 bg-white hover:bg-zinc-100") +
+                                        (isConfirmed ? " opacity-70 cursor-not-allowed" : "")
+                                      }
+                                    >
+                                      <p className="text-[11px] text-zinc-900">{exam.name}</p>
+                                      <p className="text-[10px] text-zinc-500 mt-0.5">€ {exam.cost} · {exam.timeMinutes} min</p>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-2xl bg-white/70 border border-zinc-200/80 p-3 flex flex-col min-h-0">
+        <p className="text-[11px] font-medium text-zinc-700 mb-2">Ricettario · Esami selezionati</p>
+        <div className="flex-1 overflow-y-auto space-y-1.5">
+          {selectedExams.length === 0 ? (
+            <p className="text-[11px] text-zinc-500">Nessun esame selezionato.</p>
+          ) : (
+            selectedExams.map((exam) => (
+              <div key={exam.id} className="rounded-xl border border-zinc-200/80 bg-white px-2.5 py-2 flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-[11px] text-zinc-900">{exam.name}</p>
+                  <p className="text-[10px] text-zinc-500 mt-0.5">€ {exam.cost} · {exam.timeMinutes} min</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onToggleExam(exam.id)}
+                  disabled={isConfirmed}
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-zinc-200 hover:bg-zinc-100 text-zinc-600"
+                  title="Rimuovi esame"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
-              <span className="ml-3 text-[11px] font-medium">
-                € {exam.cost}
-              </span>
-            </button>
-          );
-        })}
+            ))
+          )}
+        </div>
+        {isConfirmed ? (
+          <div className="mt-3 space-y-2">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-[11px] text-emerald-800">
+              Richiesta esami confermata.
+            </div>
+            <Button type="button" size="sm" variant="outline" className="text-[11px]" onClick={onUnlock}>
+              Modifica richiesta
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            size="sm"
+            className="mt-3 text-[11px]"
+            onClick={onConfirm}
+            disabled={selectedExams.length === 0}
+          >
+            Conferma Richiesta Esami
+          </Button>
+        )}
       </div>
     </div>
   );
