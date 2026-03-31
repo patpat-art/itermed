@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Gauge, Stethoscope, Thermometer, Brain } from "lucide-react";
+import { Gauge, Stethoscope, Thermometer, Brain, FileText, FlaskConical } from "lucide-react";
 import { prisma } from "../../../../lib/prisma";
 import { requireUser } from "../../../../lib/require-user";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../ui/card";
@@ -64,6 +64,9 @@ async function createCase(formData: FormData) {
       pupils: str(formData.get("neuro_pupils")),
       gcs: str(formData.get("neuro_gcs")),
       deficits: str(formData.get("neuro_deficits")),
+    },
+    advancedExams: {
+      notes: str(formData.get("advanced_exams_notes")),
     },
   };
 
@@ -134,6 +137,12 @@ export default function NewCasePage() {
         </CardHeader>
         <CardContent>
           <form action={createCase} className="space-y-4 text-xs">
+            <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-zinc-200/80 bg-zinc-50/60 p-2">
+              <a href="#sec-general" className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-[11px] font-medium text-zinc-700">Generali</a>
+              <a href="#sec-objective" className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-[11px] font-medium text-zinc-700">Esame obiettivo</a>
+              <a href="#sec-advanced" className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-[11px] font-medium text-zinc-700">Esami avanzati</a>
+            </div>
+            <section id="sec-general" className="space-y-4">
             <div className="rounded-2xl border border-zinc-200/80 bg-white px-3 py-2.5">
               <label className="inline-flex items-center gap-2 text-[11px] font-medium text-zinc-700">
                 <input type="checkbox" name="isGlobal" className="h-3.5 w-3.5" />
@@ -265,16 +274,20 @@ export default function NewCasePage() {
                 ))}
               </div>
             </div>
+            </section>
 
-            <div className="space-y-3 pt-2 border-t border-zinc-200/80">
-              <p className="text-[11px] font-medium text-zinc-700">
-                Esame obiettivo di base (come nel simulatore)
+            <section id="sec-objective" className="space-y-3 pt-2 border-t border-zinc-200/80">
+              <p className="inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-700">
+                <FileText className="h-3.5 w-3.5 text-zinc-600" />
+                Esame obiettivo (accordion)
               </p>
 
-              <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2">
+              <details open className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2">
+                <summary className="cursor-pointer list-none text-[11px] font-medium text-zinc-700">
+                  Parametri vitali
+                </summary>
                 <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-700">
                   <Gauge className="h-3.5 w-3.5 text-sky-600" />
-                  Parametri vitali
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-1.5">
                   <Input name="vitals_fc" placeholder="FC" className="h-7 px-2 text-[11px]" />
@@ -283,12 +296,12 @@ export default function NewCasePage() {
                   <Input name="vitals_temp" placeholder="Temp °C" className="h-7 px-2 text-[11px]" />
                   <Input name="vitals_fr" placeholder="FR" className="h-7 px-2 text-[11px]" />
                 </div>
-              </div>
+              </details>
 
-              <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2">
+              <details open className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2">
+                <summary className="cursor-pointer list-none text-[11px] font-medium text-zinc-700">Torace</summary>
                 <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-700">
                   <Stethoscope className="h-3.5 w-3.5 text-sky-600" />
-                  Torace
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
                   <Input
@@ -302,12 +315,12 @@ export default function NewCasePage() {
                     className="h-7 px-2 text-[11px]"
                   />
                 </div>
-              </div>
+              </details>
 
-              <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2">
+              <details open className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2">
+                <summary className="cursor-pointer list-none text-[11px] font-medium text-zinc-700">Addome</summary>
                 <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-700">
                   <Thermometer className="h-3.5 w-3.5 text-amber-600" />
-                  Addome
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
                   <Input
@@ -326,12 +339,14 @@ export default function NewCasePage() {
                     className="h-7 px-2 text-[11px]"
                   />
                 </div>
-              </div>
+              </details>
 
-              <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2">
+              <details open className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2">
+                <summary className="cursor-pointer list-none text-[11px] font-medium text-zinc-700">
+                  Neurologico
+                </summary>
                 <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-700">
                   <Brain className="h-3.5 w-3.5 text-purple-600" />
-                  Neurologico
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
                   <Input
@@ -350,8 +365,21 @@ export default function NewCasePage() {
                     className="h-7 px-2 text-[11px]"
                   />
                 </div>
-              </div>
-            </div>
+              </details>
+            </section>
+
+            <section id="sec-advanced" className="space-y-2 border-t border-zinc-200/80 pt-3">
+              <p className="inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-700">
+                <FlaskConical className="h-3.5 w-3.5 text-emerald-600" />
+                Esami diagnostici avanzati
+              </p>
+              <Textarea
+                name="advanced_exams_notes"
+                rows={7}
+                className="text-xs"
+                placeholder="Definisci qui reperti/valori dei test diagnostici avanzati (lab, imaging, strumentali, endoscopia)."
+              />
+            </section>
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <Button

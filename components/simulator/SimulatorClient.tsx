@@ -1,17 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ComponentType, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Activity,
   ArrowLeft,
+  FlaskConical,
   Clock,
   EuroIcon,
   HeartPulse,
+  Microscope,
+  ScanLine,
   Search,
   Sparkles,
   FolderOpen,
+  TestTube2,
   X,
 } from "lucide-react";
 import {
@@ -34,6 +38,9 @@ type Exam = {
   name: string;
   cost: number;
   timeMinutes: number;
+  urgencyTiming?: string;
+  routineTiming?: string;
+  normalFinding?: string;
 };
 
 type ChatMessage = {
@@ -45,7 +52,124 @@ type ChatMessage = {
 type ExamGroup = { id: string; label: string; exams: Exam[] };
 type ExamMacroCategory = { id: string; label: string; groups: ExamGroup[] };
 
-const EXAM_CATALOG: ExamMacroCategory[] = [
+type ExamClinicalMeta = {
+  price: number;
+  urgencyTiming: string;
+  routineTiming: string;
+  routineMinutes: number;
+  normalFinding: string;
+};
+
+const EXAM_META: Record<string, ExamClinicalMeta> = {
+  "lattati": { price: 5, urgencyTiming: "15 min", routineTiming: "1h", routineMinutes: 60, normalFinding: "0.5 – 2.2 mmol/L" },
+  "ammoniemia": { price: 8.5, urgencyTiming: "45 min", routineTiming: "2h", routineMinutes: 120, normalFinding: "15 – 45 µg/dL" },
+  "amilasi-lipasi": { price: 7, urgencyTiming: "1h", routineTiming: "4h", routineMinutes: 240, normalFinding: "Amilasi <100 U/L; Lipasi <60 U/L" },
+  "assetto-lipidico": { price: 12, urgencyTiming: "n.p.", routineTiming: "12h", routineMinutes: 720, normalFinding: "Tot <200; LDL <130; HDL >50 mg/dL" },
+  "bilirubina": { price: 3.5, urgencyTiming: "1h", routineTiming: "4h", routineMinutes: 240, normalFinding: "Totale 0.3 – 1.2 mg/dL" },
+  "creat-urea-gfr": { price: 4.5, urgencyTiming: "1h", routineTiming: "4h", routineMinutes: 240, normalFinding: "Creatinina 0.6-1.2 mg/dL; GFR >90" },
+  "elettroliti": { price: 6.5, urgencyTiming: "1h", routineTiming: "4h", routineMinutes: 240, normalFinding: "Na 135-145; K 3.5-5.0 mEq/L" },
+  "protidogramma": { price: 8, urgencyTiming: "n.p.", routineTiming: "24-48h", routineMinutes: 1440, normalFinding: "Albumina 55-65%" },
+  "hba1c": { price: 10.5, urgencyTiming: "n.p.", routineTiming: "24h", routineMinutes: 1440, normalFinding: "< 39 mmol/mol (o < 5.7%)" },
+  "glicemia": { price: 2.1, urgencyTiming: "15 min", routineTiming: "4h", routineMinutes: 240, normalFinding: "70 – 100 mg/dL" },
+  "enzimi-epatici": { price: 10, urgencyTiming: "1h", routineTiming: "4h", routineMinutes: 240, normalFinding: "AST/ALT <40 U/L; GGT <50 U/L" },
+  "ldh": { price: 3, urgencyTiming: "1h", routineTiming: "4h", routineMinutes: 240, normalFinding: "135 – 225 U/L" },
+  "mioglobina": { price: 15, urgencyTiming: "45 min", routineTiming: "2h", routineMinutes: 120, normalFinding: "< 80 ng/mL" },
+  "nt-probnp": { price: 35, urgencyTiming: "1h", routineTiming: "4h", routineMinutes: 240, normalFinding: "< 125 pg/mL" },
+  "pcr-pct": { price: 28, urgencyTiming: "1h", routineTiming: "4h", routineMinutes: 240, normalFinding: "PCR <0.5 mg/dL; PCT <0.05 ng/mL" },
+  "troponina-hs": { price: 18, urgencyTiming: "45 min", routineTiming: "2h", routineMinutes: 120, normalFinding: "< 14 ng/L" },
+  "uricemia": { price: 3, urgencyTiming: "1h", routineTiming: "4h", routineMinutes: 240, normalFinding: "2.5 – 7.0 mg/dL" },
+  "vitamine": { price: 45, urgencyTiming: "n.p.", routineTiming: "3-5 gg", routineMinutes: 4320, normalFinding: "Vit D 30-100 ng/mL" },
+  "antitrombina": { price: 12, urgencyTiming: "2h", routineTiming: "12h", routineMinutes: 720, normalFinding: "80% – 120%" },
+  "ddimero": { price: 16, urgencyTiming: "1h", routineTiming: "4h", routineMinutes: 240, normalFinding: "< 500 ng/mL" },
+  "emocromo": { price: 4.8, urgencyTiming: "20 min", routineTiming: "4h", routineMinutes: 240, normalFinding: "Hb 13-17 (M) / 12-15 (F) g/dL" },
+  "assetto-marziale": { price: 14, urgencyTiming: "n.p.", routineTiming: "24h", routineMinutes: 1440, normalFinding: "Ferritina 30 – 300 ng/mL" },
+  "fibrinogeno": { price: 6.5, urgencyTiming: "1h", routineTiming: "4h", routineMinutes: 240, normalFinding: "200 – 400 mg/dL" },
+  "gruppo-rh": { price: 18, urgencyTiming: "30 min", routineTiming: "4h", routineMinutes: 240, normalFinding: "Esempio: 0 Positivo" },
+  "pt-ptt-inr": { price: 8.5, urgencyTiming: "45 min", routineTiming: "4h", routineMinutes: 240, normalFinding: "INR 0.8 – 1.2" },
+  "reticolociti": { price: 5, urgencyTiming: "2h", routineTiming: "12h", routineMinutes: 720, normalFinding: "0.5% – 2.0%" },
+  "ves": { price: 3.5, urgencyTiming: "n.p.", routineTiming: "2h", routineMinutes: 120, normalFinding: "<15 mm/h (M) / <20 mm/h (F)" },
+  "acth-cortisolo": { price: 32, urgencyTiming: "n.p.", routineTiming: "3 gg", routineMinutes: 4320, normalFinding: "Cortisolo (8:00): 5 – 25 µg/dL" },
+  "aldosterone-renina": { price: 48, urgencyTiming: "n.p.", routineTiming: "7 gg", routineMinutes: 10080, normalFinding: "Rapporto ARR < 20-30" },
+  "beta-hcg": { price: 15, urgencyTiming: "2h", routineTiming: "6h", routineMinutes: 360, normalFinding: "< 5 mUI/mL (Negativo)" },
+  "catecolamine": { price: 45, urgencyTiming: "n.p.", routineTiming: "10 gg", routineMinutes: 14400, normalFinding: "Adrenalina ur. < 20 µg/24h" },
+  "fsh-lh-prl": { price: 28, urgencyTiming: "n.p.", routineTiming: "48h", routineMinutes: 2880, normalFinding: "Prolattina 5 – 20 ng/mL" },
+  "insulina-cpep": { price: 22, urgencyTiming: "n.p.", routineTiming: "48h", routineMinutes: 2880, normalFinding: "Insulina 3 – 25 µUI/mL" },
+  "gh-igf1": { price: 35, urgencyTiming: "n.p.", routineTiming: "5 gg", routineMinutes: 7200, normalFinding: "GH < 5 ng/mL" },
+  "tiroide": { price: 22, urgencyTiming: "n.p.", routineTiming: "24h", routineMinutes: 1440, normalFinding: "TSH 0.4 – 4.0 µUI/mL" },
+  "pth": { price: 18, urgencyTiming: "n.p.", routineTiming: "24h", routineMinutes: 1440, normalFinding: "10 – 65 pg/mL" },
+  "ormoni-sessuali": { price: 38, urgencyTiming: "n.p.", routineTiming: "48h", routineMinutes: 2880, normalFinding: "Variabile per sesso/ciclo" },
+  "hiv-hcv-hbv": { price: 35, urgencyTiming: "4h", routineTiming: "24h", routineMinutes: 1440, normalFinding: "Assente (Negativo)" },
+  "anca": { price: 32, urgencyTiming: "n.p.", routineTiming: "5-7 gg", routineMinutes: 7200, normalFinding: "Negativo" },
+  "anti-ccp": { price: 18, urgencyTiming: "n.p.", routineTiming: "5-7 gg", routineMinutes: 7200, normalFinding: "< 20 U/mL (Negativo)" },
+  "anti-dna": { price: 15, urgencyTiming: "n.p.", routineTiming: "5-7 gg", routineMinutes: 7200, normalFinding: "Negativo" },
+  "ana-ena": { price: 45, urgencyTiming: "n.p.", routineTiming: "5-7 gg", routineMinutes: 7200, normalFinding: "Negativo / Titolo < 1:80" },
+  "c3-c4": { price: 14, urgencyTiming: "n.p.", routineTiming: "24h", routineMinutes: 1440, normalFinding: "C3 90-180; C4 10-40 mg/dL" },
+  "fr": { price: 8, urgencyTiming: "n.p.", routineTiming: "24h", routineMinutes: 1440, normalFinding: "< 14 UI/mL" },
+  "immunoglobuline": { price: 28, urgencyTiming: "n.p.", routineTiming: "24h", routineMinutes: 1440, normalFinding: "IgG 700 – 1600 mg/dL" },
+  "torch": { price: 55, urgencyTiming: "n.p.", routineTiming: "3 gg", routineMinutes: 4320, normalFinding: "Assenza di IgM specifiche" },
+  "quantiferon": { price: 60, urgencyTiming: "n.p.", routineTiming: "4 gg", routineMinutes: 5760, normalFinding: "Negativo" },
+  "sifilide": { price: 12, urgencyTiming: "n.p.", routineTiming: "24h", routineMinutes: 1440, normalFinding: "Negativo / Non reattivo" },
+  "coprocultura": { price: 25, urgencyTiming: "n.p.", routineTiming: "3 gg", routineMinutes: 4320, normalFinding: "Negativo" },
+  "emocolture": { price: 45, urgencyTiming: "24h", routineTiming: "5 gg", routineMinutes: 7200, normalFinding: "Negativo" },
+  "urine-sed": { price: 6, urgencyTiming: "1h", routineTiming: "4h", routineMinutes: 240, normalFinding: "pH 6; Nitriti/Glucosio assenti" },
+  "cdiff": { price: 30, urgencyTiming: "4h", routineTiming: "24h", routineMinutes: 1440, normalFinding: "Negativo" },
+  "tox-screen": { price: 40, urgencyTiming: "2h", routineTiming: "12h", routineMinutes: 720, normalFinding: "Negativo" },
+  "tamponi": { price: 18, urgencyTiming: "n.p.", routineTiming: "48-72h", routineMinutes: 2880, normalFinding: "Flora saprofita normale" },
+  "urinocoltura": { price: 20, urgencyTiming: "n.p.", routineTiming: "48h", routineMinutes: 2880, normalFinding: "< 10^5 CFU/mL" },
+  "afp": { price: 15, urgencyTiming: "n.p.", routineTiming: "24h", routineMinutes: 1440, normalFinding: "< 10 ng/mL" },
+  "beta-hcg-onco": { price: 15, urgencyTiming: "n.p.", routineTiming: "24h", routineMinutes: 1440, normalFinding: "< 5 mUI/mL" },
+  "ca-markers": { price: 45, urgencyTiming: "n.p.", routineTiming: "48h", routineMinutes: 2880, normalFinding: "< 35 U/mL" },
+  "cea": { price: 15, urgencyTiming: "n.p.", routineTiming: "48h", routineMinutes: 2880, normalFinding: "< 3.0 ng/mL (non fumatori)" },
+  "calcitonina": { price: 20, urgencyTiming: "n.p.", routineTiming: "3 gg", routineMinutes: 4320, normalFinding: "< 10 pg/mL" },
+  "nse": { price: 20, urgencyTiming: "n.p.", routineTiming: "3 gg", routineMinutes: 4320, normalFinding: "< 12 ng/mL" },
+  "psa": { price: 18, urgencyTiming: "n.p.", routineTiming: "24h", routineMinutes: 1440, normalFinding: "Totale < 4.0 ng/mL" },
+  "ecocolordoppler": { price: 65, urgencyTiming: "Immediato", routineTiming: "n.p.", routineMinutes: 35, normalFinding: "Vasi pervi, flusso regolare" },
+  "ecografia": { price: 55, urgencyTiming: "30 min", routineTiming: "24h", routineMinutes: 1440, normalFinding: "Organi nei limiti per morfologia" },
+  "fast": { price: 40, urgencyTiming: "5 min", routineTiming: "n.p.", routineMinutes: 15, normalFinding: "Assenza di versamento libero" },
+  "mammografia": { price: 62, urgencyTiming: "n.p.", routineTiming: "3 gg", routineMinutes: 4320, normalFinding: "Assenza di lesioni sospette" },
+  "moc": { price: 52, urgencyTiming: "n.p.", routineTiming: "2 gg", routineMinutes: 2880, normalFinding: "T-score > -1.0" },
+  "rx-addome": { price: 25, urgencyTiming: "30 min", routineTiming: "24h", routineMinutes: 1440, normalFinding: "Assenza di aria libera/livelli" },
+  "rx-ossa": { price: 30, urgencyTiming: "30 min", routineTiming: "24h", routineMinutes: 1440, normalFinding: "Assenza di fratture recenti" },
+  "rx-colonna": { price: 35, urgencyTiming: "30 min", routineTiming: "24h", routineMinutes: 1440, normalFinding: "Rachide in asse" },
+  "rx-torace": { price: 25, urgencyTiming: "30 min", routineTiming: "24h", routineMinutes: 1440, normalFinding: "Parenchima polmonare libero" },
+  "angio": { price: 350, urgencyTiming: "2h", routineTiming: "48h", routineMinutes: 2880, normalFinding: "Arterie di calibro regolare" },
+  "colangio-rm": { price: 250, urgencyTiming: "n.p.", routineTiming: "48h", routineMinutes: 2880, normalFinding: "Vie biliari non dilatate" },
+  "pet-tc": { price: 950, urgencyTiming: "n.p.", routineTiming: "5 gg", routineMinutes: 7200, normalFinding: "Assenza di iperaccumuli patologici" },
+  "rm": { price: 220, urgencyTiming: "2h", routineTiming: "48h", routineMinutes: 2880, normalFinding: "Segnale parenchimale regolare" },
+  "rm-prostata": { price: 280, urgencyTiming: "n.p.", routineTiming: "48h", routineMinutes: 2880, normalFinding: "PIRADS 1 o 2" },
+  "scintigrafia": { price: 250, urgencyTiming: "n.p.", routineTiming: "3 gg", routineMinutes: 4320, normalFinding: "Captazione omogenea" },
+  "tc": { price: 120, urgencyTiming: "1h", routineTiming: "24h", routineMinutes: 1440, normalFinding: "Assenza aree alterata densità" },
+  "uro-tc": { price: 180, urgencyTiming: "1h", routineTiming: "24h", routineMinutes: 1440, normalFinding: "Regolare escrezione del mdc" },
+  "audiometria": { price: 15, urgencyTiming: "30 min", routineTiming: "n.p.", routineMinutes: 30, normalFinding: "Udito nei limiti di norma" },
+  "coronarografia": { price: 1800, urgencyTiming: "Real-time", routineTiming: "n.p.", routineMinutes: 120, normalFinding: "Albero coronarico indenne" },
+  "ecocardio": { price: 75, urgencyTiming: "1h", routineTiming: "24h", routineMinutes: 1440, normalFinding: "EF > 55%; valvole competenti" },
+  "ecg": { price: 15, urgencyTiming: "10 min", routineTiming: "24h", routineMinutes: 1440, normalFinding: "Ritmo sinusale, no aritmie" },
+  "emg": { price: 70, urgencyTiming: "n.p.", routineTiming: "48h", routineMinutes: 2880, normalFinding: "Conduzione nervosa normale" },
+  "ega": { price: 10, urgencyTiming: "5-10 min", routineTiming: "n.p.", routineMinutes: 10, normalFinding: "pH 7.4; pO2 >80; pCO2 40 mmHg" },
+  "abpm": { price: 45, urgencyTiming: "24h", routineTiming: "n.p.", routineMinutes: 1440, normalFinding: "Media pressoria < 130/80" },
+  "spirometria": { price: 25, urgencyTiming: "30 min", routineTiming: "n.p.", routineMinutes: 30, normalFinding: "Rapporto Tiffeneau > 70%" },
+  "broncoscopia": { price: 280, urgencyTiming: "1h", routineTiming: "7 gg", routineMinutes: 10080, normalFinding: "Mucose bronchiali indenni" },
+  "cistoscopia": { price: 160, urgencyTiming: "1h", routineTiming: "24h", routineMinutes: 1440, normalFinding: "Pareti vescicali regolari" },
+  "colonscopia": { price: 180, urgencyTiming: "1h", routineTiming: "7 gg", routineMinutes: 10080, normalFinding: "Mucosa del colon integra" },
+  "egds": { price: 140, urgencyTiming: "1h", routineTiming: "7 gg", routineMinutes: 10080, normalFinding: "Esofago e stomaco regolari" },
+  "liquidi": { price: 60, urgencyTiming: "2h", routineTiming: "5 gg", routineMinutes: 7200, normalFinding: "Assenza di atipie e batteri" },
+  "pap-test": { price: 20, urgencyTiming: "n.p.", routineTiming: "15 gg", routineMinutes: 21600, normalFinding: "Negativo per cellule maligne" },
+};
+
+const withMeta = (exam: Exam): Exam => {
+  const meta = EXAM_META[exam.id];
+  if (!meta) return exam;
+  return {
+    ...exam,
+    cost: meta.price,
+    timeMinutes: meta.routineMinutes,
+    urgencyTiming: meta.urgencyTiming,
+    routineTiming: meta.routineTiming,
+    normalFinding: meta.normalFinding,
+  };
+};
+
+const RAW_EXAM_CATALOG: ExamMacroCategory[] = [
   {
     id: "lab",
     label: "Laboratorio",
@@ -193,6 +317,14 @@ const EXAM_CATALOG: ExamMacroCategory[] = [
     ],
   },
 ];
+
+const EXAM_CATALOG: ExamMacroCategory[] = RAW_EXAM_CATALOG.map((macro) => ({
+  ...macro,
+  groups: macro.groups.map((group) => ({
+    ...group,
+    exams: group.exams.map(withMeta),
+  })),
+}));
 
 const AVAILABLE_EXAMS: Exam[] = EXAM_CATALOG.flatMap((m) => m.groups.flatMap((g) => g.exams));
 
@@ -1498,6 +1630,12 @@ function ExamsPanel({
   const [query, setQuery] = useState("");
   const [openMacroId, setOpenMacroId] = useState<string | null>(EXAM_CATALOG[0]?.id ?? null);
   const [openGroupIds, setOpenGroupIds] = useState<Record<string, string | null>>({});
+  const macroVisuals: Record<string, { short: string; icon: ComponentType<{ className?: string }> }> = {
+    lab: { short: "Lab", icon: FlaskConical },
+    img: { short: "Imaging", icon: ScanLine },
+    strum: { short: "Strum", icon: Microscope },
+    endo: { short: "Endo", icon: TestTube2 },
+  };
 
   const selectedExams = useMemo(
     () => AVAILABLE_EXAMS.filter((exam) => selectedExamIds.includes(exam.id)),
@@ -1574,6 +1712,29 @@ function ExamsPanel({
           </div>
         ) : (
           <div className="space-y-2">
+            <div className="mb-2 flex flex-wrap items-center gap-1.5">
+              {EXAM_CATALOG.map((macro) => {
+                const Icon = macroVisuals[macro.id]?.icon ?? FlaskConical;
+                const short = macroVisuals[macro.id]?.short ?? macro.label;
+                const active = openMacroId === macro.id;
+                return (
+                  <button
+                    key={`tab-${macro.id}`}
+                    type="button"
+                    onClick={() => setOpenMacroId(macro.id)}
+                    className={
+                      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium transition-colors " +
+                      (active
+                        ? "border-zinc-900 bg-zinc-900 text-white"
+                        : "border-zinc-200/80 bg-white text-zinc-700 hover:bg-zinc-50")
+                    }
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {short}
+                  </button>
+                );
+              })}
+            </div>
             {EXAM_CATALOG.map((macro) => {
               const macroOpen = openMacroId === macro.id;
               return (
@@ -1588,7 +1749,32 @@ function ExamsPanel({
                   </button>
                   {macroOpen ? (
                     <div className="px-2 pb-2 space-y-2">
-                      {macro.groups.map((group) => {
+                      {macro.groups.length === 1 ? (
+                        <div className="px-1 pb-1 space-y-1.5">
+                          {macro.groups[0].exams.map((exam) => {
+                            const isSelected = selectedExamIds.includes(exam.id);
+                            return (
+                              <button
+                                key={exam.id}
+                                type="button"
+                                onClick={() => onToggleExam(exam.id)}
+                                disabled={isConfirmed}
+                                className={
+                                  "w-full text-left rounded-lg border px-2.5 py-2 transition-colors " +
+                                  (isSelected
+                                    ? "border-emerald-300 bg-emerald-50"
+                                    : "border-zinc-200/80 bg-white hover:bg-zinc-100") +
+                                  (isConfirmed ? " opacity-70 cursor-not-allowed" : "")
+                                }
+                              >
+                                <p className="text-[11px] text-zinc-900">{exam.name}</p>
+                                <p className="text-[10px] text-zinc-500 mt-0.5">€ {exam.cost} · {exam.timeMinutes} min</p>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        macro.groups.map((group) => {
                         const groupOpen = openGroupIds[macro.id] === group.id;
                         return (
                           <div key={group.id} className="rounded-xl border border-zinc-200/80 bg-zinc-50/70">
@@ -1627,7 +1813,7 @@ function ExamsPanel({
                             ) : null}
                           </div>
                         );
-                      })}
+                      }))}
                     </div>
                   ) : null}
                 </div>

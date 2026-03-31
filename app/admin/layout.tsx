@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../lib/auth-options";
-import { LayoutDashboard, Database, Users, Settings, UserCircle2 } from "lucide-react";
+import { LayoutDashboard, Database, Users, Settings, UserCircle2, TestTubeDiagonal } from "lucide-react";
 import { SignOutButton } from "../../components/auth/SignOutButton";
 
 export default async function AdminLayout({
@@ -55,6 +55,13 @@ export default async function AdminLayout({
             >
               <Users className="h-4 w-4 text-zinc-600" />
               <span>Utenti</span>
+            </Link>
+            <Link
+              href="/admin/exams"
+              className="flex items-center gap-3 px-3 py-2 rounded-xl text-zinc-700 hover:text-zinc-950 hover:bg-zinc-100 transition-colors"
+            >
+              <TestTubeDiagonal className="h-4 w-4 text-zinc-600" />
+              <span>Valori esami</span>
             </Link>
           </nav>
 
