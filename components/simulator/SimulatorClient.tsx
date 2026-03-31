@@ -1712,7 +1712,7 @@ function ExamsPanel({
           </div>
         ) : (
           <div className="space-y-2">
-            <div className="mb-2 flex flex-wrap items-center gap-1.5">
+            <div className="mb-2 flex flex-wrap items-center gap-1.5 rounded-2xl border border-zinc-200/80 bg-zinc-100/70 p-1.5">
               {EXAM_CATALOG.map((macro) => {
                 const Icon = macroVisuals[macro.id]?.icon ?? FlaskConical;
                 const short = macroVisuals[macro.id]?.short ?? macro.label;
@@ -1723,10 +1723,10 @@ function ExamsPanel({
                     type="button"
                     onClick={() => setOpenMacroId(macro.id)}
                     className={
-                      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium transition-colors " +
+                      "inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[10px] font-medium transition-colors " +
                       (active
-                        ? "border-zinc-900 bg-zinc-900 text-white"
-                        : "border-zinc-200/80 bg-white text-zinc-700 hover:bg-zinc-50")
+                        ? "border-zinc-300 bg-white text-zinc-950 shadow-sm"
+                        : "border-transparent bg-transparent text-zinc-600 hover:bg-white/80 hover:border-zinc-200/70")
                     }
                   >
                     <Icon className="h-3.5 w-3.5" />
@@ -1735,90 +1735,76 @@ function ExamsPanel({
                 );
               })}
             </div>
-            {EXAM_CATALOG.map((macro) => {
-              const macroOpen = openMacroId === macro.id;
-              return (
-                <div key={macro.id} className="rounded-2xl border border-zinc-200/80 bg-white">
-                  <button
-                    type="button"
-                    onClick={() => setOpenMacroId(macroOpen ? null : macro.id)}
-                    className="w-full flex items-center justify-between px-3 py-2.5 text-[11px] font-semibold text-zinc-900"
-                  >
-                    <span>{macro.label}</span>
-                    <span className="text-zinc-500">{macroOpen ? "−" : "+"}</span>
-                  </button>
-                  {macroOpen ? (
-                    <div className="px-2 pb-2 space-y-2">
-                      {macro.groups.length === 1 ? (
-                        <div className="px-1 pb-1 space-y-1.5">
-                          {macro.groups[0].exams.map((exam) => {
-                            const isSelected = selectedExamIds.includes(exam.id);
-                            return (
-                              <button
-                                key={exam.id}
-                                type="button"
-                                onClick={() => onToggleExam(exam.id)}
-                                disabled={isConfirmed}
-                                className={
-                                  "w-full text-left rounded-lg border px-2.5 py-2 transition-colors " +
-                                  (isSelected
-                                    ? "border-emerald-300 bg-emerald-50"
-                                    : "border-zinc-200/80 bg-white hover:bg-zinc-100") +
-                                  (isConfirmed ? " opacity-70 cursor-not-allowed" : "")
-                                }
-                              >
-                                <p className="text-[11px] text-zinc-900">{exam.name}</p>
-                                <p className="text-[10px] text-zinc-500 mt-0.5">€ {exam.cost} · {exam.timeMinutes} min</p>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        macro.groups.map((group) => {
-                        const groupOpen = openGroupIds[macro.id] === group.id;
-                        return (
-                          <div key={group.id} className="rounded-xl border border-zinc-200/80 bg-zinc-50/70">
-                            <button
-                              type="button"
-                              onClick={() => toggleGroup(macro.id, group.id)}
-                              className="w-full flex items-center justify-between px-2.5 py-2 text-[11px] font-medium text-zinc-800"
-                            >
-                              <span>{group.label}</span>
-                              <span className="text-zinc-500">{groupOpen ? "−" : "+"}</span>
-                            </button>
-                            {groupOpen ? (
-                              <div className="px-2 pb-2 space-y-1.5">
-                                {group.exams.map((exam) => {
-                                  const isSelected = selectedExamIds.includes(exam.id);
-                                  return (
-                                    <button
-                                      key={exam.id}
-                                      type="button"
-                                      onClick={() => onToggleExam(exam.id)}
-                                      disabled={isConfirmed}
-                                      className={
-                                        "w-full text-left rounded-lg border px-2.5 py-2 transition-colors " +
-                                        (isSelected
-                                          ? "border-emerald-300 bg-emerald-50"
-                                          : "border-zinc-200/80 bg-white hover:bg-zinc-100") +
-                                        (isConfirmed ? " opacity-70 cursor-not-allowed" : "")
-                                      }
-                                    >
-                                      <p className="text-[11px] text-zinc-900">{exam.name}</p>
-                                      <p className="text-[10px] text-zinc-500 mt-0.5">€ {exam.cost} · {exam.timeMinutes} min</p>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            ) : null}
+            {EXAM_CATALOG.filter((macro) => macro.id === openMacroId).map((macro) => (
+              <div key={macro.id} className="rounded-2xl border border-zinc-200/80 bg-white p-2 space-y-2">
+                {macro.groups.length === 1 ? (
+                  <div className="px-1 pb-1 space-y-1.5">
+                    {macro.groups[0].exams.map((exam) => {
+                      const isSelected = selectedExamIds.includes(exam.id);
+                      return (
+                        <button
+                          key={exam.id}
+                          type="button"
+                          onClick={() => onToggleExam(exam.id)}
+                          disabled={isConfirmed}
+                          className={
+                            "w-full text-left rounded-lg border px-2.5 py-2 transition-colors " +
+                            (isSelected
+                              ? "border-emerald-300 bg-emerald-50"
+                              : "border-zinc-200/80 bg-white hover:bg-zinc-100") +
+                            (isConfirmed ? " opacity-70 cursor-not-allowed" : "")
+                          }
+                        >
+                          <p className="text-[11px] text-zinc-900">{exam.name}</p>
+                          <p className="text-[10px] text-zinc-500 mt-0.5">€ {exam.cost} · {exam.timeMinutes} min</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  macro.groups.map((group) => {
+                    const groupOpen = openGroupIds[macro.id] === group.id;
+                    return (
+                      <div key={group.id} className="rounded-xl border border-zinc-200/80 bg-zinc-50/70">
+                        <button
+                          type="button"
+                          onClick={() => toggleGroup(macro.id, group.id)}
+                          className="w-full flex items-center justify-between px-2.5 py-2 text-[11px] font-medium text-zinc-800"
+                        >
+                          <span>{group.label}</span>
+                          <span className="text-zinc-500">{groupOpen ? "−" : "+"}</span>
+                        </button>
+                        {groupOpen ? (
+                          <div className="px-2 pb-2 space-y-1.5">
+                            {group.exams.map((exam) => {
+                              const isSelected = selectedExamIds.includes(exam.id);
+                              return (
+                                <button
+                                  key={exam.id}
+                                  type="button"
+                                  onClick={() => onToggleExam(exam.id)}
+                                  disabled={isConfirmed}
+                                  className={
+                                    "w-full text-left rounded-lg border px-2.5 py-2 transition-colors " +
+                                    (isSelected
+                                      ? "border-emerald-300 bg-emerald-50"
+                                      : "border-zinc-200/80 bg-white hover:bg-zinc-100") +
+                                    (isConfirmed ? " opacity-70 cursor-not-allowed" : "")
+                                  }
+                                >
+                                  <p className="text-[11px] text-zinc-900">{exam.name}</p>
+                                  <p className="text-[10px] text-zinc-500 mt-0.5">€ {exam.cost} · {exam.timeMinutes} min</p>
+                                </button>
+                              );
+                            })}
                           </div>
-                        );
-                      }))}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
+                        ) : null}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>

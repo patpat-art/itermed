@@ -3,6 +3,8 @@ import { Gauge, Stethoscope, Thermometer, Brain, FileText, FlaskConical } from "
 import { prisma } from "../../../../lib/prisma";
 import { userCanManageCase } from "../../../../lib/access";
 import { requireUser } from "../../../../lib/require-user";
+import { EXAM_DEFAULT_VALUES } from "../../../../lib/exam-default-values";
+import { CaseFormTabs } from "../../../../components/cases/CaseFormTabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../ui/card";
 import { Input } from "../../../ui/input";
 import { Textarea } from "../../../ui/textarea";
@@ -15,6 +17,25 @@ function num(v: FormDataEntryValue | null): number | string | null {
   if (!v || typeof v !== "string" || !v.trim()) return null;
   const n = Number(v);
   return Number.isNaN(n) ? v.trim() : n;
+}
+
+function parseAdvancedExamValues(formData: FormData) {
+  const entries = Array.from(formData.entries());
+  const result: Record<string, { price: number | null; urgencyTiming: string | null; routineTiming: string | null; normalFinding: string | null }> = {};
+  for (const [key, value] of entries) {
+    if (!key.startsWith("examv_") || typeof value !== "string") continue;
+    const [, examId, field] = key.split("__");
+    if (!examId || !field) continue;
+    if (!result[examId]) result[examId] = { price: null, urgencyTiming: null, routineTiming: null, normalFinding: null };
+    if (field === "price") {
+      const n = Number(value);
+      result[examId].price = Number.isFinite(n) ? n : null;
+    }
+    if (field === "urgencyTiming") result[examId].urgencyTiming = value.trim() || null;
+    if (field === "routineTiming") result[examId].routineTiming = value.trim() || null;
+    if (field === "normalFinding") result[examId].normalFinding = value.trim() || null;
+  }
+  return result;
 }
 
 async function updateCase(formData: FormData) {
@@ -72,6 +93,7 @@ async function updateCase(formData: FormData) {
     },
     advancedExams: {
       notes: str(formData.get("advanced_exams_notes")),
+      values: parseAdvancedExamValues(formData),
     },
   };
 
@@ -152,12 +174,9 @@ export default async function EditCasePage({
         <CardContent>
           <form action={updateCase} className="space-y-4 text-xs">
             <input type="hidden" name="id" value={clinicalCase.id} />
-            <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-zinc-200/80 bg-zinc-50/60 p-2">
-              <a href="#sec-general" className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-[11px] font-medium text-zinc-700">Generali</a>
-              <a href="#sec-objective" className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-[11px] font-medium text-zinc-700">Esame obiettivo</a>
-              <a href="#sec-advanced" className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-[11px] font-medium text-zinc-700">Esami avanzati</a>
-            </div>
-            <section id="sec-general" className="space-y-4">
+            <CaseFormTabs
+              general={
+                <section className="space-y-4">
             {user.role === "ADMIN" ? (
               <div className="rounded-2xl border border-zinc-200/80 bg-white px-3 py-2.5">
                 <label className="inline-flex items-center gap-2 text-[11px] font-medium text-zinc-700">
@@ -308,15 +327,16 @@ export default async function EditCasePage({
                 ))}
               </div>
             </div>
-            </section>
+                </section>
+              }
+              objective={
+                <section className="space-y-3 pt-2 border-t border-zinc-200/80">
+                  <p className="inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-700">
+                    <FileText className="h-3.5 w-3.5 text-zinc-600" />
+                    Esame obiettivo (accordion)
+                  </p>
 
-            <section id="sec-objective" className="space-y-3 pt-2 border-t border-zinc-200/80">
-              <p className="inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-700">
-                <FileText className="h-3.5 w-3.5 text-zinc-600" />
-                Esame obiettivo (accordion)
-              </p>
-
-              <details open className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2">
+                  <details open className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2">
                 <summary className="cursor-pointer list-none text-[11px] font-medium text-zinc-700">Parametri vitali</summary>
                 <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-700">
                   <Gauge className="h-3.5 w-3.5 text-sky-600" />
@@ -353,9 +373,9 @@ export default async function EditCasePage({
                     className="h-7 px-2 text-[11px]"
                   />
                 </div>
-              </details>
+                  </details>
 
-              <details open className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2">
+                  <details open className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2">
                 <summary className="cursor-pointer list-none text-[11px] font-medium text-zinc-700">Torace</summary>
                 <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-700">
                   <Stethoscope className="h-3.5 w-3.5 text-sky-600" />
@@ -374,9 +394,9 @@ export default async function EditCasePage({
                     className="h-7 px-2 text-[11px]"
                   />
                 </div>
-              </details>
+                  </details>
 
-              <details open className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2">
+                  <details open className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2">
                 <summary className="cursor-pointer list-none text-[11px] font-medium text-zinc-700">Addome</summary>
                 <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-700">
                   <Thermometer className="h-3.5 w-3.5 text-amber-600" />
@@ -401,9 +421,9 @@ export default async function EditCasePage({
                     className="h-7 px-2 text-[11px]"
                   />
                 </div>
-              </details>
+                  </details>
 
-              <details open className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2">
+                  <details open className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2">
                 <summary className="cursor-pointer list-none text-[11px] font-medium text-zinc-700">Neurologico</summary>
                 <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-700">
                   <Brain className="h-3.5 w-3.5 text-purple-600" />
@@ -428,22 +448,43 @@ export default async function EditCasePage({
                     className="h-7 px-2 text-[11px]"
                   />
                 </div>
-              </details>
-            </section>
-
-            <section id="sec-advanced" className="space-y-2 border-t border-zinc-200/80 pt-3">
-              <p className="inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-700">
-                <FlaskConical className="h-3.5 w-3.5 text-emerald-600" />
-                Esami diagnostici avanzati
-              </p>
-              <Textarea
-                name="advanced_exams_notes"
-                rows={7}
-                defaultValue={advancedExams.notes ?? ""}
-                className="text-xs"
-                placeholder="Definisci qui reperti/valori dei test diagnostici avanzati (lab, imaging, strumentali, endoscopia)."
-              />
-            </section>
+                  </details>
+                </section>
+              }
+              advanced={
+                <section className="space-y-2 border-t border-zinc-200/80 pt-3">
+                  <p className="inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-700">
+                    <FlaskConical className="h-3.5 w-3.5 text-emerald-600" />
+                    Esami diagnostici avanzati
+                  </p>
+                  <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2 max-h-[520px] overflow-y-auto">
+                    {Object.entries(EXAM_DEFAULT_VALUES).map(([examId, exam]) => {
+                      const saved = (advancedExams.values && typeof advancedExams.values === "object"
+                        ? (advancedExams.values as Record<string, { price?: number; urgencyTiming?: string; routineTiming?: string; normalFinding?: string }>)
+                        : {})[examId];
+                      return (
+                        <details key={examId} className="rounded-xl border border-zinc-200/80 bg-white p-2">
+                          <summary className="cursor-pointer list-none text-[11px] font-medium text-zinc-800">{examId}</summary>
+                          <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <Input name={`examv__${examId}__price`} defaultValue={String(saved?.price ?? exam.price)} placeholder="Prezzo" className="h-8 text-[11px]" />
+                            <Input name={`examv__${examId}__urgencyTiming`} defaultValue={saved?.urgencyTiming ?? exam.urgencyTiming} placeholder="Tempo urgenza" className="h-8 text-[11px]" />
+                            <Input name={`examv__${examId}__routineTiming`} defaultValue={saved?.routineTiming ?? exam.routineTiming} placeholder="Tempo routine" className="h-8 text-[11px]" />
+                            <Input name={`examv__${examId}__normalFinding`} defaultValue={saved?.normalFinding ?? exam.normalFinding} placeholder="Valore fisiologico/referto" className="h-8 text-[11px]" />
+                          </div>
+                        </details>
+                      );
+                    })}
+                  </div>
+                  <Textarea
+                    name="advanced_exams_notes"
+                    rows={7}
+                    defaultValue={advancedExams.notes ?? ""}
+                    className="text-xs"
+                    placeholder="Definisci qui reperti/valori dei test diagnostici avanzati (lab, imaging, strumentali, endoscopia)."
+                  />
+                </section>
+              }
+            />
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <Button

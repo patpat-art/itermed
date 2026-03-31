@@ -2,7 +2,16 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../lib/auth-options";
-import { LayoutDashboard, Database, Users, Settings, UserCircle2, TestTubeDiagonal } from "lucide-react";
+import {
+  LayoutDashboard,
+  BookOpen,
+  Sparkles,
+  Settings,
+  UserCircle2,
+  Database,
+  Users,
+  TestTubeDiagonal,
+} from "lucide-react";
 import { SignOutButton } from "../../components/auth/SignOutButton";
 
 export default async function AdminLayout({
@@ -19,6 +28,14 @@ export default async function AdminLayout({
   }
 
   const label = session.user.name || session.user.email || "Admin";
+  const navItems = [
+    { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+    { href: "/dashboard/decks", label: "Casi & Deck", icon: BookOpen },
+    { href: "/dashboard/simulator", label: "Simulatore", icon: Sparkles },
+    { href: "/admin/knowledge", label: "Guidelines", icon: Database },
+    { href: "/admin/users", label: "Utenti", icon: Users },
+    { href: "/admin/exams", label: "Valori esami", icon: TestTubeDiagonal },
+  ];
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-950">
@@ -30,39 +47,24 @@ export default async function AdminLayout({
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-semibold tracking-tight">IterMed</span>
-              <span className="text-xs text-zinc-500">Admin console</span>
+              <span className="text-xs text-zinc-500">Diagnostic & medico-legal lab</span>
             </div>
           </div>
 
           <nav className="flex-1 space-y-1 text-sm">
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-3 px-3 py-2 rounded-xl text-zinc-700 hover:text-zinc-950 hover:bg-zinc-100 transition-colors"
-            >
-              <LayoutDashboard className="h-4 w-4 text-zinc-600" />
-              <span>Dashboard</span>
-            </Link>
-            <Link
-              href="/admin/knowledge"
-              className="flex items-center gap-3 px-3 py-2 rounded-xl text-zinc-700 hover:text-zinc-950 hover:bg-zinc-100 transition-colors"
-            >
-              <Database className="h-4 w-4 text-zinc-600" />
-              <span>Guidelines</span>
-            </Link>
-            <Link
-              href="/admin/users"
-              className="flex items-center gap-3 px-3 py-2 rounded-xl text-zinc-700 hover:text-zinc-950 hover:bg-zinc-100 transition-colors"
-            >
-              <Users className="h-4 w-4 text-zinc-600" />
-              <span>Utenti</span>
-            </Link>
-            <Link
-              href="/admin/exams"
-              className="flex items-center gap-3 px-3 py-2 rounded-xl text-zinc-700 hover:text-zinc-950 hover:bg-zinc-100 transition-colors"
-            >
-              <TestTubeDiagonal className="h-4 w-4 text-zinc-600" />
-              <span>Valori esami</span>
-            </Link>
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex items-center gap-3 px-3 py-2 rounded-xl text-zinc-700 hover:text-zinc-950 hover:bg-zinc-100 transition-colors"
+                >
+                  <Icon className="h-4 w-4 text-zinc-600" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
           </nav>
 
           <div className="mt-6 border-t border-zinc-200/80 pt-4 space-y-2 text-xs text-zinc-600">

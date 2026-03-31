@@ -10,6 +10,7 @@ import {
   UserCircle2,
   Database,
   Users,
+  TestTubeDiagonal,
 } from "lucide-react";
 import { authOptions } from "../../lib/auth-options";
 import { SignOutButton } from "../../components/auth/SignOutButton";
@@ -27,6 +28,7 @@ const baseNavItems = [
 const adminNavItems = [
   { href: "/admin/knowledge", label: "Guidelines", icon: Database },
   { href: "/admin/users", label: "Utenti", icon: Users },
+  { href: "/admin/exams", label: "Valori esami", icon: TestTubeDiagonal },
 ];
 
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
