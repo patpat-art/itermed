@@ -1,8 +1,8 @@
-import { openai } from "@ai-sdk/openai";
-import { streamText } from "ai";
 import { prisma } from "../../../lib/prisma";
 import { getSessionUserId } from "../../../lib/api-session";
 import { verifyLiveSessionOwner } from "../../../lib/access";
+import { generatePatientResponse } from "../../../lib/simulator/generatePatientResponse";
+import { buildPatientSimulatorCaseInput } from "../../../lib/simulator/patientCaseContext";
 
 export async function POST(req: Request) {
   const userId = await getSessionUserId();
@@ -13,9 +13,15 @@ export async function POST(req: Request) {
     });
   }
 
-  const { messages, casePrompt, sessionId } = await req.json();
+  const body = (await req.json()) as Record<string, unknown>;
+  const { messages, casePrompt, sessionId, patientStress, caseId } = body;
 
-  let effectivePrompt = String(casePrompt || "");
+  const stressRaw = Number(patientStress);
+  const stressClamped = Number.isFinite(stressRaw)
+    ? Math.max(0, Math.min(100, Math.round(stressRaw)))
+    : 0;
+
+  let sessionVariantPrompt: string | null = null;
   if (sessionId) {
     const ok = await verifyLiveSessionOwner(String(sessionId), userId);
     if (!ok) {
@@ -26,37 +32,55 @@ export async function POST(req: Request) {
     }
     const session = await prisma.caseSession.findUnique({ where: { id: String(sessionId) } });
     if (session?.variantPrompt) {
-      effectivePrompt = session.variantPrompt;
+      sessionVariantPrompt = session.variantPrompt;
     }
   }
 
-  const systemPrompt = `
-Sei un paziente virtuale in una simulazione clinico-medico-legale per medici in formazione.
-Il seguente contesto descrive il caso: """${effectivePrompt}"""
+  let clinicalCase: {
+    description: string;
+    correctSolution: string | null;
+    baselineExamFindings: unknown;
+  } | null = null;
 
-REGOLE OBBLIGATORIE (NON INFRANGERE MAI):
-- Rispondi sempre in italiano, con il registro linguistico di un paziente reale.
-- Parla SOLO in prima persona come paziente (io), descrivendo sintomi, emozioni, timori, dubbi.
-- NON formulare diagnosi, ipotesi diagnostiche o nomi di malattie.
-- NON spiegare linee guida, percorsi diagnostici o razionali clinici.
-- NON fornire mai i tuoi parametri vitali "a voce" (es. "la mia pressione è 90/60", "la saturazione è 94%").
-  Se il medico chiede valori precisi di esami o parametri, rimanda al fatto che saranno disponibili dopo gli esami o le misurazioni.
-- Mantieni coerenza dei sintomi nel tempo e non contraddirti.
-- Se il medico usa un tono freddo o poco empatico, puoi mostrare ansia, paura o irritazione, ma senza mai rifiutare il dialogo.
+  if (caseId && typeof caseId === "string" && caseId.trim()) {
+    const row = await prisma.clinicalCase.findUnique({
+      where: { id: caseId.trim() },
+      select: {
+        description: true,
+        correctSolution: true,
+        baselineExamFindings: true,
+      },
+    });
+    if (row) {
+      clinicalCase = row;
+    }
+  }
 
-OBIETTIVO:
-Simula al massimo realismo l'esperienza del paziente, aiutando il medico a raccogliere un'anamnesi di qualità,
-senza sostituirti al suo ragionamento clinico o medico-legale.
-`.trim();
+  let caseData = buildPatientSimulatorCaseInput({
+    body: { ...body, casePrompt },
+    clinicalCase,
+    patientStress: stressClamped,
+  });
 
-  const result = await streamText({
-    model: openai("gpt-4o-mini"),
-    messages: [
-      { role: "system", content: systemPrompt },
-      ...(messages ?? []),
-    ],
+  if (sessionVariantPrompt) {
+    caseData = {
+      ...caseData,
+      chiefComplaint: `${caseData.chiefComplaint}\n\nVariante di scenario (contesto aggiuntivo per la simulazione):\n${sessionVariantPrompt}`,
+    };
+  }
+
+  const chatMessages = Array.isArray(messages)
+    ? (messages as { role: string; content: string }[]).filter(
+        (m) =>
+          (m.role === "user" || m.role === "assistant" || m.role === "system") &&
+          typeof m.content === "string",
+      )
+    : [];
+
+  const result = generatePatientResponse({
+    caseData,
+    messages: chatMessages as { role: "user" | "assistant" | "system"; content: string }[],
   });
 
   return result.toDataStreamResponse();
 }
-

@@ -1,0 +1,94 @@
+import type { PatientSimulatorCaseInput } from "./generatePatientResponse";
+
+function str(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  return String(v).trim();
+}
+
+/** Formatta i parametri vitali dal JSON `baselineExamFindings.vitals`. */
+export function formatVitalSignsFromBaseline(baseline: Record<string, unknown> | null | undefined): string {
+  if (!baseline || typeof baseline !== "object") return "";
+  const v = baseline.vitals as Record<string, unknown> | undefined;
+  if (!v || typeof v !== "object") return "";
+  const parts: string[] = [];
+  if (v.heartRate != null && v.heartRate !== "") parts.push(`FC ${v.heartRate}`);
+  if (v.bloodPressure != null && str(v.bloodPressure)) parts.push(`PA ${str(v.bloodPressure)}`);
+  if (v.spo2 != null && v.spo2 !== "") parts.push(`SpO₂ ${v.spo2}%`);
+  if (v.temperature != null && v.temperature !== "") parts.push(`T ${v.temperature} °C`);
+  if (v.respiratoryRate != null && v.respiratoryRate !== "") parts.push(`FR ${v.respiratoryRate}`);
+  return parts.join("; ");
+}
+
+/** Contesto clinico interno (obiettivo, esami preset) per il prompt — non va mostrato al medico in UI. */
+export function formatAbnormalExamsFromBaseline(baseline: Record<string, unknown> | null | undefined): string {
+  if (!baseline || typeof baseline !== "object") return "";
+  const chunks: string[] = [];
+
+  const thorax = baseline.thorax as Record<string, unknown> | undefined;
+  if (thorax && Object.keys(thorax).length) {
+    chunks.push(`Esame obiettivo torace: ${JSON.stringify(thorax)}`);
+  }
+  const abdomen = baseline.abdomen as Record<string, unknown> | undefined;
+  if (abdomen && Object.keys(abdomen).length) {
+    chunks.push(`Esame obiettivo addome: ${JSON.stringify(abdomen)}`);
+  }
+  const neuro = baseline.neuro as Record<string, unknown> | undefined;
+  if (neuro && Object.keys(neuro).length) {
+    chunks.push(`Esame obiettivo neuro: ${JSON.stringify(neuro)}`);
+  }
+
+  const adv = baseline.advancedExams as { notes?: string; values?: Record<string, unknown> } | undefined;
+  if (adv?.notes && str(adv.notes)) chunks.push(`Note esami: ${str(adv.notes)}`);
+  if (adv?.values && typeof adv.values === "object" && Object.keys(adv.values).length) {
+    chunks.push(`Valori esami di laboratorio/strumentali (preset caso): ${JSON.stringify(adv.values)}`);
+  }
+
+  return chunks.join("\n");
+}
+
+export function buildPatientSimulatorCaseInput(params: {
+  body: Record<string, unknown>;
+  /** Da DB quando disponibile */
+  clinicalCase: {
+    description: string;
+    correctSolution: string | null;
+    baselineExamFindings: unknown;
+  } | null;
+  patientStress: number;
+}): PatientSimulatorCaseInput {
+  const { body, clinicalCase, patientStress } = params;
+  const baseline = (clinicalCase?.baselineExamFindings ?? null) as Record<string, unknown> | null;
+  const demo = baseline?.demographics as { age?: unknown; sex?: unknown } | undefined;
+
+  const patientAge =
+    str(body.patientAge ?? body.patient_age) ||
+    (demo?.age != null && demo.age !== "" ? `${demo.age}` : "") ||
+    "";
+  const patientSex = str(body.patientSex ?? body.patient_sex) || str(demo?.sex) || "";
+  const chiefComplaint =
+    str(body.chiefComplaint ?? body.chief_complaint) || clinicalCase?.description || str(body.casePrompt) || "";
+
+  const vitalFromBody = str(body.vitalSigns ?? body.vital_signs);
+  const vitalFromBaseline = formatVitalSignsFromBaseline(baseline ?? undefined);
+  const vitalSigns = vitalFromBody || vitalFromBaseline || "(non specificati)";
+
+  const abnormalFromBody = str(body.abnormalExams ?? body.abnormal_exams);
+  const abnormalFromBaseline = formatAbnormalExamsFromBaseline(baseline ?? undefined);
+  const abnormalExams =
+    abnormalFromBody || abnormalFromBaseline || "(non specificate o da definire con gli esami richiesti)";
+
+  const trueDiagnosis =
+    clinicalCase?.correctSolution && str(clinicalCase.correctSolution)
+      ? str(clinicalCase.correctSolution)
+      : str(body.trueDiagnosis ?? body.true_diagnosis);
+
+  return {
+    patientAge: patientAge || "(non specificata)",
+    patientSex: patientSex || "(non specificato)",
+    chiefComplaint: chiefComplaint || "(non specificato)",
+    vitalSigns,
+    patientStress,
+    trueDiagnosis: trueDiagnosis || "(non definita nel caso)",
+    abnormalExams,
+  };
+}

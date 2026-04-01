@@ -140,6 +140,7 @@ export default async function CasePage(props: CasePageProps) {
           sex: demographics.sex ?? null,
           context: demographics.context ?? null,
         },
+        baselineExamFindings: baseline as Record<string, unknown>,
       };
 
       return (
