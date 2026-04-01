@@ -461,10 +461,10 @@ export default function NewCasePage() {
                       <details key={examId} className="rounded-xl border border-zinc-200/80 bg-white p-2">
                         <summary className="cursor-pointer list-none text-[11px] font-medium text-zinc-800">{examId}</summary>
                         <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
-                          <Input name={`examv__${examId}__price`} placeholder={`Suggerito: ${exam.price}`} className="h-8 text-[11px] placeholder:text-zinc-400" />
-                          <Input name={`examv__${examId}__urgencyTiming`} placeholder={`Suggerito: ${exam.urgencyTiming}`} className="h-8 text-[11px] placeholder:text-zinc-400" />
-                          <Input name={`examv__${examId}__routineTiming`} placeholder={`Suggerito: ${exam.routineTiming}`} className="h-8 text-[11px] placeholder:text-zinc-400" />
-                          <Input name={`examv__${examId}__normalFinding`} placeholder={`Suggerito: ${exam.normalFinding}`} className="h-8 text-[11px] placeholder:text-zinc-400" />
+                          <Input name={`examv__${examId}__price`} placeholder={`Prezzo: ${exam.price}`} className="h-8 text-[11px] placeholder:text-zinc-400" />
+                          <Input name={`examv__${examId}__urgencyTiming`} placeholder={`Tempo d'Urgenza: ${exam.urgencyTiming}`} className="h-8 text-[11px] placeholder:text-zinc-400" />
+                          <Input name={`examv__${examId}__routineTiming`} placeholder={`Tempo Richiesto: ${exam.routineTiming}`} className="h-8 text-[11px] placeholder:text-zinc-400" />
+                          <Input name={`examv__${examId}__normalFinding`} placeholder={`Valori standard: ${exam.normalFinding}`} className="h-8 text-[11px] placeholder:text-zinc-400" />
                         </div>
                       </details>
                     ))}

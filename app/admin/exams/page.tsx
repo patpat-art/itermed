@@ -1,8 +1,8 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "../../../lib/prisma";
 import { EXAM_DEFAULT_VALUES } from "../../../lib/exam-default-values";
+import { AdminExamsEditor } from "./AdminExamsEditor";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
-import { Button } from "../../ui/button";
 
 async function saveExamValues(formData: FormData) {
   "use server";
@@ -42,7 +42,6 @@ export default async function AdminExamsPage() {
     `SELECT "value" FROM "AppConfig" WHERE "key" = 'examValues' LIMIT 1`,
   )) as Array<{ value: unknown }>;
   const value = rows[0]?.value ?? EXAM_DEFAULT_VALUES;
-  const pretty = JSON.stringify(value, null, 2);
 
   return (
     <div className="flex flex-col gap-6">
@@ -54,24 +53,16 @@ export default async function AdminExamsPage() {
       </header>
       <Card className="bg-white/80 border-zinc-200/80">
         <CardHeader>
-          <CardTitle className="text-sm">Configurazione JSON</CardTitle>
+          <CardTitle className="text-sm">Configurazione visuale</CardTitle>
           <CardDescription>
-            Chiavi = id esami. Campi supportati: `price`, `urgencyTiming`, `routineTiming`, `routineMinutes`, `normalFinding`.
+            Modifica i parametri direttamente in forma visuale, con ricerca e accordion.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={saveExamValues} className="space-y-3">
-            <textarea
-              name="payload"
-              defaultValue={pretty}
-              className="h-[520px] w-full rounded-2xl border border-zinc-200/80 bg-white p-3 font-mono text-xs text-zinc-800"
-            />
-            <div className="flex justify-end">
-              <Button type="submit" size="sm" className="text-xs">
-                Salva valori esami
-              </Button>
-            </div>
-          </form>
+          <AdminExamsEditor
+            initialValues={value as Record<string, { price: number; urgencyTiming: string; routineTiming: string; routineMinutes: number; normalFinding: string }>}
+            saveAction={saveExamValues}
+          />
         </CardContent>
       </Card>
     </div>
