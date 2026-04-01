@@ -39,6 +39,44 @@ function parseAdvancedExamValues(formData: FormData) {
   return result;
 }
 
+function randomBetween(min: number, max: number, decimals = 1): string {
+  const factor = 10 ** decimals;
+  const value = Math.round((min + Math.random() * (max - min)) * factor) / factor;
+  return String(value);
+}
+
+function randomizeNormalFindingFromStandard(standard: string): string {
+  const range = standard.match(/(\d+(?:[.,]\d+)?)\s*[–-]\s*(\d+(?:[.,]\d+)?)/);
+  if (range) {
+    const min = Number(range[1].replace(",", "."));
+    const max = Number(range[2].replace(",", "."));
+    if (Number.isFinite(min) && Number.isFinite(max) && max > min) {
+      const sampled = randomBetween(min, max, min % 1 !== 0 || max % 1 !== 0 ? 1 : 0);
+      return standard.replace(range[0], sampled);
+    }
+  }
+  const lt = standard.match(/<\s*(\d+(?:[.,]\d+)?)/);
+  if (lt) {
+    const max = Number(lt[1].replace(",", "."));
+    if (Number.isFinite(max) && max > 0) {
+      const sampled = randomBetween(Math.max(0, max * 0.35), max * 0.95, max % 1 !== 0 ? 1 : 0);
+      return standard.replace(lt[0], sampled);
+    }
+  }
+  const gt = standard.match(/>\s*(\d+(?:[.,]\d+)?)/);
+  if (gt) {
+    const min = Number(gt[1].replace(",", "."));
+    if (Number.isFinite(min)) {
+      const sampled = randomBetween(min * 1.02, min * 1.25, min % 1 !== 0 ? 1 : 0);
+      return standard.replace(gt[0], sampled);
+    }
+  }
+  if (/negativo|assente|non reattivo/i.test(standard)) {
+    return standard;
+  }
+  return standard;
+}
+
 async function createCase(formData: FormData) {
   "use server";
 
@@ -60,6 +98,8 @@ async function createCase(formData: FormData) {
   if (typeof description !== "string" || !description.trim()) {
     throw new Error("La descrizione del caso è obbligatoria.");
   }
+
+  const parsedAdvancedValues = parseAdvancedExamValues(formData);
 
   const baselineExamFindings = {
     demographics: {
@@ -90,7 +130,27 @@ async function createCase(formData: FormData) {
     },
     advancedExams: {
       notes: str(formData.get("advanced_exams_notes")),
-      values: parseAdvancedExamValues(formData),
+      values: Object.fromEntries(
+        Object.entries(EXAM_DEFAULT_VALUES).map(([examId, defaults]) => {
+          const raw = parsedAdvancedValues[examId] ?? {
+            price: null,
+            urgencyTiming: null,
+            routineTiming: null,
+            normalFinding: null,
+          };
+          return [
+            examId,
+            {
+              price: raw.price ?? defaults.price,
+              urgencyTiming: raw.urgencyTiming ?? defaults.urgencyTiming,
+              routineTiming: raw.routineTiming ?? defaults.routineTiming,
+              normalFinding:
+                raw.normalFinding ??
+                randomizeNormalFindingFromStandard(defaults.normalFinding),
+            },
+          ];
+        }),
+      ),
     },
   };
 
@@ -401,10 +461,10 @@ export default function NewCasePage() {
                       <details key={examId} className="rounded-xl border border-zinc-200/80 bg-white p-2">
                         <summary className="cursor-pointer list-none text-[11px] font-medium text-zinc-800">{examId}</summary>
                         <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
-                          <Input name={`examv__${examId}__price`} defaultValue={String(exam.price)} placeholder="Prezzo" className="h-8 text-[11px]" />
-                          <Input name={`examv__${examId}__urgencyTiming`} defaultValue={exam.urgencyTiming} placeholder="Tempo urgenza" className="h-8 text-[11px]" />
-                          <Input name={`examv__${examId}__routineTiming`} defaultValue={exam.routineTiming} placeholder="Tempo routine" className="h-8 text-[11px]" />
-                          <Input name={`examv__${examId}__normalFinding`} defaultValue={exam.normalFinding} placeholder="Valore fisiologico/referto" className="h-8 text-[11px]" />
+                          <Input name={`examv__${examId}__price`} placeholder={`Suggerito: ${exam.price}`} className="h-8 text-[11px] placeholder:text-zinc-400" />
+                          <Input name={`examv__${examId}__urgencyTiming`} placeholder={`Suggerito: ${exam.urgencyTiming}`} className="h-8 text-[11px] placeholder:text-zinc-400" />
+                          <Input name={`examv__${examId}__routineTiming`} placeholder={`Suggerito: ${exam.routineTiming}`} className="h-8 text-[11px] placeholder:text-zinc-400" />
+                          <Input name={`examv__${examId}__normalFinding`} placeholder={`Suggerito: ${exam.normalFinding}`} className="h-8 text-[11px] placeholder:text-zinc-400" />
                         </div>
                       </details>
                     ))}
