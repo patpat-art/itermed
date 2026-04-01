@@ -15,11 +15,40 @@ const EXAM_IDS = Object.keys(EXAM_DEFAULT_VALUES);
 
 type AbnormalRow = { id: string; examId: string; value: string };
 
+/** Campi testuali + sex + difficulty controllati per prefill AI (name allineati al form server). */
+const CONTROLLED_FIELD_NAMES = [
+  "title",
+  "specialty",
+  "age",
+  "context",
+  "description",
+  "pastHistory",
+  "correctSolution",
+  "vitals_fc",
+  "vitals_pa",
+  "vitals_spo2",
+  "vitals_temp",
+  "vitals_fr",
+  "thorax_cardiac",
+  "thorax_lung",
+  "abdomen_inspection",
+  "abdomen_palpation",
+  "abdomen_percussion",
+  "neuro_pupils",
+  "neuro_gcs",
+  "neuro_deficits",
+] as const;
+
 export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
   const [abnormalRows, setAbnormalRows] = useState<AbnormalRow[]>([]);
   const [mergedExamValues, setMergedExamValues] = useState<Record<string, ExamClinicalMeta> | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [formFields, setFormFields] = useState<Record<string, string>>({});
+
+  const fieldVal = (name: string) => formFields[name] ?? "";
+  const setField = (name: string, value: string) =>
+    setFormFields((prev) => ({ ...prev, [name]: value }));
 
   const addAbnormalRow = () => {
     setAbnormalRows((r) => [
@@ -94,6 +123,50 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
         throw new Error("Risposta API non valida");
       }
       setMergedExamValues(data.merged as Record<string, ExamClinicalMeta>);
+
+      const cp = data.caseProfile as
+        | {
+            title?: string;
+            specialty?: string;
+            age?: string;
+            sex?: string;
+            context?: string;
+            description?: string;
+            pastHistory?: string;
+            correctSolution?: string;
+            difficulty?: string;
+          }
+        | null
+        | undefined;
+      const ob = data.objective as Record<string, string> | null | undefined;
+
+      if (cp && typeof cp === "object") {
+        setFormFields((prev) => ({
+          ...prev,
+          ...(cp.title != null ? { title: String(cp.title) } : {}),
+          ...(cp.specialty != null ? { specialty: String(cp.specialty) } : {}),
+          ...(cp.age != null ? { age: String(cp.age) } : {}),
+          ...(cp.sex === "M" || cp.sex === "F" ? { sex: cp.sex } : {}),
+          ...(cp.context != null ? { context: String(cp.context) } : {}),
+          ...(cp.description != null ? { description: String(cp.description) } : {}),
+          ...(cp.pastHistory != null ? { pastHistory: String(cp.pastHistory) } : {}),
+          ...(cp.correctSolution != null ? { correctSolution: String(cp.correctSolution) } : {}),
+          ...(cp.difficulty === "EASY" || cp.difficulty === "MEDIUM" || cp.difficulty === "HARD"
+            ? { difficulty: cp.difficulty }
+            : {}),
+        }));
+      }
+      if (ob && typeof ob === "object") {
+        setFormFields((prev) => {
+          const next = { ...prev };
+          for (const k of CONTROLLED_FIELD_NAMES) {
+            if (k in ob && ob[k] != null && String(ob[k]).trim()) {
+              next[k] = String(ob[k]);
+            }
+          }
+          return next;
+        });
+      }
     } catch (err) {
       setAiError(err instanceof Error ? err.message : "Errore sconosciuto");
     } finally {
@@ -130,13 +203,28 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                     <label className="text-[11px] font-medium text-zinc-700" htmlFor="title">
                       Titolo caso
                     </label>
-                    <Input id="title" name="title" required placeholder="Es. Dolore toracico in PS" className="text-xs" />
+                    <Input
+                      id="title"
+                      name="title"
+                      required
+                      placeholder="Es. Dolore toracico in PS"
+                      className="text-xs"
+                      value={fieldVal("title")}
+                      onChange={(e) => setField("title", e.target.value)}
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-medium text-zinc-700" htmlFor="specialty">
                       Specialità
                     </label>
-                    <Input id="specialty" name="specialty" placeholder="Es. Emergenza / Cardiologia" className="text-xs" />
+                    <Input
+                      id="specialty"
+                      name="specialty"
+                      placeholder="Es. Emergenza / Cardiologia"
+                      className="text-xs"
+                      value={fieldVal("specialty")}
+                      onChange={(e) => setField("specialty", e.target.value)}
+                    />
                   </div>
                 </div>
 
@@ -145,17 +233,38 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                     <label className="text-[11px] font-medium text-zinc-700" htmlFor="age">
                       Età
                     </label>
-                    <Input id="age" name="age" placeholder="Es. 58" className="text-xs" />
+                    <Input
+                      id="age"
+                      name="age"
+                      placeholder="Es. 58"
+                      className="text-xs"
+                      value={fieldVal("age")}
+                      onChange={(e) => setField("age", e.target.value)}
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <span className="text-[11px] font-medium text-zinc-700">Sesso</span>
                     <div className="flex items-center gap-3">
                       <label className="inline-flex items-center gap-1.5">
-                        <input type="radio" name="sex" value="M" className="h-3 w-3" />
+                        <input
+                          type="radio"
+                          name="sex"
+                          value="M"
+                          className="h-3 w-3"
+                          checked={fieldVal("sex") === "M"}
+                          onChange={() => setField("sex", "M")}
+                        />
                         <span>Maschio</span>
                       </label>
                       <label className="inline-flex items-center gap-1.5">
-                        <input type="radio" name="sex" value="F" className="h-3 w-3" />
+                        <input
+                          type="radio"
+                          name="sex"
+                          value="F"
+                          className="h-3 w-3"
+                          checked={fieldVal("sex") === "F"}
+                          onChange={() => setField("sex", "F")}
+                        />
                         <span>Femmina</span>
                       </label>
                     </div>
@@ -164,7 +273,14 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                     <label className="text-[11px] font-medium text-zinc-700" htmlFor="context">
                       Contesto
                     </label>
-                    <Input id="context" name="context" placeholder="Es. Accesso in PS per dolore toracico" className="text-xs" />
+                    <Input
+                      id="context"
+                      name="context"
+                      placeholder="Es. Accesso in PS per dolore toracico"
+                      className="text-xs"
+                      value={fieldVal("context")}
+                      onChange={(e) => setField("context", e.target.value)}
+                    />
                   </div>
                 </div>
 
@@ -178,6 +294,8 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                     rows={3}
                     placeholder="Descrivi in breve il caso clinico, il motivo di accesso e l'obiettivo formativo..."
                     className="text-xs"
+                    value={fieldVal("description")}
+                    onChange={(e) => setField("description", e.target.value)}
                   />
                 </div>
 
@@ -192,6 +310,8 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                       rows={3}
                       placeholder="Es. diabete mellito tipo 2, ipertensione arteriosa..."
                       className="text-xs"
+                      value={fieldVal("pastHistory")}
+                      onChange={(e) => setField("pastHistory", e.target.value)}
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -204,6 +324,8 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                       rows={3}
                       placeholder="Diagnosi attesa e passaggi chiave (usata dall’AI per il profilo esami)."
                       className="text-xs"
+                      value={fieldVal("correctSolution")}
+                      onChange={(e) => setField("correctSolution", e.target.value)}
                     />
                   </div>
                 </div>
@@ -211,9 +333,16 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                 <div className="space-y-1.5">
                   <span className="text-[11px] font-medium text-zinc-700">Difficoltà</span>
                   <div className="flex items-center gap-2">
-                    {["EASY", "MEDIUM", "HARD"].map((level) => (
+                    {(["EASY", "MEDIUM", "HARD"] as const).map((level) => (
                       <label key={level} className="inline-flex items-center gap-1.5">
-                        <input type="radio" name="difficulty" value={level} defaultChecked={level === "MEDIUM"} className="h-3 w-3" />
+                        <input
+                          type="radio"
+                          name="difficulty"
+                          value={level}
+                          className="h-3 w-3"
+                          checked={(fieldVal("difficulty") || "MEDIUM") === level}
+                          onChange={() => setField("difficulty", level)}
+                        />
                         <span>{level}</span>
                       </label>
                     ))}
@@ -234,7 +363,7 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                       className="text-xs bg-white border-violet-200/80"
                     />
                     <p className="text-[10px] text-violet-800/90">
-                      Con una descrizione sufficiente, il pulsante &quot;Genera Profilo Completo&quot; interpreta il caso e imposta i referti coerenti. Puoi comunque aggiungere esami alterati manualmente: avranno priorità. Età e sesso dalla scheda sopra, se presenti, vengono inviati all&apos;AI.
+                      Con una descrizione sufficiente, il pulsante &quot;Genera Profilo Completo&quot; interpreta il caso e compila in automatico: scheda generale (titolo, specialità, età, contesto, descrizione, comorbilità, soluzione attesa, difficoltà), esame obiettivo (parametri vitali, torace, addome, neuro) e profilo esami avanzati. Puoi aggiungere esami alterati manualmente: avranno priorità sui referti.
                     </p>
                   </div>
                   <p className="text-[11px] font-medium text-violet-900 pt-2 border-t border-violet-200/60">
@@ -314,7 +443,7 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                   {aiError ? <p className="text-[11px] text-rose-700">{aiError}</p> : null}
                   {mergedExamValues ? (
                     <p className="text-[11px] text-emerald-800">
-                      Profilo generato. Controlla la scheda &quot;Esami avanzati&quot; e modifica se necessario prima di salvare.
+                      Profilo generato: controlla le schede Generali, Esame obiettivo ed Esami avanzati, poi salva.
                     </p>
                   ) : null}
                 </div>
@@ -333,11 +462,41 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                     <Gauge className="h-3.5 w-3.5 text-sky-600" />
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-1.5">
-                    <Input name="vitals_fc" placeholder="FC" className="h-7 px-2 text-[11px]" />
-                    <Input name="vitals_pa" placeholder="PA" className="h-7 px-2 text-[11px]" />
-                    <Input name="vitals_spo2" placeholder="SpO₂" className="h-7 px-2 text-[11px]" />
-                    <Input name="vitals_temp" placeholder="Temp °C" className="h-7 px-2 text-[11px]" />
-                    <Input name="vitals_fr" placeholder="FR" className="h-7 px-2 text-[11px]" />
+                    <Input
+                      name="vitals_fc"
+                      placeholder="FC"
+                      className="h-7 px-2 text-[11px]"
+                      value={fieldVal("vitals_fc")}
+                      onChange={(e) => setField("vitals_fc", e.target.value)}
+                    />
+                    <Input
+                      name="vitals_pa"
+                      placeholder="PA"
+                      className="h-7 px-2 text-[11px]"
+                      value={fieldVal("vitals_pa")}
+                      onChange={(e) => setField("vitals_pa", e.target.value)}
+                    />
+                    <Input
+                      name="vitals_spo2"
+                      placeholder="SpO₂"
+                      className="h-7 px-2 text-[11px]"
+                      value={fieldVal("vitals_spo2")}
+                      onChange={(e) => setField("vitals_spo2", e.target.value)}
+                    />
+                    <Input
+                      name="vitals_temp"
+                      placeholder="Temp °C"
+                      className="h-7 px-2 text-[11px]"
+                      value={fieldVal("vitals_temp")}
+                      onChange={(e) => setField("vitals_temp", e.target.value)}
+                    />
+                    <Input
+                      name="vitals_fr"
+                      placeholder="FR"
+                      className="h-7 px-2 text-[11px]"
+                      value={fieldVal("vitals_fr")}
+                      onChange={(e) => setField("vitals_fr", e.target.value)}
+                    />
                   </div>
                 </details>
 
@@ -347,8 +506,20 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                     <Stethoscope className="h-3.5 w-3.5 text-sky-600" />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
-                    <Input name="thorax_cardiac" placeholder="Auscultazione cuore" className="h-7 px-2 text-[11px]" />
-                    <Input name="thorax_lung" placeholder="Auscultazione polmoni" className="h-7 px-2 text-[11px]" />
+                    <Input
+                      name="thorax_cardiac"
+                      placeholder="Auscultazione cuore"
+                      className="h-7 px-2 text-[11px]"
+                      value={fieldVal("thorax_cardiac")}
+                      onChange={(e) => setField("thorax_cardiac", e.target.value)}
+                    />
+                    <Input
+                      name="thorax_lung"
+                      placeholder="Auscultazione polmoni"
+                      className="h-7 px-2 text-[11px]"
+                      value={fieldVal("thorax_lung")}
+                      onChange={(e) => setField("thorax_lung", e.target.value)}
+                    />
                   </div>
                 </details>
 
@@ -358,9 +529,27 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                     <Thermometer className="h-3.5 w-3.5 text-amber-600" />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
-                    <Input name="abdomen_inspection" placeholder="Ispezione" className="h-7 px-2 text-[11px]" />
-                    <Input name="abdomen_palpation" placeholder="Palpazione" className="h-7 px-2 text-[11px]" />
-                    <Input name="abdomen_percussion" placeholder="Percussione" className="h-7 px-2 text-[11px]" />
+                    <Input
+                      name="abdomen_inspection"
+                      placeholder="Ispezione"
+                      className="h-7 px-2 text-[11px]"
+                      value={fieldVal("abdomen_inspection")}
+                      onChange={(e) => setField("abdomen_inspection", e.target.value)}
+                    />
+                    <Input
+                      name="abdomen_palpation"
+                      placeholder="Palpazione"
+                      className="h-7 px-2 text-[11px]"
+                      value={fieldVal("abdomen_palpation")}
+                      onChange={(e) => setField("abdomen_palpation", e.target.value)}
+                    />
+                    <Input
+                      name="abdomen_percussion"
+                      placeholder="Percussione"
+                      className="h-7 px-2 text-[11px]"
+                      value={fieldVal("abdomen_percussion")}
+                      onChange={(e) => setField("abdomen_percussion", e.target.value)}
+                    />
                   </div>
                 </details>
 
@@ -370,9 +559,27 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                     <Brain className="h-3.5 w-3.5 text-purple-600" />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
-                    <Input name="neuro_pupils" placeholder="Pupille" className="h-7 px-2 text-[11px]" />
-                    <Input name="neuro_gcs" placeholder="GCS" className="h-7 px-2 text-[11px]" />
-                    <Input name="neuro_deficits" placeholder="Deficit focali" className="h-7 px-2 text-[11px]" />
+                    <Input
+                      name="neuro_pupils"
+                      placeholder="Pupille"
+                      className="h-7 px-2 text-[11px]"
+                      value={fieldVal("neuro_pupils")}
+                      onChange={(e) => setField("neuro_pupils", e.target.value)}
+                    />
+                    <Input
+                      name="neuro_gcs"
+                      placeholder="GCS"
+                      className="h-7 px-2 text-[11px]"
+                      value={fieldVal("neuro_gcs")}
+                      onChange={(e) => setField("neuro_gcs", e.target.value)}
+                    />
+                    <Input
+                      name="neuro_deficits"
+                      placeholder="Deficit focali"
+                      className="h-7 px-2 text-[11px]"
+                      value={fieldVal("neuro_deficits")}
+                      onChange={(e) => setField("neuro_deficits", e.target.value)}
+                    />
                   </div>
                 </details>
               </section>

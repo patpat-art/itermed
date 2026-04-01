@@ -3,12 +3,12 @@ import { openai } from "@ai-sdk/openai";
 import { getSessionUserId } from "../../../lib/api-session";
 import { EXAM_DEFAULT_VALUES } from "../../../lib/exam-default-values";
 import { mergeExamProfile, parseLlmExamJson } from "../../../lib/merge-exam-profile";
+import { generateCaseMetadataAndObjective } from "../../../lib/simulator/generate-case-metadata";
 
 type AbnormalExamInput = { examId: string; value: string };
 
 const MIN_CASE_DESCRIPTION_LEN = 25;
 
-/** Accetta solo chiavi presenti nel dizionario esami. */
 function filterExamKeysToDictionary(
   map: Record<string, string>,
   dictionary: typeof EXAM_DEFAULT_VALUES,
@@ -22,50 +22,15 @@ function filterExamKeysToDictionary(
   return out;
 }
 
-export async function POST(req: Request) {
-  const userId = await getSessionUserId();
-  if (!userId) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  if (!process.env.OPENAI_API_KEY) {
-    return Response.json(
-      { error: "OPENAI_API_KEY non configurata sul server." },
-      { status: 503 },
-    );
-  }
-
-  let body: {
-    age?: string | number | null;
-    sex?: string | null;
-    diagnosis?: string | null;
-    caseDescription?: string | null;
-    abnormalExams?: AbnormalExamInput[];
-  };
-  try {
-    body = await req.json();
-  } catch {
-    return Response.json({ error: "Body JSON non valido" }, { status: 400 });
-  }
-
-  const age = body.age != null ? String(body.age) : "";
-  const sex = body.sex != null ? String(body.sex) : "";
-  const diagnosis = typeof body.diagnosis === "string" ? body.diagnosis.trim() : "";
-  const caseDescription =
-    typeof body.caseDescription === "string" ? body.caseDescription.trim() : "";
-  const abnormalExams = Array.isArray(body.abnormalExams) ? body.abnormalExams : [];
-
-  const hasGuidedDiagnosis = diagnosis.length > 0;
-  const hasCaseBrief = caseDescription.length >= MIN_CASE_DESCRIPTION_LEN;
-
-  if (!hasGuidedDiagnosis && !hasCaseBrief) {
-    return Response.json(
-      {
-        error: `Inserisci la diagnosi / soluzione corretta, oppure una descrizione del caso di almeno ${MIN_CASE_DESCRIPTION_LEN} caratteri (modalità AI da testo libero).`,
-      },
-      { status: 400 },
-    );
-  }
+async function runExamProfileMerge(params: {
+  hasCaseBrief: boolean;
+  caseDescription: string;
+  diagnosis: string;
+  age: string;
+  sex: string;
+  abnormalExams: AbnormalExamInput[];
+}): Promise<{ merged: ReturnType<typeof mergeExamProfile>; llmAdjustments: Record<string, string> }> {
+  const { hasCaseBrief, caseDescription, diagnosis, age, sex, abnormalExams } = params;
 
   const abnormalExams_JSON = JSON.stringify(
     abnormalExams.map((e) => ({
@@ -129,37 +94,26 @@ Rispondi ESCLUSIVAMENTE con un oggetto JSON valido con questa struttura:
 Non aggiungere markdown, spiegazioni o testo fuori dal JSON.`;
   }
 
-  let llmText = "";
-  try {
-    const result = await generateText({
-      model: openai("gpt-4o-mini"),
-      messages: [
-        { role: "system", content: systemPrompt },
-        {
-          role: "user",
-          content:
-            "Genera solo l'oggetto JSON richiesto. Usa gli stessi exam_id del dizionario interno del simulatore (es. troponina-hs, pcr-pct).",
-        },
-      ],
-      temperature: 0.4,
-    });
-    llmText = result.text;
-  } catch (e) {
-    console.error(e);
-    return Response.json(
-      { error: "Errore nella chiamata al modello linguistico." },
-      { status: 502 },
-    );
-  }
+  const result = await generateText({
+    model: openai("gpt-4o-mini"),
+    messages: [
+      { role: "system", content: systemPrompt },
+      {
+        role: "user",
+        content:
+          "Genera solo l'oggetto JSON richiesto. Usa gli stessi exam_id del dizionario interno del simulatore (es. troponina-hs, pcr-pct).",
+      },
+    ],
+    temperature: 0.4,
+  });
+
+  const llmText = result.text;
 
   let llmMap: Record<string, string> = {};
   try {
     llmMap = filterExamKeysToDictionary(parseLlmExamJson(llmText), EXAM_DEFAULT_VALUES);
   } catch {
-    return Response.json(
-      { error: "Risposta AI non è JSON valido. Riprova.", raw: llmText.slice(0, 500) },
-      { status: 422 },
-    );
+    throw new Error("EXAM_JSON_PARSE");
   }
 
   const abnormalMap: Record<string, string> = {};
@@ -170,9 +124,103 @@ Non aggiungere markdown, spiegazioni o testo fuori dal JSON.`;
   }
 
   const merged = mergeExamProfile(EXAM_DEFAULT_VALUES, abnormalMap, llmMap);
+  return { merged, llmAdjustments: llmMap };
+}
+
+export async function POST(req: Request) {
+  const userId = await getSessionUserId();
+  if (!userId) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!process.env.OPENAI_API_KEY) {
+    return Response.json(
+      { error: "OPENAI_API_KEY non configurata sul server." },
+      { status: 503 },
+    );
+  }
+
+  let body: {
+    age?: string | number | null;
+    sex?: string | null;
+    diagnosis?: string | null;
+    caseDescription?: string | null;
+    abnormalExams?: AbnormalExamInput[];
+  };
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json({ error: "Body JSON non valido" }, { status: 400 });
+  }
+
+  const age = body.age != null ? String(body.age) : "";
+  const sex = body.sex != null ? String(body.sex) : "";
+  const diagnosis = typeof body.diagnosis === "string" ? body.diagnosis.trim() : "";
+  const caseDescription =
+    typeof body.caseDescription === "string" ? body.caseDescription.trim() : "";
+  const abnormalExams = Array.isArray(body.abnormalExams) ? body.abnormalExams : [];
+
+  const hasGuidedDiagnosis = diagnosis.length > 0;
+  const hasCaseBrief = caseDescription.length >= MIN_CASE_DESCRIPTION_LEN;
+
+  if (!hasGuidedDiagnosis && !hasCaseBrief) {
+    return Response.json(
+      {
+        error: `Inserisci la diagnosi / soluzione corretta, oppure una descrizione del caso di almeno ${MIN_CASE_DESCRIPTION_LEN} caratteri (modalità AI da testo libero).`,
+      },
+      { status: 400 },
+    );
+  }
+
+  const examPromise = runExamProfileMerge({
+    hasCaseBrief,
+    caseDescription,
+    diagnosis,
+    age,
+    sex,
+    abnormalExams,
+  });
+
+  const metaPromise = generateCaseMetadataAndObjective({
+    caseDescription,
+    diagnosis,
+    age,
+    sex,
+  });
+
+  const [examSettled, metaSettled] = await Promise.allSettled([examPromise, metaPromise]);
+
+  if (examSettled.status === "rejected") {
+    const reason = examSettled.reason;
+    const msg = reason instanceof Error ? reason.message : String(reason);
+    if (msg === "EXAM_JSON_PARSE") {
+      return Response.json(
+        { error: "Risposta AI esami non è JSON valido. Riprova." },
+        { status: 422 },
+      );
+    }
+    console.error(reason);
+    return Response.json(
+      { error: "Errore nella chiamata al modello linguistico (esami)." },
+      { status: 502 },
+    );
+  }
+
+  const { merged, llmAdjustments } = examSettled.value;
+
+  let caseProfile = null;
+  let objective = null;
+  if (metaSettled.status === "fulfilled" && metaSettled.value) {
+    caseProfile = metaSettled.value.caseProfile;
+    objective = metaSettled.value.objective;
+  } else if (metaSettled.status === "rejected") {
+    console.error("generateCaseMetadataAndObjective failed", metaSettled.reason);
+  }
 
   return Response.json({
     merged,
-    llmAdjustments: llmMap,
+    llmAdjustments,
+    caseProfile,
+    objective,
   });
 }
