@@ -237,25 +237,14 @@ type CaseExamStoredValues = {
   normalFinding?: string | null;
 };
 
-function formatCaseExamValuesLines(v: CaseExamStoredValues | undefined): string[] {
-  if (!v) return [];
-  const lines: string[] = [];
-  if (v.price != null && v.price !== ("" as unknown)) lines.push(`Prezzo: ${v.price} €`);
-  if (v.urgencyTiming?.trim()) lines.push(`Tempo urgenza: ${v.urgencyTiming.trim()}`);
-  if (v.routineTiming?.trim()) lines.push(`Tempo richiesto: ${v.routineTiming.trim()}`);
-  if (v.normalFinding?.trim()) lines.push(`Valori: ${v.normalFinding.trim()}`);
-  return lines;
-}
-
-function formatCaseExamDisplay(
+/** Solo referto/valore di laboratorio (senza prezzo e tempistiche). */
+function formatCaseExamFindingOnly(
   examId: string,
   caseValues: Record<string, CaseExamStoredValues>,
 ): string {
-  const lines = formatCaseExamValuesLines(caseValues[examId]);
-  if (lines.length === 0) {
-    return "Nessun valore definito nel caso per questo esame (compila in creazione/modifica caso).";
-  }
-  return lines.join("\n");
+  const nf = caseValues[examId]?.normalFinding?.trim();
+  if (nf) return nf;
+  return "Nessun valore definito nel caso per questo esame (compila in creazione/modifica caso).";
 }
 
 type InitialCaseData = {
@@ -1363,7 +1352,7 @@ export function SimulatorClient({
           <DialogHeader>
             <DialogTitle>Cartella paziente</DialogTitle>
             <DialogDescription>
-              Schede Base e Referto: dati di contesto e referti degli esami richiesti.
+              Base: anagrafica e motivo di accesso. Referto: esame obiettivo di sessione ed esami diagnostici con valori dal caso.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-zinc-200/80 bg-zinc-100/70 p-1.5">
@@ -1414,9 +1403,12 @@ export function SimulatorClient({
                   <p className="text-xs text-zinc-700 whitespace-pre-line">{patient.context}</p>
                 </div>
 
+              </>
+            ) : (
+              <div className="space-y-4">
                 <div className="space-y-1.5">
                   <p className="text-[11px] font-medium text-zinc-700">
-                    Esami obiettivi già effettuati in questa sessione
+                    Esame obiettivo (reperti di sessione)
                   </p>
                   {Object.keys(examFindings).length === 0 ? (
                     <p className="text-[11px] text-zinc-500">
@@ -1441,31 +1433,31 @@ export function SimulatorClient({
                     </ul>
                   )}
                 </div>
-              </>
-            ) : (
-              <div className="space-y-1.5">
-                <p className="text-[11px] font-medium text-zinc-700">
-                  Esami richiesti (valori dal caso)
-                </p>
-                {selectedExams.length === 0 ? (
-                  <p className="text-[11px] text-zinc-500">
-                    Nessun esame ancora richiesto in questa sessione.
+
+                <div className="space-y-1.5 border-t border-zinc-200/80 pt-3">
+                  <p className="text-[11px] font-medium text-zinc-700">
+                    Esami diagnostici richiesti (valori dal caso)
                   </p>
-                ) : (
-                  <ul className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
-                    {selectedExams.map((exam) => (
-                      <li
-                        key={exam.id}
-                        className="rounded-xl border border-zinc-200/80 bg-white px-2.5 py-2 text-[11px]"
-                      >
-                        <p className="text-zinc-800 font-medium">{exam.name}</p>
-                        <p className="text-zinc-600 mt-1 whitespace-pre-line">
-                          {formatCaseExamDisplay(exam.id, caseAdvancedExamValues)}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                  {selectedExams.length === 0 ? (
+                    <p className="text-[11px] text-zinc-500">
+                      Nessun esame ancora richiesto in questa sessione.
+                    </p>
+                  ) : (
+                    <ul className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+                      {selectedExams.map((exam) => (
+                        <li
+                          key={exam.id}
+                          className="rounded-xl border border-zinc-200/80 bg-white px-2.5 py-2 text-[11px]"
+                        >
+                          <p className="text-zinc-800 font-medium">{exam.name}</p>
+                          <p className="text-zinc-600 mt-1 whitespace-pre-line">
+                            {formatCaseExamFindingOnly(exam.id, caseAdvancedExamValues)}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -1736,10 +1728,12 @@ function ExamsPanel({
                     }
                   >
                     <p className="text-[11px] font-medium text-zinc-900">{highlight(exam.name, query)}</p>
-                    <p className="text-[10px] text-zinc-500 mt-0.5">€ {exam.cost} · {exam.timeMinutes} min</p>
+                    {!isSelected ? (
+                      <p className="text-[10px] text-zinc-500 mt-0.5">€ {exam.cost} · {exam.timeMinutes} min</p>
+                    ) : null}
                     {isSelected ? (
                       <p className="text-[10px] text-emerald-800 mt-1 whitespace-pre-line">
-                        {formatCaseExamDisplay(exam.id, caseExamValues)}
+                        {formatCaseExamFindingOnly(exam.id, caseExamValues)}
                       </p>
                     ) : null}
                   </button>
@@ -1793,10 +1787,12 @@ function ExamsPanel({
                           }
                         >
                           <p className="text-[11px] text-zinc-900">{exam.name}</p>
-                          <p className="text-[10px] text-zinc-500 mt-0.5">€ {exam.cost} · {exam.timeMinutes} min</p>
+                          {!isSelected ? (
+                            <p className="text-[10px] text-zinc-500 mt-0.5">€ {exam.cost} · {exam.timeMinutes} min</p>
+                          ) : null}
                           {isSelected ? (
                             <p className="text-[10px] text-emerald-800 mt-1 whitespace-pre-line">
-                              {formatCaseExamDisplay(exam.id, caseExamValues)}
+                              {formatCaseExamFindingOnly(exam.id, caseExamValues)}
                             </p>
                           ) : null}
                         </button>
@@ -1835,10 +1831,12 @@ function ExamsPanel({
                                   }
                                 >
                                   <p className="text-[11px] text-zinc-900">{exam.name}</p>
-                                  <p className="text-[10px] text-zinc-500 mt-0.5">€ {exam.cost} · {exam.timeMinutes} min</p>
+                                  {!isSelected ? (
+                                    <p className="text-[10px] text-zinc-500 mt-0.5">€ {exam.cost} · {exam.timeMinutes} min</p>
+                                  ) : null}
                                   {isSelected ? (
                                     <p className="text-[10px] text-emerald-800 mt-1 whitespace-pre-line">
-                                      {formatCaseExamDisplay(exam.id, caseExamValues)}
+                                      {formatCaseExamFindingOnly(exam.id, caseExamValues)}
                                     </p>
                                   ) : null}
                                 </button>

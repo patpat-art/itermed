@@ -1,7 +1,18 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { Gauge, Stethoscope, Thermometer, Brain, FileText, FlaskConical, Loader2, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import {
+  Gauge,
+  Stethoscope,
+  Thermometer,
+  Brain,
+  FileText,
+  FlaskConical,
+  Loader2,
+  Sparkles,
+  Settings2,
+  ChevronDown,
+} from "lucide-react";
 import { EXAM_DEFAULT_VALUES } from "../../lib/exam-default-values";
 import type { ExamClinicalMeta } from "../../lib/exam-default-values";
 import { CaseFormTabs } from "./CaseFormTabs";
@@ -45,10 +56,18 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [formFields, setFormFields] = useState<Record<string, string>>({});
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const fieldVal = (name: string) => formFields[name] ?? "";
   const setField = (name: string, value: string) =>
     setFormFields((prev) => ({ ...prev, [name]: value }));
+
+  useEffect(() => {
+    if (mergedExamValues) {
+      setShowAdvanced(true);
+    }
+  }, [mergedExamValues]);
 
   const addAbnormalRow = () => {
     setAbnormalRows((r) => [
@@ -174,20 +193,99 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
     }
   };
 
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const title = fieldVal("title").trim();
+    const desc = fieldVal("description").trim();
+    if (!title || !desc) {
+      e.preventDefault();
+      setSubmitError(
+        "Titolo e descrizione del caso sono obbligatori. Usa «Genera profilo completo (AI)» oppure compilali in Impostazioni avanzate.",
+      );
+      return;
+    }
+    setSubmitError(null);
+  };
+
   return (
-    <Card className="bg-white/80 border-zinc-200/80 max-w-3xl">
-      <CardHeader>
-        <CardTitle className="text-sm font-medium text-zinc-950">Dati del paziente e del caso</CardTitle>
+    <Card className="bg-white/80 border-zinc-200/80 max-w-3xl mx-auto">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-semibold text-zinc-950">Nuovo caso clinico</CardTitle>
         <CardDescription>
-          Queste informazioni saranno usate per alimentare il simulatore e l&apos;esame obiettivo interattivo.
+          Parti dalla descrizione per l&apos;AI: genera tutto il profilo in un clic, poi rivedi o modifica in impostazioni avanzate.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={createCase} className="space-y-4 text-xs">
+        <form action={createCase} onSubmit={handleFormSubmit} className="space-y-5 text-xs">
           {mergedExamValues ? (
             <input type="hidden" name="mergedAdvancedExams" value={JSON.stringify(mergedExamValues)} />
           ) : null}
 
+          {submitError ? (
+            <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-800" role="alert">
+              {submitError}
+            </p>
+          ) : null}
+
+          <section className="rounded-2xl border border-violet-200/90 bg-gradient-to-b from-violet-50/90 to-white p-4 sm:p-5 shadow-sm">
+            <label className="text-sm font-medium text-violet-950" htmlFor="aiCaseDescription">
+              Descrivi il caso all&apos;AI
+            </label>
+            <p className="mt-1 text-[11px] text-violet-900/80 leading-relaxed">
+              Sintomi, contesto, età o sesso se vuoi, sospetto clinico. Con almeno 25 caratteri puoi generare titolo, descrizione, esame obiettivo e referti senza compilare il resto a mano.
+            </p>
+            <Textarea
+              id="aiCaseDescription"
+              name="aiCaseDescription"
+              rows={14}
+              placeholder="Esempio: Uomo 62 anni, ex-fumatore, dolore toracico oppressivo da 90 minuti con nausea e sudorazione; accesso in PS..."
+              className="mt-3 text-sm min-h-[200px] bg-white border-violet-200/80 resize-y"
+            />
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                className="text-xs gap-1.5 bg-violet-700 hover:bg-violet-800 text-white"
+                disabled={aiLoading}
+                onClick={handleGenerateAI}
+              >
+                {aiLoading ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Analisi in corso...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Genera profilo completo (AI)
+                  </>
+                )}
+              </Button>
+            </div>
+            {aiError ? <p className="mt-2 text-[11px] text-rose-700">{aiError}</p> : null}
+            {mergedExamValues ? (
+              <p className="mt-2 text-[11px] text-emerald-800">
+                Profilo generato. Apri <span className="font-medium">Impostazioni avanzate</span> per controllare o modificare i campi, poi salva.
+              </p>
+            ) : null}
+          </section>
+
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((v) => !v)}
+              className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-zinc-200/80 bg-zinc-50/80 px-4 py-2.5 text-left text-[11px] font-medium text-zinc-800 hover:bg-zinc-100/90 transition-colors"
+            >
+              <Settings2 className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
+              <span className="flex-1">Impostazioni avanzate</span>
+              <span className="text-[10px] text-zinc-500 font-normal">
+                {showAdvanced ? "Nascondi" : "Titolo, anagrafica, esami manuali, schede dettaglio"}
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 text-zinc-500 shrink-0 transition-transform ${showAdvanced ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            <div className={showAdvanced ? "space-y-4 pt-1" : "hidden"}>
           <CaseFormTabs
             general={
               <section className="space-y-4">
@@ -206,7 +304,6 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                     <Input
                       id="title"
                       name="title"
-                      required
                       placeholder="Es. Dolore toracico in PS"
                       className="text-xs"
                       value={fieldVal("title")}
@@ -349,28 +446,10 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-violet-200/80 bg-violet-50/50 p-3 space-y-2">
-                  <p className="text-[11px] font-medium text-violet-900">Generazione profilo completo (AI)</p>
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-medium text-violet-950" htmlFor="aiCaseDescription">
-                      Descrizione libera del caso (opzionale ma consigliata)
-                    </label>
-                    <Textarea
-                      id="aiCaseDescription"
-                      name="aiCaseDescription"
-                      rows={5}
-                      placeholder="Descrivi qui il quadro clinico: sintomi, contesto, età/sesso se vuoi, sospetti o evoluzione. Se scrivi almeno 25 caratteri, l&apos;AI può generare tutto il profilo esami senza che tu abbia già compilato la diagnosi o gli esami alterati sotto."
-                      className="text-xs bg-white border-violet-200/80"
-                    />
-                    <p className="text-[10px] text-violet-800/90">
-                      Con una descrizione sufficiente, il pulsante &quot;Genera Profilo Completo&quot; interpreta il caso e compila in automatico: scheda generale (titolo, specialità, età, contesto, descrizione, comorbilità, soluzione attesa, difficoltà), esame obiettivo (parametri vitali, torace, addome, neuro) e profilo esami avanzati. Puoi aggiungere esami alterati manualmente: avranno priorità sui referti.
-                    </p>
-                  </div>
-                  <p className="text-[11px] font-medium text-violet-900 pt-2 border-t border-violet-200/60">
-                    Esami alterati manuali (solo patologici / chiave)
-                  </p>
-                  <p className="text-[10px] text-violet-800/90">
-                    Opzionale: aggiungi solo gli esami con valori fuori norma. L&apos;AI li integrerà con il resto.
+                <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2">
+                  <p className="text-[11px] font-medium text-zinc-800">Esami alterati manuali (opzionale)</p>
+                  <p className="text-[10px] text-zinc-600">
+                    Hanno priorità sui referti in generazione. Usa il pulsante «Genera profilo completo (AI)» nella sezione principale.
                   </p>
                   {abnormalRows.map((row) => (
                     <div key={row.id} className="flex flex-wrap items-end gap-2">
@@ -416,36 +495,9 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                       </Button>
                     </div>
                   ))}
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <Button type="button" variant="outline" size="sm" className="text-[11px]" onClick={addAbnormalRow}>
-                      + Aggiungi esame alterato
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="text-[11px] gap-1.5 bg-violet-700 hover:bg-violet-800 text-white"
-                      disabled={aiLoading}
-                      onClick={handleGenerateAI}
-                    >
-                      {aiLoading ? (
-                        <>
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          Analisi clinica in corso...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-3.5 w-3.5" />
-                          Genera Profilo Completo (AI)
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                  {aiError ? <p className="text-[11px] text-rose-700">{aiError}</p> : null}
-                  {mergedExamValues ? (
-                    <p className="text-[11px] text-emerald-800">
-                      Profilo generato: controlla le schede Generali, Esame obiettivo ed Esami avanzati, poi salva.
-                    </p>
-                  ) : null}
+                  <Button type="button" variant="outline" size="sm" className="text-[11px]" onClick={addAbnormalRow}>
+                    + Aggiungi esame alterato
+                  </Button>
                 </div>
               </section>
             }
@@ -592,8 +644,8 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                 </p>
                 {!mergedExamValues ? (
                   <p className="text-[11px] text-zinc-500 rounded-xl border border-dashed border-zinc-200 bg-zinc-50/50 p-4">
-                    Compila la diagnosi e, se vuoi, gli esami alterati nella scheda &quot;Generali&quot;, poi clicca &quot;Genera Profilo Completo
-                    (AI)&quot;. In alternativa puoi salvare senza AI: verranno usati valori casuali nel range standard per i campi vuoti.
+                    Dopo «Genera profilo completo (AI)» nella pagina principale compariranno qui i referti modificabili. Senza AI, al salvataggio
+                    verranno usati valori casuali nel range standard per i campi vuoti.
                   </p>
                 ) : (
                   <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2 max-h-[520px] overflow-y-auto">
@@ -650,9 +702,11 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
               </section>
             }
           />
+            </div>
+          </div>
 
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <Button type="submit" size="sm" className="text-xs px-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 pt-2 border-t border-zinc-200/80">
+            <Button type="submit" size="sm" className="text-xs px-6 w-full sm:w-auto">
               Crea caso
             </Button>
           </div>
