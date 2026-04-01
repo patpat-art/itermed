@@ -53,9 +53,19 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
     const age = fd.get("age");
     const sex = fd.get("sex");
     const diagnosis = fd.get("correctSolution");
+    const caseDescriptionRaw = fd.get("aiCaseDescription");
+    const caseDescription =
+      typeof caseDescriptionRaw === "string" ? caseDescriptionRaw.trim() : "";
 
-    if (!diagnosis || typeof diagnosis !== "string" || !diagnosis.trim()) {
-      setAiError("Inserisci la diagnosi / soluzione corretta prima di generare.");
+    const MIN_DESC = 25;
+    const hasBrief = caseDescription.length >= MIN_DESC;
+    const hasDiagnosis =
+      diagnosis && typeof diagnosis === "string" && diagnosis.trim().length > 0;
+
+    if (!hasBrief && !hasDiagnosis) {
+      setAiError(
+        `Compila la diagnosi / soluzione corretta oppure una descrizione del caso di almeno ${MIN_DESC} caratteri (campo sotto).`,
+      );
       return;
     }
 
@@ -71,7 +81,8 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
         body: JSON.stringify({
           age: age != null ? String(age) : "",
           sex: sex != null ? String(sex) : "",
-          diagnosis: String(diagnosis).trim(),
+          diagnosis: hasDiagnosis ? String(diagnosis).trim() : "",
+          caseDescription,
           abnormalExams,
         }),
       });
@@ -210,9 +221,27 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                 </div>
 
                 <div className="rounded-2xl border border-violet-200/80 bg-violet-50/50 p-3 space-y-2">
-                  <p className="text-[11px] font-medium text-violet-900">Esami alterati (solo patologici / chiave)</p>
+                  <p className="text-[11px] font-medium text-violet-900">Generazione profilo completo (AI)</p>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-medium text-violet-950" htmlFor="aiCaseDescription">
+                      Descrizione libera del caso (opzionale ma consigliata)
+                    </label>
+                    <Textarea
+                      id="aiCaseDescription"
+                      name="aiCaseDescription"
+                      rows={5}
+                      placeholder="Descrivi qui il quadro clinico: sintomi, contesto, età/sesso se vuoi, sospetti o evoluzione. Se scrivi almeno 25 caratteri, l&apos;AI può generare tutto il profilo esami senza che tu abbia già compilato la diagnosi o gli esami alterati sotto."
+                      className="text-xs bg-white border-violet-200/80"
+                    />
+                    <p className="text-[10px] text-violet-800/90">
+                      Con una descrizione sufficiente, il pulsante &quot;Genera Profilo Completo&quot; interpreta il caso e imposta i referti coerenti. Puoi comunque aggiungere esami alterati manualmente: avranno priorità. Età e sesso dalla scheda sopra, se presenti, vengono inviati all&apos;AI.
+                    </p>
+                  </div>
+                  <p className="text-[11px] font-medium text-violet-900 pt-2 border-t border-violet-200/60">
+                    Esami alterati manuali (solo patologici / chiave)
+                  </p>
                   <p className="text-[10px] text-violet-800/90">
-                    Aggiungi solo gli esami con valori fuori norma. Poi usa il pulsante AI per completare il profilo con valori coerenti.
+                    Opzionale: aggiungi solo gli esami con valori fuori norma. L&apos;AI li integrerà con il resto.
                   </p>
                   {abnormalRows.map((row) => (
                     <div key={row.id} className="flex flex-wrap items-end gap-2">
