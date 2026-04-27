@@ -596,6 +596,7 @@ export function SimulatorClient({
     () => AVAILABLE_EXAMS.filter((exam) => selectedExamIds.includes(exam.id)),
     [selectedExamIds],
   );
+  const selectedExamsRecentFirst = useMemo(() => [...selectedExams].reverse(), [selectedExams]);
 
   const totalCost = selectedExams.reduce((sum, exam) => sum + exam.cost, 0);
   const totalMinutes = selectedExams.reduce((sum, exam) => sum + exam.timeMinutes, 0);
@@ -639,7 +640,7 @@ export function SimulatorClient({
   const toggleExam = (examId: string) => {
     setSelectedExamIds((current) => {
       if (current.includes(examId)) {
-        return current.filter((id) => id !== examId);
+        return current;
       }
       const charged = examIdsChargedForStressRef.current;
       if (!charged.has(examId)) {
@@ -1021,7 +1022,7 @@ export function SimulatorClient({
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-sky-600" />
                     <span className="text-sm font-medium text-zinc-800">
-                      {totalMinutes || 0}
+                      {formatElapsedTime(totalMinutes)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1041,8 +1042,8 @@ export function SimulatorClient({
                       Nessun esame ancora richiesto. Ogni richiesta aggiorna automaticamente tempo e costo simulati.
                     </p>
                   ) : (
-                    <ul className="space-y-1.5 text-xs">
-                      {selectedExams.map((exam) => (
+                    <ul className="space-y-1.5 text-xs max-h-28 overflow-y-auto pr-1">
+                      {selectedExamsRecentFirst.map((exam) => (
                         <li
                           key={exam.id}
                           className="flex items-center justify-between rounded-2xl bg-white border border-zinc-200/80 px-3 py-1.5"
@@ -1390,8 +1391,8 @@ export function SimulatorClient({
                       Nessun esame ancora richiesto in questa sessione.
                     </p>
                   ) : (
-                    <ul className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
-                      {selectedExams.map((exam) => (
+                    <ul className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                      {selectedExamsRecentFirst.map((exam) => (
                         <li
                           key={exam.id}
                           className="rounded-xl border border-zinc-200/80 bg-white px-2.5 py-2 text-[11px]"
@@ -1596,6 +1597,14 @@ type ExamSelectionCardProps = {
   className: string;
 };
 
+function formatElapsedTime(totalMinutes: number): string {
+  const safeMinutes = Math.max(0, Math.floor(totalMinutes));
+  const days = Math.floor(safeMinutes / (24 * 60));
+  const hours = Math.floor((safeMinutes % (24 * 60)) / 60);
+  const minutes = safeMinutes % 60;
+  return `${days}g:${String(hours).padStart(2, "0")}h:${String(minutes).padStart(2, "0")}m`;
+}
+
 function ExamSelectionCard({
   exam,
   isSelected,
@@ -1797,7 +1806,7 @@ function ExamsPanel({
           </div>
         )}
         <p className="mt-3 text-[10px] text-zinc-500">
-          Clic su un esame per aggiungerlo o toglierlo: il riepilogo a destra si aggiorna subito.
+          Clic su un esame per richiederlo: una volta richiesto non può essere annullato.
         </p>
       </div>
     </div>

@@ -135,7 +135,7 @@ export default async function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Link href="/dashboard/cases" className="block">
+              <Link href="/dashboard/simulator" className="block">
                 <div className="rounded-3xl border border-zinc-200 bg-zinc-950 text-zinc-50 px-5 py-4 shadow-sm hover:bg-zinc-900 transition-colors">
                   <div className="flex items-center justify-between gap-4">
                     <div className="space-y-1">
