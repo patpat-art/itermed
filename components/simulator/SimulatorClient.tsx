@@ -1234,7 +1234,6 @@ export function SimulatorClient({
                           onClick={async () => {
                             setReportError(null);
                             setReportLoading(true);
-                            setGameStatus("showing_report");
                             try {
                               const res = await fetch("/api/evaluate", {
                                 method: "POST",
@@ -1250,20 +1249,22 @@ export function SimulatorClient({
                                   finalDiagnosis,
                                 }),
                               });
+                              const data = await res.json().catch(() => null);
                               if (!res.ok) {
-                                const data = await res.json().catch(() => null);
                                 throw new Error(
                                   (data && (data.error as string | undefined)) ||
                                     "Errore nella generazione del report.",
                                 );
                               }
-                              const data = await res.json();
-                              setReportData({
-                                scores: data.scores,
-                                feedback: data.feedback,
-                                evidence: data.evidence,
-                                totalScore: data.totalScore,
-                              });
+                              const evaluatedSessionId =
+                                data && typeof data.sessionId === "string" ? data.sessionId : null;
+                              if (!evaluatedSessionId) {
+                                throw new Error("Sessione report non disponibile.");
+                              }
+                              router.push(
+                                `/case/${initialCaseData.id}/results?sessionId=${evaluatedSessionId}`,
+                              );
+                              router.refresh();
                             } catch (e) {
                               const message =
                                 e instanceof Error
@@ -1274,11 +1275,17 @@ export function SimulatorClient({
                               setReportLoading(false);
                             }
                           }}
+                          disabled={reportLoading}
                         >
-                          Vai al Report
+                          {reportLoading ? "Generazione report..." : "Vai al Report"}
                         </Button>
                       )}
                     </div>
+                    {reportError ? (
+                      <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-700">
+                        {reportError}
+                      </div>
+                    ) : null}
                   </div>
                 )}
               </CardContent>
