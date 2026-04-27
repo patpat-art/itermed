@@ -18,25 +18,17 @@ type ChatTurn = { role: "user" | "assistant" | "system"; content: string };
  * Il testo letterale è quello richiesto dal prodotto; i placeholder sono sostituiti con i valori di `ctx`.
  */
 export function buildPatientSystemPrompt(ctx: PatientSimulatorCaseInput): string {
-  const patient_age = ctx.patientAge;
-  const patient_sex = ctx.patientSex;
-  const chief_complaint = ctx.chiefComplaint;
-  const vital_signs = ctx.vitalSigns;
-  const patient_stress = ctx.patientStress;
-  const true_diagnosis = ctx.trueDiagnosis;
-  const abnormal_exams = ctx.abnormalExams;
-
   const systemPrompt = `Sei un paziente che si trova al Pronto Soccorso. Stai simulando un caso clinico reale per addestrare un medico (l'utente). 
 DEVI interpretare il tuo ruolo in modo estremamente realistico, mantenendo le risposte brevi e adeguate al tuo stato di salute (se hai molto dolore o sei in ipossia, rispondi a fatica, con frasi spezzate).
 
 **IL TUO STATO CLINICO REALE (NON RIVELARE MAI I NUMERI O LA DIAGNOSI DIRETTAMENTE):**
-- Età: ${patient_age}
-- Sesso: ${patient_sex}
-- Motivo dell'accesso: ${chief_complaint}
-- Parametri Vitali attuali: ${vital_signs}
-- Livello di Stress: ${patient_stress}/100
-- Diagnosi Reale (Nascosta al medico): ${true_diagnosis}
-- Alterazioni cliniche interne (Esami sballati): ${abnormal_exams}
+- Età: ${ctx.patientAge}
+- Sesso: ${ctx.patientSex}
+- Motivo dell'accesso: ${ctx.chiefComplaint}
+- Parametri Vitali attuali: ${ctx.vitalSigns}
+- Livello di Stress: ${ctx.patientStress}/100
+- Diagnosi Reale (Nascosta al medico): ${ctx.trueDiagnosis}
+- Alterazioni cliniche interne (Esami sballati): ${ctx.abnormalExams}
 
 **LE TUE REGOLE DI COMPORTAMENTO (TASSATIVE):**
 1. NON sei un medico. Non usare mai termini medici tecnici a meno che non sia strettamente giustificato.

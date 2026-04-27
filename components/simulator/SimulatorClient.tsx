@@ -1,6 +1,6 @@
 "use client";
 
-import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ComponentType, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -317,9 +317,6 @@ export function SimulatorClient({
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
   const [activeTab, setActiveTab] = useState<"history" | "exam" | "tests">("history");
   const [selectedExamIds, setSelectedExamIds] = useState<string[]>([]);
-  const [examsConfirmed, setExamsConfirmed] = useState(false);
-  const [reportText, setReportText] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPatientChartOpen, setIsPatientChartOpen] = useState(false);
   const [patientChartTab, setPatientChartTab] = useState<"base" | "referto">("base");
 
@@ -640,76 +637,18 @@ export function SimulatorClient({
   };
 
   const toggleExam = (examId: string) => {
-    if (examsConfirmed) return;
-    setSelectedExamIds((current) =>
-      current.includes(examId) ? current.filter((id) => id !== examId) : [...current, examId],
-    );
-  };
-
-  const handleConfirmExams = () => {
-    const charged = examIdsChargedForStressRef.current;
-    let add = 0;
-    for (const id of selectedExamIds) {
-      if (!charged.has(id)) {
-        charged.add(id);
-        add += 2;
+    setSelectedExamIds((current) => {
+      if (current.includes(examId)) {
+        return current.filter((id) => id !== examId);
       }
-    }
-    if (add > 0) bumpPatientStress(add);
-    setExamsConfirmed(true);
-  };
-
-  const handleConcludeCase = async () => {
-    if (!initialCaseData.id) return;
-    if (!reportText.trim()) {
-      return;
-    }
-    try {
-      setIsSubmitting(true);
-      const payload = {
-        caseId: String(initialCaseData.id),
-        chatHistory: messages.map((m) => ({
-          role: m.role,
-          content: m.content,
-        })),
-        exams: selectedExams,
-        reportText,
-        caseContext: initialCaseData.patientPrompt,
-      };
-
-      const res = await fetch("/api/evaluate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        throw new Error("Errore nella valutazione del caso.");
+      const charged = examIdsChargedForStressRef.current;
+      if (!charged.has(examId)) {
+        charged.add(examId);
+        bumpPatientStress(2);
       }
-
-      const data = await res.json();
-      router.push(`/case/${initialCaseData.id}/results?sessionId=${data.sessionId}`);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsSubmitting(false);
-    }
+      return [...current, examId];
+    });
   };
-
-  const reportMock = {
-    overview:
-      "Esito complessivo: gestione solida, buona comunicazione. Migliorabile l’appropriatezza di alcuni accertamenti.",
-    history:
-      "Anamnesi: dolore toracico oppressivo, insorgenza 2h, irradiazione, fattori di rischio e sintomi associati raccolti.",
-    diagnostics:
-      "Diagnostica: ECG, troponina, Rx torace. Valutare serialità markers e stratificazione rischio.",
-    therapy:
-      "Terapia: stabilizzazione, analgesia, antiaggregazione/anticoagulazione secondo contesto, monitoraggio e rivalutazione.",
-    timeline:
-      "Timeline: T0 triage → T+10 anamnesi → T+25 esame obiettivo → T+40 esami → T+90 rivalutazione → conclusione.",
-  } as const;
 
   const confirmDiagnosis = () => {
     if (!finalDiagnosis.trim()) return;
@@ -1020,9 +959,6 @@ export function SimulatorClient({
                   <ExamsPanel
                     selectedExamIds={selectedExamIds}
                     onToggleExam={toggleExam}
-                    isConfirmed={examsConfirmed}
-                    onConfirm={handleConfirmExams}
-                    onUnlock={() => setExamsConfirmed(false)}
                     caseExamValues={caseAdvancedExamValues}
                   />
                 </TabsContent>
@@ -1328,8 +1264,12 @@ export function SimulatorClient({
                                 evidence: data.evidence,
                                 totalScore: data.totalScore,
                               });
-                            } catch (e: any) {
-                              setReportError(e?.message ?? "Errore nella generazione del report.");
+                            } catch (e) {
+                              const message =
+                                e instanceof Error
+                                  ? e.message
+                                  : "Errore nella generazione del report.";
+                              setReportError(message);
                             } finally {
                               setReportLoading(false);
                             }
@@ -1637,18 +1577,48 @@ function HistoryChat({
 type ExamsPanelProps = {
   selectedExamIds: string[];
   onToggleExam: (id: string) => void;
-  isConfirmed: boolean;
-  onConfirm: () => void;
-  onUnlock: () => void;
   caseExamValues: Record<string, CaseExamStoredValues>;
 };
+
+type ExamSelectionCardProps = {
+  exam: Exam;
+  isSelected: boolean;
+  onToggle: (id: string) => void;
+  caseExamValues: Record<string, CaseExamStoredValues>;
+  nameNode?: ReactNode;
+  className: string;
+};
+
+function ExamSelectionCard({
+  exam,
+  isSelected,
+  onToggle,
+  caseExamValues,
+  nameNode,
+  className,
+}: ExamSelectionCardProps) {
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(exam.id)}
+      className={className}
+    >
+      <p className="text-[11px] text-zinc-900">{nameNode ?? exam.name}</p>
+      {!isSelected ? (
+        <p className="text-[10px] text-zinc-500 mt-0.5">€ {exam.cost} · {exam.timeMinutes} min</p>
+      ) : null}
+      {isSelected ? (
+        <p className="text-[10px] text-emerald-800 mt-1 whitespace-pre-line">
+          {formatCaseExamFindingOnly(exam.id, caseExamValues)}
+        </p>
+      ) : null}
+    </button>
+  );
+}
 
 function ExamsPanel({
   selectedExamIds,
   onToggleExam,
-  isConfirmed,
-  onConfirm,
-  onUnlock,
   caseExamValues,
 }: ExamsPanelProps) {
   const [query, setQuery] = useState("");
@@ -1660,11 +1630,7 @@ function ExamsPanel({
     strum: { short: "Strum", icon: Microscope },
     endo: { short: "Endo", icon: TestTube2 },
   };
-
-  const selectedExams = useMemo(
-    () => AVAILABLE_EXAMS.filter((exam) => selectedExamIds.includes(exam.id)),
-    [selectedExamIds],
-  );
+  const selectedSet = useMemo(() => new Set(selectedExamIds), [selectedExamIds]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -1712,31 +1678,22 @@ function ExamsPanel({
               <p className="text-zinc-500">Nessun esame trovato.</p>
             ) : (
               filtered.map((exam) => {
-                const isSelected = selectedExamIds.includes(exam.id);
+                const isSelected = selectedSet.has(exam.id);
                 return (
-                  <button
+                  <ExamSelectionCard
                     key={exam.id}
-                    type="button"
-                    onClick={() => onToggleExam(exam.id)}
-                    disabled={isConfirmed}
+                    exam={exam}
+                    isSelected={isSelected}
+                    onToggle={onToggleExam}
+                    caseExamValues={caseExamValues}
+                    nameNode={<span className="font-medium">{highlight(exam.name, query)}</span>}
                     className={
                       "w-full text-left rounded-xl border px-3 py-2 transition-colors " +
                       (isSelected
                         ? "border-emerald-300 bg-emerald-50"
-                        : "border-zinc-200/80 bg-white hover:bg-zinc-50") +
-                      (isConfirmed ? " opacity-70 cursor-not-allowed" : "")
+                        : "border-zinc-200/80 bg-white hover:bg-zinc-50")
                     }
-                  >
-                    <p className="text-[11px] font-medium text-zinc-900">{highlight(exam.name, query)}</p>
-                    {!isSelected ? (
-                      <p className="text-[10px] text-zinc-500 mt-0.5">€ {exam.cost} · {exam.timeMinutes} min</p>
-                    ) : null}
-                    {isSelected ? (
-                      <p className="text-[10px] text-emerald-800 mt-1 whitespace-pre-line">
-                        {formatCaseExamFindingOnly(exam.id, caseExamValues)}
-                      </p>
-                    ) : null}
-                  </button>
+                  />
                 );
               })
             )}
@@ -1771,31 +1728,21 @@ function ExamsPanel({
                 {macro.groups.length === 1 ? (
                   <div className="px-1 pb-1 space-y-1.5">
                     {macro.groups[0].exams.map((exam) => {
-                      const isSelected = selectedExamIds.includes(exam.id);
+                      const isSelected = selectedSet.has(exam.id);
                       return (
-                        <button
+                        <ExamSelectionCard
                           key={exam.id}
-                          type="button"
-                          onClick={() => onToggleExam(exam.id)}
-                          disabled={isConfirmed}
+                          exam={exam}
+                          isSelected={isSelected}
+                          onToggle={onToggleExam}
+                          caseExamValues={caseExamValues}
                           className={
                             "w-full text-left rounded-lg border px-2.5 py-2 transition-colors " +
                             (isSelected
                               ? "border-emerald-300 bg-emerald-50"
-                              : "border-zinc-200/80 bg-white hover:bg-zinc-100") +
-                            (isConfirmed ? " opacity-70 cursor-not-allowed" : "")
+                              : "border-zinc-200/80 bg-white hover:bg-zinc-100")
                           }
-                        >
-                          <p className="text-[11px] text-zinc-900">{exam.name}</p>
-                          {!isSelected ? (
-                            <p className="text-[10px] text-zinc-500 mt-0.5">€ {exam.cost} · {exam.timeMinutes} min</p>
-                          ) : null}
-                          {isSelected ? (
-                            <p className="text-[10px] text-emerald-800 mt-1 whitespace-pre-line">
-                              {formatCaseExamFindingOnly(exam.id, caseExamValues)}
-                            </p>
-                          ) : null}
-                        </button>
+                        />
                       );
                     })}
                   </div>
@@ -1815,31 +1762,21 @@ function ExamsPanel({
                         {groupOpen ? (
                           <div className="px-2 pb-2 space-y-1.5">
                             {group.exams.map((exam) => {
-                              const isSelected = selectedExamIds.includes(exam.id);
+                              const isSelected = selectedSet.has(exam.id);
                               return (
-                                <button
+                                <ExamSelectionCard
                                   key={exam.id}
-                                  type="button"
-                                  onClick={() => onToggleExam(exam.id)}
-                                  disabled={isConfirmed}
+                                  exam={exam}
+                                  isSelected={isSelected}
+                                  onToggle={onToggleExam}
+                                  caseExamValues={caseExamValues}
                                   className={
                                     "w-full text-left rounded-lg border px-2.5 py-2 transition-colors " +
                                     (isSelected
                                       ? "border-emerald-300 bg-emerald-50"
-                                      : "border-zinc-200/80 bg-white hover:bg-zinc-100") +
-                                    (isConfirmed ? " opacity-70 cursor-not-allowed" : "")
+                                      : "border-zinc-200/80 bg-white hover:bg-zinc-100")
                                   }
-                                >
-                                  <p className="text-[11px] text-zinc-900">{exam.name}</p>
-                                  {!isSelected ? (
-                                    <p className="text-[10px] text-zinc-500 mt-0.5">€ {exam.cost} · {exam.timeMinutes} min</p>
-                                  ) : null}
-                                  {isSelected ? (
-                                    <p className="text-[10px] text-emerald-800 mt-1 whitespace-pre-line">
-                                      {formatCaseExamFindingOnly(exam.id, caseExamValues)}
-                                    </p>
-                                  ) : null}
-                                </button>
+                                />
                               );
                             })}
                           </div>
@@ -1852,28 +1789,9 @@ function ExamsPanel({
             ))}
           </div>
         )}
-        <div className="mt-3">
-          {isConfirmed ? (
-            <div className="space-y-2">
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-[11px] text-emerald-800">
-                Richiesta esami confermata.
-              </div>
-              <Button type="button" size="sm" variant="outline" className="text-[11px]" onClick={onUnlock}>
-                Modifica richiesta
-              </Button>
-            </div>
-          ) : (
-            <Button
-              type="button"
-              size="sm"
-              className="text-[11px]"
-              onClick={onConfirm}
-              disabled={selectedExams.length === 0}
-            >
-              Conferma Richiesta Esami
-            </Button>
-          )}
-        </div>
+        <p className="mt-3 text-[10px] text-zinc-500">
+          Clic su un esame per aggiungerlo o toglierlo: il riepilogo a destra si aggiorna subito.
+        </p>
       </div>
     </div>
   );

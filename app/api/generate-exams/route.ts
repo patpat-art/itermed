@@ -6,6 +6,13 @@ import { mergeExamProfile, parseLlmExamJson } from "../../../lib/merge-exam-prof
 import { generateCaseMetadataAndObjective } from "../../../lib/simulator/generate-case-metadata";
 
 type AbnormalExamInput = { examId: string; value: string };
+type GenerateExamsBody = {
+  age?: string | number | null;
+  sex?: string | null;
+  diagnosis?: string | null;
+  caseDescription?: string | null;
+  abnormalExams?: AbnormalExamInput[];
+};
 
 const MIN_CASE_DESCRIPTION_LEN = 25;
 
@@ -127,6 +134,17 @@ Non aggiungere markdown, spiegazioni o testo fuori dal JSON.`;
   return { merged, llmAdjustments: llmMap };
 }
 
+function normalizeBody(body: GenerateExamsBody) {
+  return {
+    age: body.age != null ? String(body.age) : "",
+    sex: body.sex != null ? String(body.sex) : "",
+    diagnosis: typeof body.diagnosis === "string" ? body.diagnosis.trim() : "",
+    caseDescription:
+      typeof body.caseDescription === "string" ? body.caseDescription.trim() : "",
+    abnormalExams: Array.isArray(body.abnormalExams) ? body.abnormalExams : [],
+  };
+}
+
 export async function POST(req: Request) {
   const userId = await getSessionUserId();
   if (!userId) {
@@ -140,25 +158,14 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: {
-    age?: string | number | null;
-    sex?: string | null;
-    diagnosis?: string | null;
-    caseDescription?: string | null;
-    abnormalExams?: AbnormalExamInput[];
-  };
+  let body: GenerateExamsBody;
   try {
     body = await req.json();
   } catch {
     return Response.json({ error: "Body JSON non valido" }, { status: 400 });
   }
 
-  const age = body.age != null ? String(body.age) : "";
-  const sex = body.sex != null ? String(body.sex) : "";
-  const diagnosis = typeof body.diagnosis === "string" ? body.diagnosis.trim() : "";
-  const caseDescription =
-    typeof body.caseDescription === "string" ? body.caseDescription.trim() : "";
-  const abnormalExams = Array.isArray(body.abnormalExams) ? body.abnormalExams : [];
+  const { age, sex, diagnosis, caseDescription, abnormalExams } = normalizeBody(body);
 
   const hasGuidedDiagnosis = diagnosis.length > 0;
   const hasCaseBrief = caseDescription.length >= MIN_CASE_DESCRIPTION_LEN;

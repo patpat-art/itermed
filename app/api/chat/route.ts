@@ -4,6 +4,30 @@ import { verifyLiveSessionOwner } from "../../../lib/access";
 import { generatePatientResponse } from "../../../lib/simulator/generatePatientResponse";
 import { buildPatientSimulatorCaseInput } from "../../../lib/simulator/patientCaseContext";
 
+type ChatBody = Record<string, unknown> & {
+  messages?: unknown;
+  casePrompt?: unknown;
+  sessionId?: unknown;
+  patientStress?: unknown;
+  caseId?: unknown;
+};
+
+type ChatTurn = { role: "user" | "assistant" | "system"; content: string };
+
+function clampStress(raw: unknown): number {
+  const n = Number(raw);
+  return Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : 0;
+}
+
+function normalizeChatMessages(raw: unknown): ChatTurn[] {
+  if (!Array.isArray(raw)) return [];
+  return (raw as { role: string; content: string }[]).filter(
+    (m) =>
+      (m.role === "user" || m.role === "assistant" || m.role === "system") &&
+      typeof m.content === "string",
+  ) as ChatTurn[];
+}
+
 export async function POST(req: Request) {
   const userId = await getSessionUserId();
   if (!userId) {
@@ -13,13 +37,9 @@ export async function POST(req: Request) {
     });
   }
 
-  const body = (await req.json()) as Record<string, unknown>;
+  const body = (await req.json()) as ChatBody;
   const { messages, casePrompt, sessionId, patientStress, caseId } = body;
-
-  const stressRaw = Number(patientStress);
-  const stressClamped = Number.isFinite(stressRaw)
-    ? Math.max(0, Math.min(100, Math.round(stressRaw)))
-    : 0;
+  const stressClamped = clampStress(patientStress);
 
   let sessionVariantPrompt: string | null = null;
   if (sessionId) {
@@ -69,17 +89,11 @@ export async function POST(req: Request) {
     };
   }
 
-  const chatMessages = Array.isArray(messages)
-    ? (messages as { role: string; content: string }[]).filter(
-        (m) =>
-          (m.role === "user" || m.role === "assistant" || m.role === "system") &&
-          typeof m.content === "string",
-      )
-    : [];
+  const chatMessages = normalizeChatMessages(messages);
 
   const result = generatePatientResponse({
     caseData,
-    messages: chatMessages as { role: "user" | "assistant" | "system"; content: string }[],
+    messages: chatMessages,
   });
 
   return result.toDataStreamResponse();

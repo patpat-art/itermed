@@ -1,5 +1,24 @@
 import type { ExamClinicalMeta } from "./exam-default-values";
 
+function stripMarkdownCodeFence(raw: string): string {
+  return raw
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/```\s*$/i, "");
+}
+
+function toStringRecord(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof v === "string") out[k] = v;
+    else if (v != null) out[k] = String(v);
+  }
+  return out;
+}
+
 /**
  * Priorità normalFinding: valore autore (alterato) → LLM → dizionario default.
  */
@@ -21,18 +40,6 @@ export function mergeExamProfile(
 }
 
 export function parseLlmExamJson(raw: string): Record<string, string> {
-  const trimmed = raw
-    .trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/```\s*$/i, "");
-  const parsed = JSON.parse(trimmed) as unknown;
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return {};
-  }
-  const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
-    if (typeof v === "string") out[k] = v;
-    else if (v != null) out[k] = String(v);
-  }
-  return out;
+  const parsed = JSON.parse(stripMarkdownCodeFence(raw)) as unknown;
+  return toStringRecord(parsed);
 }

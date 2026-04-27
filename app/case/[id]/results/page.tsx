@@ -12,6 +12,15 @@ type ResultsPageProps = {
   searchParams: Promise<{ sessionId?: string }> | { sessionId?: string };
 };
 
+type SessionFeedbackTrace = {
+  feedback?: {
+    strengths?: string[];
+    weaknesses?: string[];
+    correctSolution?: string;
+  };
+  dismissed?: boolean;
+};
+
 export default async function CaseResultsPage({ params, searchParams }: ResultsPageProps) {
   const resolvedParams = "then" in params ? await params : params;
   const resolvedSearch =
@@ -49,10 +58,11 @@ export default async function CaseResultsPage({ params, searchParams }: ResultsP
     { metric: "Empatia", key: "empathy", score: session.empathy },
   ];
 
-  const strengths: string[] = (session.rawTrace as any)?.feedback?.strengths ?? [];
-  const weaknesses: string[] = (session.rawTrace as any)?.feedback?.weaknesses ?? [];
-  const correctSolution: string | undefined = (session.rawTrace as any)?.feedback?.correctSolution;
-  const dismissed = Boolean((session.rawTrace as any)?.dismissed);
+  const trace = (session.rawTrace ?? {}) as SessionFeedbackTrace;
+  const strengths: string[] = trace.feedback?.strengths ?? [];
+  const weaknesses: string[] = trace.feedback?.weaknesses ?? [];
+  const correctSolution = trace.feedback?.correctSolution;
+  const dismissed = Boolean(trace.dismissed);
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-950 flex items-stretch justify-center px-4 py-10">

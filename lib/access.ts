@@ -30,9 +30,10 @@ export async function userOwnsDeck(userId: string, deckId: string): Promise<bool
 }
 
 export async function userCanManageCase(userId: string, caseId: string): Promise<boolean> {
-  const c = await prisma.clinicalCase.findUnique({ where: { id: caseId } });
-  if (!c) return false;
-  return c.createdById === userId;
+  const n = await prisma.clinicalCase.count({
+    where: { id: caseId, createdById: userId },
+  });
+  return n > 0;
 }
 
 export async function verifyLiveSessionOwner(

@@ -23,8 +23,27 @@ import { Button } from "../../app/ui/button";
 import { createCase } from "../../app/dashboard/cases/new/actions";
 
 const EXAM_IDS = Object.keys(EXAM_DEFAULT_VALUES);
+const MIN_CASE_DESCRIPTION_LEN = 25;
 
 type AbnormalRow = { id: string; examId: string; value: string };
+type FormFieldMap = Record<string, string>;
+type AiCaseProfile = {
+  title?: string;
+  specialty?: string;
+  age?: string;
+  sex?: string;
+  context?: string;
+  description?: string;
+  pastHistory?: string;
+  correctSolution?: string;
+  difficulty?: string;
+};
+type AiGenerateResponse = {
+  merged?: Record<string, ExamClinicalMeta>;
+  caseProfile?: AiCaseProfile | null;
+  objective?: Record<string, string> | null;
+  error?: string;
+};
 
 /** Campi testuali + sex + difficulty controllati per prefill AI (name allineati al form server). */
 const CONTROLLED_FIELD_NAMES = [
@@ -49,6 +68,33 @@ const CONTROLLED_FIELD_NAMES = [
   "neuro_gcs",
   "neuro_deficits",
 ] as const;
+
+function mergeCaseProfileFields(prev: FormFieldMap, cp: AiCaseProfile): FormFieldMap {
+  return {
+    ...prev,
+    ...(cp.title != null ? { title: String(cp.title) } : {}),
+    ...(cp.specialty != null ? { specialty: String(cp.specialty) } : {}),
+    ...(cp.age != null ? { age: String(cp.age) } : {}),
+    ...(cp.sex === "M" || cp.sex === "F" ? { sex: cp.sex } : {}),
+    ...(cp.context != null ? { context: String(cp.context) } : {}),
+    ...(cp.description != null ? { description: String(cp.description) } : {}),
+    ...(cp.pastHistory != null ? { pastHistory: String(cp.pastHistory) } : {}),
+    ...(cp.correctSolution != null ? { correctSolution: String(cp.correctSolution) } : {}),
+    ...(cp.difficulty === "EASY" || cp.difficulty === "MEDIUM" || cp.difficulty === "HARD"
+      ? { difficulty: cp.difficulty }
+      : {}),
+  };
+}
+
+function mergeObjectiveFields(prev: FormFieldMap, objective: Record<string, string>): FormFieldMap {
+  const next = { ...prev };
+  for (const k of CONTROLLED_FIELD_NAMES) {
+    if (k in objective && objective[k] != null && String(objective[k]).trim()) {
+      next[k] = String(objective[k]);
+    }
+  }
+  return next;
+}
 
 export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
   const [abnormalRows, setAbnormalRows] = useState<AbnormalRow[]>([]);
@@ -105,14 +151,13 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
     const caseDescription =
       typeof caseDescriptionRaw === "string" ? caseDescriptionRaw.trim() : "";
 
-    const MIN_DESC = 25;
-    const hasBrief = caseDescription.length >= MIN_DESC;
+    const hasBrief = caseDescription.length >= MIN_CASE_DESCRIPTION_LEN;
     const hasDiagnosis =
       diagnosis && typeof diagnosis === "string" && diagnosis.trim().length > 0;
 
     if (!hasBrief && !hasDiagnosis) {
       setAiError(
-        `Compila la diagnosi / soluzione corretta oppure una descrizione del caso di almeno ${MIN_DESC} caratteri (campo sotto).`,
+        `Compila la diagnosi / soluzione corretta oppure una descrizione del caso di almeno ${MIN_CASE_DESCRIPTION_LEN} caratteri (campo sotto).`,
       );
       return;
     }
@@ -134,58 +179,25 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
           abnormalExams,
         }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as AiGenerateResponse;
       if (!res.ok) {
         throw new Error(typeof data.error === "string" ? data.error : "Generazione fallita");
       }
       if (!data.merged || typeof data.merged !== "object") {
         throw new Error("Risposta API non valida");
       }
-      setMergedExamValues(data.merged as Record<string, ExamClinicalMeta>);
+      setMergedExamValues(data.merged);
 
-      const cp = data.caseProfile as
-        | {
-            title?: string;
-            specialty?: string;
-            age?: string;
-            sex?: string;
-            context?: string;
-            description?: string;
-            pastHistory?: string;
-            correctSolution?: string;
-            difficulty?: string;
-          }
-        | null
-        | undefined;
-      const ob = data.objective as Record<string, string> | null | undefined;
-
-      if (cp && typeof cp === "object") {
-        setFormFields((prev) => ({
-          ...prev,
-          ...(cp.title != null ? { title: String(cp.title) } : {}),
-          ...(cp.specialty != null ? { specialty: String(cp.specialty) } : {}),
-          ...(cp.age != null ? { age: String(cp.age) } : {}),
-          ...(cp.sex === "M" || cp.sex === "F" ? { sex: cp.sex } : {}),
-          ...(cp.context != null ? { context: String(cp.context) } : {}),
-          ...(cp.description != null ? { description: String(cp.description) } : {}),
-          ...(cp.pastHistory != null ? { pastHistory: String(cp.pastHistory) } : {}),
-          ...(cp.correctSolution != null ? { correctSolution: String(cp.correctSolution) } : {}),
-          ...(cp.difficulty === "EASY" || cp.difficulty === "MEDIUM" || cp.difficulty === "HARD"
-            ? { difficulty: cp.difficulty }
-            : {}),
-        }));
-      }
-      if (ob && typeof ob === "object") {
-        setFormFields((prev) => {
-          const next = { ...prev };
-          for (const k of CONTROLLED_FIELD_NAMES) {
-            if (k in ob && ob[k] != null && String(ob[k]).trim()) {
-              next[k] = String(ob[k]);
-            }
-          }
-          return next;
-        });
-      }
+      setFormFields((prev) => {
+        let next = prev;
+        if (data.caseProfile && typeof data.caseProfile === "object") {
+          next = mergeCaseProfileFields(next, data.caseProfile);
+        }
+        if (data.objective && typeof data.objective === "object") {
+          next = mergeObjectiveFields(next, data.objective);
+        }
+        return next;
+      });
     } catch (err) {
       setAiError(err instanceof Error ? err.message : "Errore sconosciuto");
     } finally {
@@ -286,9 +298,9 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
             </button>
 
             <div className={showAdvanced ? "space-y-4 pt-1" : "hidden"}>
-          <CaseFormTabs
-            general={
-              <section className="space-y-4">
+              <CaseFormTabs
+                general={
+                  <section className="space-y-4">
                 <div className="rounded-2xl border border-zinc-200/80 bg-white px-3 py-2.5">
                   <label className="inline-flex items-center gap-2 text-[11px] font-medium text-zinc-700">
                     <input type="checkbox" name="isGlobal" className="h-3.5 w-3.5" />
@@ -499,10 +511,10 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                     + Aggiungi esame alterato
                   </Button>
                 </div>
-              </section>
-            }
-            objective={
-              <section className="space-y-3 pt-2 border-t border-zinc-200/80">
+                  </section>
+                }
+                objective={
+                  <section className="space-y-3 pt-2 border-t border-zinc-200/80">
                 <p className="inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-700">
                   <FileText className="h-3.5 w-3.5 text-zinc-600" />
                   Esame obiettivo (accordion)
@@ -634,10 +646,10 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                     />
                   </div>
                 </details>
-              </section>
-            }
-            advanced={
-              <section className="space-y-2 border-t border-zinc-200/80 pt-3">
+                  </section>
+                }
+                advanced={
+                  <section className="space-y-2 border-t border-zinc-200/80 pt-3">
                 <p className="inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-700">
                   <FlaskConical className="h-3.5 w-3.5 text-emerald-600" />
                   Esami diagnostici avanzati (profilo completo)
@@ -699,9 +711,9 @@ export function NewCaseFormClient({ roleHint }: { roleHint: string }) {
                   </div>
                 )}
                 <Textarea name="advanced_exams_notes" rows={5} className="text-xs" placeholder="Note aggiuntive esami avanzati." />
-              </section>
-            }
-          />
+                  </section>
+                }
+              />
             </div>
           </div>
 

@@ -52,6 +52,11 @@ type CasePageProps = {
       };
 };
 
+type CaseNodeContent = { casePrompt?: string };
+type CaseBaseline = {
+  demographics?: { age?: number | string | null; sex?: string | null; context?: string | null };
+};
+
 export default async function CasePage(props: CasePageProps) {
   const params = "then" in props.params ? await props.params : props.params;
   const searchParams =
@@ -117,14 +122,13 @@ export default async function CasePage(props: CasePageProps) {
     if (caseData) {
       const firstNode = caseData.nodes[0];
       const basePatientPrompt =
-        (firstNode as any)?.content?.casePrompt ??
+        ((firstNode?.content as CaseNodeContent | null | undefined)?.casePrompt) ??
         "Paziente in simulazione. Rispondi come paziente, senza diagnosi e senza valori vitali a voce.";
+      const baseline = (caseData.baselineExamFindings as CaseBaseline | null | undefined) ?? {};
+      const demographics = baseline.demographics ?? {};
 
       const isVariant = Boolean(session?.isVariant);
       const effectivePrompt = isVariant && session?.variantPrompt ? session.variantPrompt : basePatientPrompt;
-
-      const baseline: any = (caseData as any).baselineExamFindings ?? {};
-      const demographics = baseline.demographics ?? {};
 
       const initialCaseData = {
         id: caseData.id,
@@ -134,7 +138,7 @@ export default async function CasePage(props: CasePageProps) {
         difficulty: caseData.difficulty,
         estimatedDurationMinutes: caseData.estimatedDurationMinutes ?? null,
         patientPrompt: effectivePrompt,
-        correctSolution: (caseData as any).correctSolution ?? null,
+        correctSolution: caseData.correctSolution ?? null,
         demographics: {
           age: demographics.age ?? null,
           sex: demographics.sex ?? null,

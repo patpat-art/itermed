@@ -42,8 +42,41 @@ type ExamPayload = {
   timeMinutes: number;
 };
 
+type EvaluateBody = {
+  caseId: string;
+  chatHistory: ChatMessage[];
+  exams: ExamPayload[];
+  reportText: string;
+  caseContext?: string;
+  finalDiagnosis?: string;
+};
+
+function jsonResponse(payload: unknown, status = 200): Response {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function computeTotalScore(scores: {
+  clinical: number;
+  legal: number;
+  exams: number;
+  economy: number;
+  empathy: number;
+}): number {
+  return (
+    (scores.clinical +
+      scores.legal +
+      scores.exams +
+      scores.economy +
+      scores.empathy) /
+    5
+  );
+}
+
 export async function POST(req: Request) {
-  const body = await req.json();
+  const body = (await req.json()) as EvaluateBody;
   const {
     caseId,
     chatHistory,
@@ -51,29 +84,16 @@ export async function POST(req: Request) {
     reportText,
     caseContext,
     finalDiagnosis,
-  }: {
-    caseId: string;
-    chatHistory: ChatMessage[];
-    exams: ExamPayload[];
-    reportText: string;
-    caseContext?: string;
-    finalDiagnosis?: string;
   } = body;
 
   const userId = await getSessionUserId();
   if (!userId) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Unauthorized" }, 401);
   }
 
   const allowed = await userCanPlayCase(userId, caseId);
   if (!allowed) {
-    return new Response(JSON.stringify({ error: "Forbidden" }), {
-      status: 403,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Forbidden" }, 403);
   }
 
   // Retrieval (best-effort) con filtri tag:
@@ -226,13 +246,7 @@ RIASSUNTO COSTI/TEMPI:
   const { scores, feedback } = object;
 
   // Per ora usiamo la media semplice come totalScore.
-  const totalScore =
-    (scores.clinical +
-      scores.legal +
-      scores.exams +
-      scores.economy +
-      scores.empathy) /
-    5;
+  const totalScore = computeTotalScore(scores);
 
   const session = await prisma.sessionReport.create({
     data: {
@@ -255,20 +269,12 @@ RIASSUNTO COSTI/TEMPI:
     },
   });
 
-  return new Response(
-    JSON.stringify({
-      sessionId: session.id,
-      scores,
-      feedback,
-      evidence: object.evidence,
-      totalScore,
-    }),
-    {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    },
-  );
+  return jsonResponse({
+    sessionId: session.id,
+    scores,
+    feedback,
+    evidence: object.evidence,
+    totalScore,
+  });
 }
 

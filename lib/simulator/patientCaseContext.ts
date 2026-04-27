@@ -1,8 +1,19 @@
 import type { PatientSimulatorCaseInput } from "./generatePatientResponse";
 
+type BaselineFindings = Record<string, unknown>;
+type BodyInput = Record<string, unknown>;
+
 function str(v: unknown): string {
   if (v === null || v === undefined) return "";
   return String(v).trim();
+}
+
+function firstNonEmpty(...values: unknown[]): string {
+  for (const v of values) {
+    const s = str(v);
+    if (s) return s;
+  }
+  return "";
 }
 
 /** Formatta i parametri vitali dal JSON `baselineExamFindings.vitals`. */
@@ -47,7 +58,7 @@ export function formatAbnormalExamsFromBaseline(baseline: Record<string, unknown
 }
 
 export function buildPatientSimulatorCaseInput(params: {
-  body: Record<string, unknown>;
+  body: BodyInput;
   /** Da DB quando disponibile */
   clinicalCase: {
     description: string;
@@ -57,22 +68,25 @@ export function buildPatientSimulatorCaseInput(params: {
   patientStress: number;
 }): PatientSimulatorCaseInput {
   const { body, clinicalCase, patientStress } = params;
-  const baseline = (clinicalCase?.baselineExamFindings ?? null) as Record<string, unknown> | null;
+  const baseline = (clinicalCase?.baselineExamFindings ?? null) as BaselineFindings | null;
   const demo = baseline?.demographics as { age?: unknown; sex?: unknown } | undefined;
 
-  const patientAge =
-    str(body.patientAge ?? body.patient_age) ||
-    (demo?.age != null && demo.age !== "" ? `${demo.age}` : "") ||
-    "";
-  const patientSex = str(body.patientSex ?? body.patient_sex) || str(demo?.sex) || "";
-  const chiefComplaint =
-    str(body.chiefComplaint ?? body.chief_complaint) || clinicalCase?.description || str(body.casePrompt) || "";
+  const patientAge = firstNonEmpty(
+    body.patientAge ?? body.patient_age,
+    demo?.age != null && demo.age !== "" ? `${demo.age}` : "",
+  );
+  const patientSex = firstNonEmpty(body.patientSex ?? body.patient_sex, demo?.sex);
+  const chiefComplaint = firstNonEmpty(
+    body.chiefComplaint ?? body.chief_complaint,
+    clinicalCase?.description,
+    body.casePrompt,
+  );
 
-  const vitalFromBody = str(body.vitalSigns ?? body.vital_signs);
+  const vitalFromBody = firstNonEmpty(body.vitalSigns ?? body.vital_signs);
   const vitalFromBaseline = formatVitalSignsFromBaseline(baseline ?? undefined);
   const vitalSigns = vitalFromBody || vitalFromBaseline || "(non specificati)";
 
-  const abnormalFromBody = str(body.abnormalExams ?? body.abnormal_exams);
+  const abnormalFromBody = firstNonEmpty(body.abnormalExams ?? body.abnormal_exams);
   const abnormalFromBaseline = formatAbnormalExamsFromBaseline(baseline ?? undefined);
   const abnormalExams =
     abnormalFromBody || abnormalFromBaseline || "(non specificate o da definire con gli esami richiesti)";
