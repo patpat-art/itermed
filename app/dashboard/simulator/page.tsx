@@ -47,29 +47,6 @@ export default async function DashboardSimulatorPage() {
 
       <Card className="bg-white/80 border-zinc-200/80">
         <CardHeader>
-          <CardTitle className="text-sm font-medium text-zinc-950">Avvio rapido</CardTitle>
-          <CardDescription>
-            Apri la libreria casi per iniziare rapidamente una simulazione.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex items-center justify-between gap-4">
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-zinc-950">Seleziona un caso dalla libreria</p>
-            <p className="text-xs text-zinc-500">
-              Scegli un caso reale disponibile per il tuo utente.
-            </p>
-          </div>
-          <Link
-            href="/dashboard/cases"
-            className="inline-flex items-center justify-center rounded-full bg-zinc-950 text-zinc-50 px-4 py-2 text-sm font-medium hover:bg-zinc-900 transition-colors"
-          >
-            Vai ai casi
-          </Link>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-white/80 border-zinc-200/80">
-        <CardHeader>
           <CardTitle className="text-sm font-medium text-zinc-950">Scegli un caso</CardTitle>
           <CardDescription>Globali per tutti + individuali personali.</CardDescription>
         </CardHeader>

@@ -1105,11 +1105,11 @@ export function SimulatorClient({
                             </div>
                             <button
                               type="button"
-                              onClick={() => setEnableAiSurprises((v) => !v)}
+                              disabled
                               className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors ${
                                 enableAiSurprises
                                   ? "bg-emerald-500/90 border-emerald-600"
-                                  : "bg-zinc-200 border-zinc-300"
+                                  : "bg-zinc-200 border-zinc-300 opacity-60 cursor-not-allowed"
                               }`}
                               aria-pressed={enableAiSurprises}
                             >
@@ -1602,7 +1602,7 @@ function formatElapsedTime(totalMinutes: number): string {
   const days = Math.floor(safeMinutes / (24 * 60));
   const hours = Math.floor((safeMinutes % (24 * 60)) / 60);
   const minutes = safeMinutes % 60;
-  return `${days}g:${String(hours).padStart(2, "0")}h:${String(minutes).padStart(2, "0")}m`;
+  return `${String(days).padStart(2, "0")}:${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
 function ExamSelectionCard({
