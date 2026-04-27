@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { Play, Sparkles, Target, Calendar } from "lucide-react";
+import { Play, Target, Calendar } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
 import { HomeRadarClient } from "./components/HomeRadarClient";
 import { prisma } from "../../lib/prisma";
 import { requireUser } from "../../lib/require-user";
@@ -97,20 +96,6 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/simulator">
-            <Button variant="secondary" size="lg" className="shadow-sm">
-              <Sparkles className="h-4 w-4" />
-              Hub simulatore
-            </Button>
-          </Link>
-          <Link href="/dashboard/cases">
-            <Button size="lg" className="shadow-sm">
-              <Play className="h-4 w-4" />
-              Vai ai casi
-            </Button>
-          </Link>
-        </div>
       </header>
 
       <section className="grid flex-1 min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-3">
@@ -129,7 +114,7 @@ export default async function DashboardPage() {
         <div className="space-y-6">
           <Card className="bg-white/80 border-zinc-200/80 h-80">
             <CardHeader>
-              <CardTitle className="text-sm font-medium text-zinc-950">Quick start</CardTitle>
+              <CardTitle className="text-sm font-medium text-zinc-950">Simulatore</CardTitle>
               <CardDescription>
                 Avvia una simulazione in un click, o continua il percorso.
               </CardDescription>
@@ -139,7 +124,7 @@ export default async function DashboardPage() {
                 <div className="rounded-3xl border border-zinc-200 bg-zinc-950 text-zinc-50 px-5 py-4 shadow-sm hover:bg-zinc-900 transition-colors">
                   <div className="flex items-center justify-between gap-4">
                     <div className="space-y-1">
-                      <p className="text-sm font-semibold tracking-tight">Apri libreria casi</p>
+                      <p className="text-sm font-semibold tracking-tight">Scegli caso clinico</p>
                       <p className="text-xs text-zinc-300">
                         Scegli un caso disponibile e avvia la simulazione.
                       </p>
