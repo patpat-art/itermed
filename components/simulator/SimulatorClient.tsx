@@ -597,6 +597,10 @@ export function SimulatorClient({
     [selectedExamIds],
   );
   const selectedExamsRecentFirst = useMemo(() => [...selectedExams].reverse(), [selectedExams]);
+  const objectiveFindingsRecentFirst = useMemo(
+    () => [...Object.values(examFindings)].reverse(),
+    [examFindings],
+  );
 
   const totalCost = selectedExams.reduce((sum, exam) => sum + exam.cost, 0);
   const totalMinutes = selectedExams.reduce((sum, exam) => sum + exam.timeMinutes, 0);
@@ -1358,13 +1362,13 @@ export function SimulatorClient({
                   <p className="text-[11px] font-medium text-zinc-700">
                     Esame obiettivo (reperti di sessione)
                   </p>
-                  {Object.keys(examFindings).length === 0 ? (
+                  {objectiveFindingsRecentFirst.length === 0 ? (
                     <p className="text-[11px] text-zinc-500">
                       Nessun reperto di esame obiettivo ancora registrato.
                     </p>
                   ) : (
-                    <ul className="space-y-1.5">
-                      {Object.values(examFindings).map((exam) => (
+                    <ul className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+                      {objectiveFindingsRecentFirst.map((exam) => (
                         <li
                           key={exam.id}
                           className="rounded-2xl border border-zinc-200/80 bg-white px-3 py-1.5 text-xs"
