@@ -9,9 +9,20 @@ export type PatientSimulatorCaseInput = {
   patientStress: number;
   trueDiagnosis: string;
   abnormalExams: string;
+  /** Injected when simulation time exceeds deterioration threshold. */
+  deteriorationInstruction?: string | null;
 };
 
 type ChatTurn = { role: "user" | "assistant" | "system"; content: string };
+
+export type GeneratePatientResponseParams = {
+  caseData: PatientSimulatorCaseInput;
+  messages: ChatTurn[];
+  /** OpenAI model — gated by billing plan (gpt-4o-mini for FREE, gpt-4o for paid). */
+  model?: "gpt-4o-mini" | "gpt-4o";
+  /** Runs after the stream completes — safe for async DB persistence. */
+  onFinish?: (event: { text: string }) => void | Promise<void>;
+};
 
 /**
  * Costruisce il system prompt per il paziente simulato.
@@ -35,19 +46,32 @@ DEVI interpretare il tuo ruolo in modo estremamente realistico, mantenendo le ri
 2. TRADUCI i tuoi dati clinici in SINTOMI. 
 3. NON INVENTARE sintomi che non sono coerenti con la tua diagnosi o con i tuoi esami sballati.
 4. RIVELA le informazioni SOLO se il medico fa la domanda giusta. Non fare un monologo.
-5. Se il Livello di Stress è > 70, sii estremamente ansioso, lamentati del dolore e rispondi a fatica. Se lo stress è > 90, smetti quasi di rispondere, limitandoti a gemiti o frasi sconnesse.`;
+5. Se il Livello di Stress è > 70, sii estremamente ansioso, lamentati del dolore e rispondi a fatica. Se lo stress è > 90, smetti quasi di rispondere, limitandoti a gemiti o frasi sconnesse.${
+    ctx.deteriorationInstruction
+      ? `
+
+${ctx.deteriorationInstruction}`
+      : ""
+  }`;
 
   return systemPrompt;
 }
 
-export function generatePatientResponse(params: {
-  caseData: PatientSimulatorCaseInput;
-  messages: ChatTurn[];
-}) {
+/**
+ * Streams the virtual patient's reply token-by-token via OpenAI.
+ * Returns a `streamText` result — call `.toDataStreamResponse()` in the route handler.
+ */
+export function generatePatientResponse(params: GeneratePatientResponseParams) {
   const systemPrompt = buildPatientSystemPrompt(params.caseData);
+  const modelId = params.model ?? "gpt-4o-mini";
 
   return streamText({
-    model: openai("gpt-4o-mini"),
+    model: openai(modelId),
     messages: [{ role: "system", content: systemPrompt }, ...params.messages],
+    onFinish: params.onFinish
+      ? async (event) => {
+          await params.onFinish?.({ text: event.text });
+        }
+      : undefined,
   });
 }

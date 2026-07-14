@@ -1,9 +1,13 @@
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { getSessionUserId } from "../../../lib/api-session";
-import { EXAM_DEFAULT_VALUES } from "../../../lib/exam-default-values";
-import { mergeExamProfile, parseLlmExamJson } from "../../../lib/merge-exam-profile";
-import { generateCaseMetadataAndObjective } from "../../../lib/simulator/generate-case-metadata";
+import { getSessionUserId } from "@/lib/api-session";
+import { EXAM_DEFAULT_VALUES } from "@/lib/exam-default-values";
+import { createLogger } from "@/lib/logger";
+import { mergeExamProfile, parseLlmExamJson } from "@/lib/merge-exam-profile";
+import { sanitizeForExternalAI } from "@/lib/security/sanitize-for-ai";
+import { generateCaseMetadataAndObjective } from "@/lib/simulator/generate-case-metadata";
+
+const generateExamsLogger = createLogger("generate-exams");
 
 type AbnormalExamInput = { examId: string; value: string };
 type GenerateExamsBody = {
@@ -138,9 +142,14 @@ function normalizeBody(body: GenerateExamsBody) {
   return {
     age: body.age != null ? String(body.age) : "",
     sex: body.sex != null ? String(body.sex) : "",
-    diagnosis: typeof body.diagnosis === "string" ? body.diagnosis.trim() : "",
+    diagnosis:
+      typeof body.diagnosis === "string" && body.diagnosis.trim()
+        ? sanitizeForExternalAI(body.diagnosis.trim())
+        : "",
     caseDescription:
-      typeof body.caseDescription === "string" ? body.caseDescription.trim() : "",
+      typeof body.caseDescription === "string" && body.caseDescription.trim()
+        ? sanitizeForExternalAI(body.caseDescription.trim())
+        : "",
     abnormalExams: Array.isArray(body.abnormalExams) ? body.abnormalExams : [],
   };
 }
@@ -149,13 +158,6 @@ export async function POST(req: Request) {
   const userId = await getSessionUserId();
   if (!userId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  if (!process.env.OPENAI_API_KEY) {
-    return Response.json(
-      { error: "OPENAI_API_KEY non configurata sul server." },
-      { status: 503 },
-    );
   }
 
   let body: GenerateExamsBody;
@@ -206,7 +208,7 @@ export async function POST(req: Request) {
         { status: 422 },
       );
     }
-    console.error(reason);
+    generateExamsLogger.error("Exam profile generation failed", { error: reason });
     return Response.json(
       { error: "Errore nella chiamata al modello linguistico (esami)." },
       { status: 502 },
@@ -221,7 +223,7 @@ export async function POST(req: Request) {
     caseProfile = metaSettled.value.caseProfile;
     objective = metaSettled.value.objective;
   } else if (metaSettled.status === "rejected") {
-    console.error("generateCaseMetadataAndObjective failed", metaSettled.reason);
+    generateExamsLogger.error("Case metadata generation failed", { error: metaSettled.reason });
   }
 
   return Response.json({

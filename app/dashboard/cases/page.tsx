@@ -1,186 +1,133 @@
-import { prisma } from "../../../lib/prisma";
-import { visibleCasesWhere } from "../../../lib/access";
+import { Suspense } from "react";
+import { config } from "../../../lib/config";
 import { requireUser } from "../../../lib/require-user";
-import { Badge } from "../../ui/badge";
+import {
+  fetchFilteredClinicalCases,
+  fetchMedicalSpecialtyOptions,
+  parseCaseDifficulty,
+  type CaseFilterParams,
+} from "../../../lib/dashboard-queries";
+import { CaseFilters } from "../../../components/dashboard/CaseFilters";
+import { ClinicalCaseGrid } from "../../../components/dashboard/ClinicalCaseGrid";
+import { type ClinicalCaseRow } from "../../../components/dashboard/ClinicalCaseCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
-import { StartCaseButtons } from "../../../components/cases/StartCaseButtons";
 
-export default async function DashboardCasesPage() {
+type DashboardCasesPageProps = {
+  searchParams?:
+    | Promise<{ specialtyId?: string; specialty?: string; difficulty?: string }>
+    | { specialtyId?: string; specialty?: string; difficulty?: string };
+};
+
+const DEMO_CASES = (userId: string): ClinicalCaseRow[] => [
+  {
+    id: "cs_001",
+    title: "Dolore toracico in PS",
+    specialty: "Emergenza",
+    difficulty: "MEDIUM",
+    createdById: "seed",
+    isGlobal: true,
+  },
+  {
+    id: "cs_002",
+    title: "Febbre persistente in paziente anziano",
+    specialty: "Medicina interna",
+    difficulty: "EASY",
+    createdById: userId,
+    isGlobal: false,
+  },
+];
+
+function filterDemoCases(cases: ClinicalCaseRow[], filters: CaseFilterParams): ClinicalCaseRow[] {
+  return cases.filter((c) => {
+    if (filters.difficulty && c.difficulty !== filters.difficulty) return false;
+    if (filters.specialtyId) {
+      const specialtyName = c.medicalSpecialty?.name ?? c.specialty ?? "";
+      if (specialtyName.toLowerCase() !== filters.specialtyId.toLowerCase()) return false;
+    }
+    return true;
+  });
+}
+
+export default async function DashboardCasesPage({ searchParams }: DashboardCasesPageProps) {
   const user = await requireUser();
-  const hasDatabase = Boolean(process.env.DATABASE_URL);
+  const hasDatabase = Boolean(config.DATABASE_URL);
+  const resolvedSearch =
+    searchParams && "then" in searchParams ? await searchParams : searchParams;
 
-  let decks:
-    | {
-        id: string;
-        title: string;
-        isPublic: boolean;
-        ownerId: string;
-        _count: { cases: number };
-      }[]
-    | null = null;
+  const filters: CaseFilterParams = {
+    specialtyId: resolvedSearch?.specialtyId,
+    specialtyName: resolvedSearch?.specialty,
+    difficulty: parseCaseDifficulty(resolvedSearch?.difficulty),
+  };
 
-  let cases:
-    | {
-        id: string;
-        title: string;
-        specialty: string | null;
-        createdById: string;
-        isGlobal: boolean;
-        deck: { title: string } | null;
-      }[]
-    | null = null;
+  let cases: ClinicalCaseRow[] | null = null;
+  let specialties: { id: string; name: string }[] = [];
 
   if (hasDatabase) {
     try {
-      const [deckRows, caseRows] = await Promise.all([
-        prisma.caseDeck.findMany({
-          where: {
-            OR: [{ ownerId: user.id }, { isPublic: true }],
-          },
-          orderBy: { createdAt: "desc" },
-          include: { _count: { select: { cases: true } } },
-        }),
-        prisma.clinicalCase.findMany({
-          where: visibleCasesWhere(user.id),
-          orderBy: { updatedAt: "desc" },
-          include: { deck: true },
-          take: 30,
-        }),
+      const [caseRows, specialtyRows] = await Promise.all([
+        fetchFilteredClinicalCases(user.id, filters),
+        fetchMedicalSpecialtyOptions(),
       ]);
-      decks = deckRows;
-      cases = caseRows;
+      cases = caseRows as ClinicalCaseRow[];
+      specialties = specialtyRows;
     } catch {
-      // fallback a dati statici demo se Prisma fallisce
-      decks = null;
       cases = null;
     }
   }
+
+  const source = cases ?? filterDemoCases(DEMO_CASES(user.id), filters);
+  const globalCases = source.filter((c) => c.isGlobal);
+  const personalCases = source.filter((c) => !c.isGlobal && c.createdById === user.id);
 
   return (
     <div className="flex flex-col gap-6">
       <header className="space-y-1">
         <h1 className="text-xl font-semibold tracking-tight">Casi</h1>
         <p className="text-sm text-zinc-400">
-          Libreria e deck (stile Anki).
+          Libreria casi clinici.
           {hasDatabase
-            ? " Solo i casi a cui hai accesso (tuoi, tuoi deck o deck pubblici)."
+            ? " Filtra per specialità e difficoltà, poi avvia un caso."
             : " Il database non è configurato: vengono mostrati solo esempi statici."}
         </p>
       </header>
 
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="bg-white/80 border-zinc-200/80">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-zinc-950">Deck</CardTitle>
-            <CardDescription>Raccolte di casi condivisibili.</CardDescription>
-          </CardHeader>
-          <CardContent className="text-sm">
-            <div className="divide-y divide-zinc-200/80">
-              {(decks ??
-                [
-                  {
-                    id: "deck_core",
-                    title: "Core – Urgenze",
-                    isPublic: true,
-                    ownerId: "demo",
-                    _count: { cases: 3 },
-                  },
-                ]
-              ).map((d) => (
-                <div key={d.id} className="py-3 flex items-center justify-between">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-zinc-950">{d.title}</p>
-                    <p className="text-xs text-zinc-500">{d._count.cases} casi</p>
-                  </div>
-                  <Badge variant={d.isPublic ? "success" : "default"}>
-                    {d.isPublic ? "Pubblico" : "Privato"}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {hasDatabase && specialties.length > 0 ? (
+        <Suspense fallback={<p className="text-xs text-zinc-500">Caricamento filtri…</p>}>
+          <CaseFilters specialties={specialties} resultCount={source.length} />
+        </Suspense>
+      ) : null}
 
-        <Card className="bg-white/80 border-zinc-200/80">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-zinc-950">Casi disponibili</CardTitle>
-            <CardDescription>
-              Divisi in 2 gruppi: globali (per tutti) e individuali (solo tuoi).
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-sm">
-            {(() => {
-              const source =
-                cases ??
-                [
-                  {
-                    id: "cs_001",
-                    title: "Dolore toracico in PS",
-                    specialty: "Emergenza",
-                    createdById: "seed",
-                    isGlobal: true,
-                    deck: { title: "Core – Urgenze" },
-                  },
-                  {
-                    id: "cs_002",
-                    title: "Febbre persistente in paziente anziano",
-                    specialty: "Medicina interna",
-                    createdById: user.id,
-                    isGlobal: false,
-                    deck: null,
-                  },
-                ];
-              const globalCases = source.filter((c) => c.isGlobal);
-              const personalCases = source.filter((c) => !c.isGlobal && c.createdById === user.id);
-              const renderCase = (c: (typeof source)[number]) => (
-                <div
-                  key={c.id}
-                  className="py-3 px-2 -mx-2 rounded-2xl hover:bg-zinc-100 transition-colors flex flex-col gap-1"
-                >
-                  <div>
-                    <p className="font-medium text-zinc-950">{c.title}</p>
-                    <p className="text-xs text-zinc-500">
-                      {c.specialty ?? "Specialità N/D"}
-                      {c.isGlobal
-                        ? c.deck?.title
-                          ? ` · Globale · ${c.deck.title}`
-                          : " · Globale"
-                        : " · Individuale"}
-                    </p>
-                  </div>
-                  <StartCaseButtons caseId={c.id} />
-                </div>
-              );
-
-              return (
-                <div className="space-y-4">
-                  <section>
-                    <p className="text-xs font-medium text-zinc-600 mb-1.5">Globali (tutti)</p>
-                    <div className="divide-y divide-zinc-200/80">
-                      {globalCases.length === 0 ? (
-                        <p className="text-xs text-zinc-500 py-2">Nessun caso globale disponibile.</p>
-                      ) : (
-                        globalCases.map(renderCase)
-                      )}
-                    </div>
-                  </section>
-                  <section>
-                    <p className="text-xs font-medium text-zinc-600 mb-1.5">I tuoi casi individuali</p>
-                    <div className="divide-y divide-zinc-200/80">
-                      {personalCases.length === 0 ? (
-                        <p className="text-xs text-zinc-500 py-2">Non hai ancora creato casi individuali.</p>
-                      ) : (
-                        personalCases.map(renderCase)
-                      )}
-                    </div>
-                  </section>
-                </div>
-              );
-            })()}
-          </CardContent>
-        </Card>
-      </section>
+      <Card className="bg-white/80 border-zinc-200/80">
+        <CardHeader>
+          <CardTitle className="text-sm font-medium text-zinc-950">Casi disponibili</CardTitle>
+          <CardDescription>
+            {source.length} {source.length === 1 ? "caso" : "casi"} corrispondenti ai filtri attivi.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-sm space-y-6">
+          <section>
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-3">
+              Globali (tutti)
+            </p>
+            <ClinicalCaseGrid
+              cases={globalCases}
+              mode="start"
+              emptyMessage="Nessun caso globale con questi filtri."
+            />
+          </section>
+          <section>
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-3">
+              I tuoi casi individuali
+            </p>
+            <ClinicalCaseGrid
+              cases={personalCases}
+              mode="start"
+              emptyMessage="Nessun caso individuale con questi filtri."
+            />
+          </section>
+        </CardContent>
+      </Card>
     </div>
   );
 }
-

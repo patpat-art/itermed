@@ -3,6 +3,7 @@
 import { type ComponentType, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useChat } from "ai/react";
 import {
   Activity,
   ArrowLeft,
@@ -29,223 +30,40 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../app/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../app/ui/card";
 import { Button } from "../../app/ui/button";
 import { Textarea } from "../../app/ui/textarea";
+import { handleTextareaEnterSubmit } from "@/lib/hooks/textarea-submit";
 import { Badge } from "../../app/ui/badge";
 import { PhysicalExamTab } from "./PhysicalExamTab";
 import { PatientStressBar } from "./PatientStressBar";
-import { EXAM_DEFAULT_VALUES } from "../../lib/exam-default-values";
+import { EXAM_DEFAULT_VALUES, type ExamClinicalMeta } from "../../lib/exam-default-values";
+import { EXAM_CATALOG_STRUCTURE } from "@/lib/exam-catalog-structure";
+import {
+  applyExamMeta,
+  buildExamMacroCatalog,
+  flattenExams,
+  formatExamFinding,
+  type ExamMacroCategory,
+  type SimulatorExam,
+} from "../../lib/simulator/exam-catalog";
+import type { CaseExamOverride } from "../../lib/exam-values-meta";
 import {
   formatAbnormalExamsFromBaseline,
   formatVitalSignsFromBaseline,
 } from "../../lib/simulator/patientCaseContext";
 
-type Exam = {
+type Exam = SimulatorExam;
+
+type ChatMessageLike = {
   id: string;
-  name: string;
-  cost: number;
-  timeMinutes: number;
-  urgencyTiming?: string;
-  routineTiming?: string;
-  normalFinding?: string;
+  role: string;
+  content?: string | Array<{ type?: string; text?: string } | string>;
+  parts?: Array<{ type?: string; text?: string }>;
 };
 
-type ChatMessage = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-};
-
-type ExamGroup = { id: string; label: string; exams: Exam[] };
-type ExamMacroCategory = { id: string; label: string; groups: ExamGroup[] };
-
-const withMeta = (exam: Exam): Exam => {
-  const meta = EXAM_DEFAULT_VALUES[exam.id];
-  if (!meta) return exam;
-  return {
-    ...exam,
-    cost: meta.price,
-    timeMinutes: meta.routineMinutes,
-    urgencyTiming: meta.urgencyTiming,
-    routineTiming: meta.routineTiming,
-    normalFinding: meta.normalFinding,
-  };
-};
-
-const RAW_EXAM_CATALOG: ExamMacroCategory[] = [
-  {
-    id: "lab",
-    label: "Laboratorio",
-    groups: [
-      { id: "chimica", label: "Chimica Clinica e Indici di Flogosi", exams: [
-        { id: "lattati", name: "Acido lattico (Lattati)", cost: 18, timeMinutes: 20 },
-        { id: "ammoniemia", name: "Ammoniemia", cost: 20, timeMinutes: 25 },
-        { id: "amilasi-lipasi", name: "Amilasemia e Lipasemia", cost: 24, timeMinutes: 25 },
-        { id: "assetto-lipidico", name: "Assetto lipidico (Col Tot, HDL, LDL, TG)", cost: 22, timeMinutes: 20 },
-        { id: "bilirubina", name: "Bilirubina (Totale e Frazionata)", cost: 16, timeMinutes: 20 },
-        { id: "creat-urea-gfr", name: "Creatinina e Urea (Azotemia) con stima GFR", cost: 18, timeMinutes: 20 },
-        { id: "elettroliti", name: "Elettroliti sierici (Na, K, Ca, Mg, Cl, P)", cost: 20, timeMinutes: 20 },
-        { id: "protidogramma", name: "Elettroforesi proteica (Protidogramma)", cost: 28, timeMinutes: 35 },
-        { id: "hba1c", name: "Emoglobina Glicata (HbA1c)", cost: 22, timeMinutes: 25 },
-        { id: "glicemia", name: "Glicemia basale", cost: 12, timeMinutes: 15 },
-        { id: "enzimi-epatici", name: "Indici di citolisi e colestasi (AST, ALT, GGT, FA)", cost: 24, timeMinutes: 25 },
-        { id: "ldh", name: "Lattato deidrogenasi (LDH)", cost: 15, timeMinutes: 20 },
-        { id: "mioglobina", name: "Mioglobina", cost: 25, timeMinutes: 25 },
-        { id: "nt-probnp", name: "NT-proBNP (o BNP)", cost: 40, timeMinutes: 30 },
-        { id: "pcr-pct", name: "Proteina C Reattiva (PCR) e Procalcitonina (PCT)", cost: 30, timeMinutes: 30 },
-        { id: "troponina-hs", name: "Troponina (alta sensibilità)", cost: 35, timeMinutes: 25 },
-        { id: "uricemia", name: "Uricemia", cost: 12, timeMinutes: 20 },
-        { id: "vitamine", name: "Vitamine (D, B12, Folati)", cost: 38, timeMinutes: 35 },
-      ]},
-      { id: "ematologia", label: "Ematologia e Coagulazione", exams: [
-        { id: "antitrombina", name: "Antitrombina III", cost: 32, timeMinutes: 35 },
-        { id: "ddimero", name: "D-Dimero", cost: 28, timeMinutes: 25 },
-        { id: "emocromo", name: "Emocromo completo con formula", cost: 14, timeMinutes: 20 },
-        { id: "assetto-marziale", name: "Ferritina e assetto marziale", cost: 28, timeMinutes: 30 },
-        { id: "fibrinogeno", name: "Fibrinogeno", cost: 20, timeMinutes: 25 },
-        { id: "gruppo-rh", name: "Gruppo sanguigno e fattore Rh", cost: 20, timeMinutes: 20 },
-        { id: "pt-ptt-inr", name: "Coagulazione (PT, PTT, INR)", cost: 22, timeMinutes: 20 },
-        { id: "reticolociti", name: "Reticolociti", cost: 15, timeMinutes: 20 },
-        { id: "ves", name: "VES", cost: 12, timeMinutes: 20 },
-      ]},
-      { id: "endocrino", label: "Endocrinologia e Marcatori", exams: [
-        { id: "acth-cortisolo", name: "ACTH e Cortisolo", cost: 36, timeMinutes: 40 },
-        { id: "aldosterone-renina", name: "Aldosterone e Renina (ARR)", cost: 38, timeMinutes: 40 },
-        { id: "beta-hcg", name: "Beta-HCG (sierica/urinaria)", cost: 18, timeMinutes: 20 },
-        { id: "catecolamine", name: "Catecolamine urinarie/plasmatiche", cost: 42, timeMinutes: 45 },
-        { id: "fsh-lh-prl", name: "FSH, LH, Prolattina", cost: 26, timeMinutes: 30 },
-        { id: "insulina-cpep", name: "Insulina e C-peptide", cost: 30, timeMinutes: 35 },
-        { id: "gh-igf1", name: "GH e IGF-1", cost: 35, timeMinutes: 35 },
-        { id: "tiroide", name: "Ormoni tiroidei (TSH, FT3, FT4)", cost: 25, timeMinutes: 25 },
-        { id: "pth", name: "Paratormone (PTH)", cost: 24, timeMinutes: 25 },
-        { id: "ormoni-sessuali", name: "Testosterone, Estradiolo, Progesterone", cost: 30, timeMinutes: 30 },
-      ]},
-      { id: "immuno", label: "Immunologia e Sierologia", exams: [
-        { id: "hiv-hcv-hbv", name: "Ab anti HIV, HCV, HBV", cost: 30, timeMinutes: 30 },
-        { id: "anca", name: "ANCA (p-ANCA e c-ANCA)", cost: 34, timeMinutes: 35 },
-        { id: "anti-ccp", name: "Anti-CCP", cost: 30, timeMinutes: 35 },
-        { id: "anti-dna", name: "Anti-DNA nativo", cost: 30, timeMinutes: 35 },
-        { id: "ana-ena", name: "Autoanticorpi (ANA, ENA panel)", cost: 36, timeMinutes: 40 },
-        { id: "c3-c4", name: "Complemento (C3, C4)", cost: 22, timeMinutes: 25 },
-        { id: "fr", name: "Fattore Reumatoide", cost: 18, timeMinutes: 25 },
-        { id: "immunoglobuline", name: "Immunoglobuline (IgA, IgG, IgM, IgE)", cost: 28, timeMinutes: 30 },
-        { id: "torch", name: "Monotest e sierologia TORCH", cost: 38, timeMinutes: 40 },
-        { id: "quantiferon", name: "Quantiferon", cost: 45, timeMinutes: 45 },
-        { id: "sifilide", name: "Sifilide (VDRL, TPHA)", cost: 20, timeMinutes: 25 },
-      ]},
-      { id: "micro", label: "Microbiologia, Urine e Tossicologia", exams: [
-        { id: "coprocultura", name: "Coprocultura e ricerca parassiti/uova", cost: 28, timeMinutes: 60 },
-        { id: "emocolture", name: "Emocoltura (da due o più siti)", cost: 40, timeMinutes: 60 },
-        { id: "urine-sed", name: "Esame urine chimico-fisico e sedimento", cost: 15, timeMinutes: 20 },
-        { id: "cdiff", name: "Ricerca Tossina Clostridium Difficile", cost: 26, timeMinutes: 35 },
-        { id: "tox-screen", name: "Screening tossicologico (urine/sangue)", cost: 35, timeMinutes: 30 },
-        { id: "tamponi", name: "Specie microbiche da tampone", cost: 22, timeMinutes: 35 },
-        { id: "urinocoltura", name: "Urinocoltura con antibiogramma", cost: 24, timeMinutes: 40 },
-      ]},
-      { id: "tumor", label: "Marcatori Tumorali", exams: [
-        { id: "afp", name: "Alfa-fetoproteina (AFP)", cost: 24, timeMinutes: 30 },
-        { id: "beta-hcg-onco", name: "Beta-HCG (marker oncologico)", cost: 20, timeMinutes: 25 },
-        { id: "ca-markers", name: "CA 125, CA 15-3, CA 19-9", cost: 42, timeMinutes: 35 },
-        { id: "cea", name: "CEA", cost: 22, timeMinutes: 30 },
-        { id: "calcitonina", name: "Calcitonina", cost: 24, timeMinutes: 30 },
-        { id: "nse", name: "Enolasi neurone-specifica (NSE)", cost: 26, timeMinutes: 30 },
-        { id: "psa", name: "PSA (Totale, Libero e Ratio)", cost: 26, timeMinutes: 30 },
-      ]},
-    ],
-  },
-  {
-    id: "img",
-    label: "Immagini",
-    groups: [
-      { id: "rad-eco", label: "Radiologia Tradizionale ed Ecografia", exams: [
-        { id: "ecocolordoppler", name: "Ecocolordoppler (TSA, venoso/arterioso arti, aorta)", cost: 90, timeMinutes: 35 },
-        { id: "ecografia", name: "Ecografia (addome, tiroide, mammella, muscolotendinea, pelvica)", cost: 75, timeMinutes: 30 },
-        { id: "fast", name: "Ecografia FAST", cost: 55, timeMinutes: 15 },
-        { id: "mammografia", name: "Mammografia", cost: 80, timeMinutes: 25 },
-        { id: "moc", name: "MOC (DEXA)", cost: 70, timeMinutes: 20 },
-        { id: "rx-addome", name: "RX Addome (diretta)", cost: 35, timeMinutes: 20 },
-        { id: "rx-ossa", name: "RX Articolazioni e segmenti ossei", cost: 35, timeMinutes: 20 },
-        { id: "rx-colonna", name: "RX Colonna vertebrale", cost: 40, timeMinutes: 25 },
-        { id: "rx-torace", name: "RX Torace (2 proiezioni)", cost: 35, timeMinutes: 20 },
-      ]},
-      { id: "avanzate", label: "Tecniche Avanzate (TC, RM, Medicina Nucleare)", exams: [
-        { id: "angio", name: "Angio-TC e Angio-RM", cost: 220, timeMinutes: 80 },
-        { id: "colangio-rm", name: "Colangio-RM", cost: 200, timeMinutes: 70 },
-        { id: "pet-tc", name: "PET-TC", cost: 380, timeMinutes: 120 },
-        { id: "rm", name: "RM Addome/Pelvi/Encefalo/Colonna/Articolare", cost: 230, timeMinutes: 90 },
-        { id: "rm-prostata", name: "RM Prostatica Multiparametrica", cost: 260, timeMinutes: 95 },
-        { id: "scintigrafia", name: "Scintigrafia (ossea/miocardica/polmonare/tiroidea)", cost: 260, timeMinutes: 110 },
-        { id: "tc", name: "TC Addome/Encefalo/Torace/Rachide (con-senza mdc)", cost: 200, timeMinutes: 70 },
-        { id: "uro-tc", name: "Uro-TC", cost: 220, timeMinutes: 80 },
-      ]},
-    ],
-  },
-  {
-    id: "strum",
-    label: "Strumentale",
-    groups: [
-      { id: "funzionale", label: "Diagnostica Strumentale e Funzionale", exams: [
-        { id: "audiometria", name: "Audiometria", cost: 45, timeMinutes: 30 },
-        { id: "coronarografia", name: "Coronarografia (Invasiva)", cost: 500, timeMinutes: 120 },
-        { id: "ecocardio", name: "Ecocardiografia (Transtoracica/Transesofagea)", cost: 120, timeMinutes: 40 },
-        { id: "ecg", name: "ECG (riposo/sforzo/Holter)", cost: 60, timeMinutes: 20 },
-        { id: "eeg", name: "Elettroencefalogramma (EEG)", cost: 90, timeMinutes: 45 },
-        { id: "emg", name: "Elettromiografia (EMG)", cost: 110, timeMinutes: 50 },
-        { id: "ega", name: "Emogasanalisi arteriosa (EGA)", cost: 25, timeMinutes: 10 },
-        { id: "fundus", name: "Fundus Oculi", cost: 60, timeMinutes: 20 },
-        { id: "abpm", name: "Monitoraggio pressorio 24h (ABPM)", cost: 70, timeMinutes: 25 },
-        { id: "oct", name: "OCT (Tomografia Ottica)", cost: 95, timeMinutes: 25 },
-        { id: "polisonnografia", name: "Polisonnografia", cost: 180, timeMinutes: 480 },
-        { id: "pot-evocati", name: "Potenziali Evocati", cost: 120, timeMinutes: 50 },
-        { id: "spirometria", name: "Spirometria (semplice/globale)", cost: 65, timeMinutes: 25 },
-        { id: "6mwt", name: "Test del cammino (6MWT)", cost: 35, timeMinutes: 20 },
-      ]},
-    ],
-  },
-  {
-    id: "endo",
-    label: "Endoscopia",
-    groups: [
-      { id: "endo-biopsie", label: "Endoscopia, Biopsie e Liquidi", exams: [
-        { id: "fna", name: "Agoaspirato (FNA)", cost: 120, timeMinutes: 45 },
-        { id: "biopsia", name: "Biopsia (osteomidollare o tissutale mirata)", cost: 180, timeMinutes: 60 },
-        { id: "broncoscopia", name: "Broncoscopia (e BAL)", cost: 220, timeMinutes: 70 },
-        { id: "cistoscopia", name: "Cistoscopia", cost: 180, timeMinutes: 50 },
-        { id: "colonscopia", name: "Colonscopia", cost: 190, timeMinutes: 60 },
-        { id: "egds", name: "Esofagogastroduodenoscopia (EGDS)", cost: 170, timeMinutes: 45 },
-        { id: "laringoscopia", name: "Laringoscopia", cost: 95, timeMinutes: 30 },
-        { id: "liquidi", name: "Liquidi biologici (liquor/pleurico/ascitico/sinoviale)", cost: 75, timeMinutes: 35 },
-        { id: "pap-test", name: "Pap-test e Citologia", cost: 50, timeMinutes: 25 },
-      ]},
-    ],
-  },
-];
-
-const EXAM_CATALOG: ExamMacroCategory[] = RAW_EXAM_CATALOG.map((macro) => ({
-  ...macro,
-  groups: macro.groups.map((group) => ({
-    ...group,
-    exams: group.exams.map(withMeta),
-  })),
-}));
-
-const AVAILABLE_EXAMS: Exam[] = EXAM_CATALOG.flatMap((m) => m.groups.flatMap((g) => g.exams));
+/** Costs/timings resolved at runtime from ExamMetadata DB + case overrides. */
+const RAW_EXAM_CATALOG_STRUCTURE: ExamMacroCategory[] = EXAM_CATALOG_STRUCTURE;
 
 /** Valori esami salvati in creazione caso (`baselineExamFindings.advancedExams.values`) */
-type CaseExamStoredValues = {
-  price?: number | null;
-  urgencyTiming?: string | null;
-  routineTiming?: string | null;
-  normalFinding?: string | null;
-};
-
-/** Solo referto/valore di laboratorio (senza prezzo e tempistiche). */
-function formatCaseExamFindingOnly(
-  examId: string,
-  caseValues: Record<string, CaseExamStoredValues>,
-): string {
-  const nf = caseValues[examId]?.normalFinding?.trim();
-  if (nf) return nf;
-  return "Nessun valore definito nel caso per questo esame (compila in creazione/modifica caso).";
-}
+type CaseExamStoredValues = CaseExamOverride;
 
 type InitialCaseData = {
   id: string;
@@ -263,6 +81,10 @@ type InitialCaseData = {
   };
   /** Da DB: include advancedExams.values compilati in creazione caso */
   baselineExamFindings?: Record<string, unknown>;
+  timeLimitMinutes?: number | null;
+  examLatencies?: Record<string, number> | null;
+  goldStandardPath?: string[] | null;
+  patientDeteriorationThreshold?: number | null;
 };
 
 type SimulatorClientProps = {
@@ -272,7 +94,127 @@ type SimulatorClientProps = {
   isAdmin?: boolean;
   /** Se false (casi demo senza DB), l’abbandono non crea SessionReport e torna solo al dashboard. */
   persistReports?: boolean;
+  /** ExamMetadata catalog merged over static defaults. */
+  examCatalog?: Record<string, ExamClinicalMeta>;
+  /** Per-case exam values from CaseExamValue table + legacy JSON. */
+  caseExamOverrides?: Record<string, CaseExamOverride>;
 };
+
+import type { EliteReportData } from "@/lib/services/simulation-report-data";
+
+type SimulationReportData = EliteReportData;
+
+type ReportStatusPayload = {
+  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+  progress: number;
+  progressMessage: string;
+  reportData: SimulationReportData | null;
+  error?: string;
+};
+
+const REPORT_POLL_INTERVAL_MS = 500;
+const REPORT_POLL_TIMEOUT_MS = 3 * 60 * 1000;
+
+type PollReportResult = {
+  reportId: string;
+  reportData: SimulationReportData;
+};
+
+async function pollReportUntilComplete(
+  reportId: string,
+  onProgress: (progress: number, message: string) => void,
+  options?: { signal?: AbortSignal },
+): Promise<PollReportResult> {
+  const startedAt = Date.now();
+
+  const pollOnce = async (): Promise<PollReportResult | null> => {
+    if (options?.signal?.aborted) {
+      throw new Error("Generazione report annullata.");
+    }
+
+    if (Date.now() - startedAt > REPORT_POLL_TIMEOUT_MS) {
+      throw new Error(
+        "Timeout durante la generazione del report. Riprova — il server potrebbe aver perso il task in background.",
+      );
+    }
+
+    const res = await fetch(
+      `/api/simulation/report/status?reportId=${encodeURIComponent(reportId)}`,
+      { signal: options?.signal },
+    );
+    const data = (await res.json().catch(() => null)) as ReportStatusPayload | null;
+    if (!res.ok || !data) {
+      throw new Error(data?.error ?? "Errore nel recupero dello stato del report.");
+    }
+
+    onProgress(data.progress, data.progressMessage);
+
+    if (data.status === "COMPLETED") {
+      if (!data.reportData) {
+        throw new Error("Report completato ma dati non disponibili.");
+      }
+      return { reportId, reportData: data.reportData };
+    }
+    if (data.status === "FAILED") {
+      throw new Error(data.progressMessage || "Errore durante la generazione.");
+    }
+    return null;
+  };
+
+  const immediate = await pollOnce();
+  if (immediate) {
+    return immediate;
+  }
+
+  return new Promise((resolve, reject) => {
+    const interval = setInterval(() => {
+      void pollOnce()
+        .then((result) => {
+          if (result) {
+            clearInterval(interval);
+            resolve(result);
+          }
+        })
+        .catch((error: unknown) => {
+          clearInterval(interval);
+          reject(error);
+        });
+    }, REPORT_POLL_INTERVAL_MS);
+
+    options?.signal?.addEventListener("abort", () => {
+      clearInterval(interval);
+      reject(new Error("Generazione report annullata."));
+    });
+  });
+}
+
+function ReportGenerationProgress({
+  progress,
+  message,
+}: {
+  progress: number;
+  message: string;
+}) {
+  const clampedProgress = Math.min(100, Math.max(0, progress));
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3 text-sm text-zinc-700">
+        <span className="inline-flex items-center gap-2 min-w-0">
+          <Activity className="h-4 w-4 shrink-0 animate-spin text-sky-600" />
+          <span className="truncate">{message || "Generazione report in corso..."}</span>
+        </span>
+        <span className="shrink-0 text-xs tabular-nums text-zinc-500">{clampedProgress}%</span>
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200">
+        <div
+          className="h-full rounded-full bg-sky-600 transition-all duration-500 ease-out"
+          style={{ width: `${clampedProgress}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 function SimulatorNavBar({
   dismissCase,
@@ -311,12 +253,15 @@ export function SimulatorClient({
   sessionId,
   isAdmin = false,
   persistReports = true,
+  examCatalog = EXAM_DEFAULT_VALUES,
+  caseExamOverrides = {},
 }: SimulatorClientProps) {
   const router = useRouter();
 
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
   const [activeTab, setActiveTab] = useState<"history" | "exam" | "tests">("history");
   const [selectedExamIds, setSelectedExamIds] = useState<string[]>([]);
+  const selectedExamIdsRef = useRef<string[]>([]);
   const [isPatientChartOpen, setIsPatientChartOpen] = useState(false);
   const [patientChartTab, setPatientChartTab] = useState<"base" | "referto">("base");
 
@@ -344,31 +289,96 @@ export function SimulatorClient({
 
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
-  const [reportData, setReportData] = useState<null | {
-    scores: { clinical: number; legal: number; exams: number; empathy: number; economy: number };
-    feedback: {
-      clinicalNote: string;
-      legalComplianceNote: string;
-      prescribingNote: string;
-      empathyNote: string;
-      economyNote: string;
-      strengths: string[];
-      weaknesses: string[];
-      correctSolution: string;
-    };
-    evidence?: { legalSources: string[]; protocolSources: string[] };
-    totalScore?: number;
-  }>(null);
+  const [reportProgress, setReportProgress] = useState(0);
+  const [reportProgressMessage, setReportProgressMessage] = useState("");
+  const [reportData, setReportData] = useState<SimulationReportData | null>(null);
 
   const [effectiveSessionId, setEffectiveSessionId] = useState<string | undefined>(sessionId);
   const [isStartingEmergency, setIsStartingEmergency] = useState(false);
   const [dismissLoading, setDismissLoading] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
-  const [isChatLoading, setIsChatLoading] = useState(false);
   /** 0–100: pressione temporale e carico simulato (chat, esami, errori, tempo). */
   const [patientStress, setPatientStress] = useState(0);
+  const patientStressRef = useRef(patientStress);
+  const effectiveSessionIdRef = useRef(effectiveSessionId);
   const examIdsChargedForStressRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    patientStressRef.current = patientStress;
+  }, [patientStress]);
+
+  useEffect(() => {
+    effectiveSessionIdRef.current = effectiveSessionId;
+  }, [effectiveSessionId]);
+
+  useEffect(() => {
+    selectedExamIdsRef.current = selectedExamIds;
+  }, [selectedExamIds]);
+
+  const demoChat = initialCaseData.demographics ?? {};
+  const patientAgeForChat = demoChat.age ?? 58;
+  const patientSexForChat =
+    demoChat.sex === "F" || demoChat.sex === "M" ? demoChat.sex : "M";
+
+  const vitalSignsForChat = useMemo(
+    () =>
+      formatVitalSignsFromBaseline(
+        initialCaseData.baselineExamFindings as Record<string, unknown> | undefined,
+      ),
+    [initialCaseData.baselineExamFindings],
+  );
+
+  const abnormalExamsForChat = useMemo(
+    () =>
+      formatAbnormalExamsFromBaseline(
+        initialCaseData.baselineExamFindings as Record<string, unknown> | undefined,
+      ),
+    [initialCaseData.baselineExamFindings],
+  );
+
+  const {
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit: submitChatMessage,
+    isLoading: isChatLoading,
+    setMessages,
+  } = useChat({
+    api: "/api/chat",
+    streamProtocol: "data",
+    experimental_throttle: 30,
+    keepLastMessageOnError: true,
+    body: {
+      casePrompt: initialCaseData.patientPrompt,
+      caseId: initialCaseData.id,
+      patientAge: patientAgeForChat,
+      patientSex: patientSexForChat,
+      chiefComplaint: initialCaseData.description,
+      vitalSigns: vitalSignsForChat,
+      abnormalExams: abnormalExamsForChat,
+      trueDiagnosis: initialCaseData.correctSolution ?? undefined,
+    },
+    experimental_prepareRequestBody: ({ messages: chatMessages, requestBody }) => ({
+      ...(requestBody ?? {}),
+      sessionId: effectiveSessionIdRef.current,
+      patientStress: patientStressRef.current,
+      requestedExamIds: selectedExamIdsRef.current,
+      messages: chatMessages.map((m) => ({
+        role: m.role,
+        content: typeof m.content === "string" ? m.content : "",
+      })),
+    }),
+    onError: () => {
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (!last || last.role !== "assistant") return prev;
+        const existing =
+          typeof last.content === "string" && last.content.length > 0
+            ? last.content
+            : "Errore nella chat. Riprova tra qualche secondo.";
+        return [...prev.slice(0, -1), { ...last, content: existing }];
+      });
+    },
+  });
 
   const bumpPatientStress = useCallback((delta: number) => {
     if (delta <= 0) return;
@@ -463,7 +473,7 @@ export function SimulatorClient({
   }, [effectiveSessionId, initialCaseData.id, router]);
 
   useEffect(() => {
-    if (!effectiveSessionId) return;
+    if (!isAdmin || !effectiveSessionId) return;
     let cancelled = false;
     (async () => {
       const res = await fetch(`/api/session/state?sessionId=${effectiveSessionId}`);
@@ -475,7 +485,7 @@ export function SimulatorClient({
     return () => {
       cancelled = true;
     };
-  }, [effectiveSessionId]);
+  }, [effectiveSessionId, isAdmin]);
 
   useEffect(() => {
     if (!disclaimerAccepted || gameStatus !== "playing") return;
@@ -485,116 +495,45 @@ export function SimulatorClient({
     return () => window.clearInterval(id);
   }, [disclaimerAccepted, gameStatus, bumpPatientStress]);
 
-  const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(event.target.value);
-  };
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmed = input.trim();
     if (!trimmed || isChatLoading) return;
 
-    const demoChat = initialCaseData.demographics ?? {};
-    const patientAgeForChat = demoChat.age ?? 58;
-    const patientSexForChat =
-      demoChat.sex === "F" || demoChat.sex === "M" ? demoChat.sex : "M";
-
     const stressForRequest = Math.min(100, patientStress + 1);
     setPatientStress(stressForRequest);
+    patientStressRef.current = stressForRequest;
 
-    const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: trimmed,
-    };
-    const assistantId = `assistant-${Date.now()}`;
-
-    setMessages((prev) => [...prev, userMessage, { id: assistantId, role: "assistant", content: "" }]);
-    setInput("");
-    setIsChatLoading(true);
-
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          casePrompt: initialCaseData.patientPrompt,
-          caseId: initialCaseData.id,
-          sessionId: effectiveSessionId,
-          patientStress: stressForRequest,
-          patientAge: patientAgeForChat,
-          patientSex: patientSexForChat,
-          chiefComplaint: initialCaseData.description,
-          vitalSigns: formatVitalSignsFromBaseline(
-            initialCaseData.baselineExamFindings as Record<string, unknown> | undefined,
-          ),
-          abnormalExams: formatAbnormalExamsFromBaseline(
-            initialCaseData.baselineExamFindings as Record<string, unknown> | undefined,
-          ),
-          trueDiagnosis: initialCaseData.correctSolution ?? undefined,
-          messages: [...messages, userMessage].map((m) => ({ role: m.role, content: m.content })),
-        }),
-      });
-
-      if (!res.ok || !res.body) {
-        throw new Error("Chat request failed");
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let assistantText = "";
-
-      const flushLine = (line: string) => {
-        // AI SDK data stream v1 text delta: 0:"..."
-        if (line.startsWith("0:")) {
-          const payload = line.slice(2);
-          try {
-            const chunk = JSON.parse(payload);
-            if (typeof chunk === "string" && chunk.length > 0) {
-              assistantText += chunk;
-              setMessages((prev) =>
-                prev.map((m) => (m.id === assistantId ? { ...m, content: assistantText } : m)),
-              );
-            }
-          } catch {
-            // ignore malformed stream line
-          }
-        }
-      };
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          const trimmedLine = line.trim();
-          if (!trimmedLine) continue;
-          flushLine(trimmedLine);
-        }
-      }
-
-      if (buffer.trim()) {
-        flushLine(buffer.trim());
-      }
-    } catch {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantId
-            ? { ...m, content: "Errore nella chat. Riprova tra qualche secondo." }
-            : m,
-        ),
-      );
-    } finally {
-      setIsChatLoading(false);
-    }
+    submitChatMessage(event);
   };
 
+  const caseAdvancedExamValues = useMemo((): Record<string, CaseExamStoredValues> => {
+    const bf = initialCaseData.baselineExamFindings as
+      | { advancedExams?: { values?: Record<string, CaseExamStoredValues> } }
+      | undefined;
+    const legacy = bf?.advancedExams?.values ?? {};
+    return { ...legacy, ...caseExamOverrides };
+  }, [initialCaseData.baselineExamFindings, caseExamOverrides]);
+
+  const examMacroCatalog = useMemo(
+    () => buildExamMacroCatalog(RAW_EXAM_CATALOG_STRUCTURE, examCatalog),
+    [examCatalog],
+  );
+
+  const availableExams = useMemo(() => flattenExams(examMacroCatalog), [examMacroCatalog]);
+
+  const resolveExamForSelection = useCallback(
+    (exam: Exam) => applyExamMeta(exam, examCatalog, caseAdvancedExamValues[exam.id]),
+    [examCatalog, caseAdvancedExamValues],
+  );
+
   const selectedExams = useMemo(
-    () => AVAILABLE_EXAMS.filter((exam) => selectedExamIds.includes(exam.id)),
-    [selectedExamIds],
+    () =>
+      selectedExamIds
+        .map((id) => availableExams.find((exam) => exam.id === id))
+        .filter((exam): exam is Exam => Boolean(exam))
+        .map(resolveExamForSelection),
+    [selectedExamIds, availableExams, resolveExamForSelection],
   );
   const selectedExamsRecentFirst = useMemo(() => [...selectedExams].reverse(), [selectedExams]);
   const objectiveFindingsRecentFirst = useMemo(
@@ -603,14 +542,106 @@ export function SimulatorClient({
   );
 
   const totalCost = selectedExams.reduce((sum, exam) => sum + exam.cost, 0);
-  const totalMinutes = selectedExams.reduce((sum, exam) => sum + exam.timeMinutes, 0);
+  const caseExamLatencies = initialCaseData.examLatencies ?? {};
+  const totalMinutes = useMemo(() => {
+    return selectedExamIds.reduce((sum, examId) => {
+      const custom = caseExamLatencies[examId];
+      if (custom != null) return sum + custom;
+      const exam = selectedExams.find((e) => e.id === examId);
+      return sum + (exam?.timeMinutes ?? 5);
+    }, 0);
+  }, [selectedExamIds, caseExamLatencies, selectedExams]);
 
-  const caseAdvancedExamValues = useMemo((): Record<string, CaseExamStoredValues> => {
-    const bf = initialCaseData.baselineExamFindings as
-      | { advancedExams?: { values?: Record<string, CaseExamStoredValues> } }
-      | undefined;
-    return bf?.advancedExams?.values ?? {};
-  }, [initialCaseData.baselineExamFindings]);
+  const reportGenerationAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      reportGenerationAbortRef.current?.abort();
+    };
+  }, []);
+
+  const generateReportAndNavigate = useCallback(async () => {
+    reportGenerationAbortRef.current?.abort();
+    const abortController = new AbortController();
+    reportGenerationAbortRef.current = abortController;
+
+    setReportError(null);
+    setReportLoading(true);
+    setReportProgress(10);
+    setReportProgressMessage("Inizializzazione report...");
+
+    try {
+      const res = await fetch("/api/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          caseId: initialCaseData.id,
+          chatHistory: messages
+            .filter((m) => m.role === "user" || m.role === "assistant")
+            .map((m) => ({
+              role: m.role as "user" | "assistant",
+              content: getChatMessageText(m),
+            })),
+          exams: selectedExams,
+          reportText: "",
+          caseContext: initialCaseData.patientPrompt,
+          finalDiagnosis,
+        }),
+        signal: abortController.signal,
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (res.status !== 202 && !res.ok) {
+        throw new Error(
+          (data && (data.error as string | undefined)) || "Errore nella generazione del report.",
+        );
+      }
+
+      const reportId =
+        data &&
+        (typeof data.reportId === "string"
+          ? data.reportId
+          : typeof data.sessionId === "string"
+            ? data.sessionId
+            : null);
+
+      if (!reportId) {
+        throw new Error("ID report non disponibile.");
+      }
+
+      if (typeof data.progress === "number") {
+        setReportProgress(data.progress);
+      }
+      if (typeof data.progressMessage === "string") {
+        setReportProgressMessage(data.progressMessage);
+      }
+
+      const { reportId: completedReportId } = await pollReportUntilComplete(
+        reportId,
+        (progress, message) => {
+          setReportProgress(progress);
+          setReportProgressMessage(message);
+        },
+        { signal: abortController.signal },
+      );
+
+      router.push(`/case/${initialCaseData.id}/results?sessionId=${completedReportId}`);
+      router.refresh();
+    } catch (e) {
+      if (abortController.signal.aborted) {
+        return;
+      }
+      const message =
+        e instanceof Error ? e.message : "Errore nella generazione del report.";
+      setReportError(message);
+    } finally {
+      if (reportGenerationAbortRef.current === abortController) {
+        setReportLoading(false);
+        reportGenerationAbortRef.current = null;
+      }
+    }
+  }, [finalDiagnosis, initialCaseData.id, initialCaseData.patientPrompt, messages, router, selectedExams]);
 
   const demo = initialCaseData.demographics ?? {};
   const ageValue = demo.age ?? 58;
@@ -776,12 +807,10 @@ export function SimulatorClient({
               </div>
               <div className="rounded-b-2xl rounded-tr-2xl border border-zinc-200/80 bg-white p-5 text-sm text-zinc-800 leading-relaxed space-y-3">
                 {reportLoading && (
-                  <div className="text-sm text-zinc-700">
-                    <span className="inline-flex items-center gap-2">
-                      <Activity className="h-4 w-4 animate-spin text-sky-600" />
-                      Generazione report in corso...
-                    </span>
-                  </div>
+                  <ReportGenerationProgress
+                    progress={reportProgress}
+                    message={reportProgressMessage}
+                  />
                 )}
                 {!reportLoading && reportError && (
                   <div className="text-sm text-rose-700">{reportError}</div>
@@ -793,7 +822,7 @@ export function SimulatorClient({
                         <p className="text-xs text-zinc-500">
                           Punteggio: {Math.round(reportData.scores.clinical)}/100
                         </p>
-                        <p className="whitespace-pre-line">{reportData.feedback.clinicalNote}</p>
+                        <p className="whitespace-pre-line">{reportData.feedback?.clinicalNote ?? "—"}</p>
                       </>
                     )}
                     {activeReportTab === "legal" && (
@@ -801,7 +830,7 @@ export function SimulatorClient({
                         <p className="text-xs text-zinc-500">
                           Punteggio: {Math.round(reportData.scores.legal)}/100
                         </p>
-                        <p className="whitespace-pre-line">{reportData.feedback.legalComplianceNote}</p>
+                        <p className="whitespace-pre-line">{reportData.feedback?.legalComplianceNote ?? "—"}</p>
                         {reportData.evidence?.legalSources?.length ? (
                           <div className="text-xs text-zinc-600">
                             <span className="font-medium">Fonti (tag: legale):</span>{" "}
@@ -815,7 +844,7 @@ export function SimulatorClient({
                         <p className="text-xs text-zinc-500">
                           Punteggio: {Math.round(reportData.scores.exams)}/100
                         </p>
-                        <p className="whitespace-pre-line">{reportData.feedback.prescribingNote}</p>
+                        <p className="whitespace-pre-line">{reportData.feedback?.prescribingNote ?? "—"}</p>
                         {reportData.evidence?.protocolSources?.length ? (
                           <div className="text-xs text-zinc-600">
                             <span className="font-medium">Fonti (tag: protocolli):</span>{" "}
@@ -829,7 +858,7 @@ export function SimulatorClient({
                         <p className="text-xs text-zinc-500">
                           Punteggio: {Math.round(reportData.scores.empathy)}/100
                         </p>
-                        <p className="whitespace-pre-line">{reportData.feedback.empathyNote}</p>
+                        <p className="whitespace-pre-line">{reportData.feedback?.empathyNote ?? "—"}</p>
                       </>
                     )}
                     {activeReportTab === "economy" && (
@@ -837,7 +866,7 @@ export function SimulatorClient({
                         <p className="text-xs text-zinc-500">
                           Punteggio: {Math.round(reportData.scores.economy)}/100
                         </p>
-                        <p className="whitespace-pre-line">{reportData.feedback.economyNote}</p>
+                        <p className="whitespace-pre-line">{reportData.feedback?.economyNote ?? "—"}</p>
                       </>
                     )}
                   </>
@@ -965,6 +994,9 @@ export function SimulatorClient({
                     selectedExamIds={selectedExamIds}
                     onToggleExam={toggleExam}
                     caseExamValues={caseAdvancedExamValues}
+                    examCatalog={examCatalog}
+                    examMacroCatalog={examMacroCatalog}
+                    availableExams={availableExams}
                   />
                 </TabsContent>
               </Tabs>
@@ -1092,6 +1124,13 @@ export function SimulatorClient({
                         placeholder="Scrivi la diagnosi finale (es. NSTEMI, polmonite lobare, ecc.)..."
                         value={finalDiagnosis}
                         onChange={(e) => setFinalDiagnosis(e.target.value)}
+                        onKeyDown={(event) =>
+                          handleTextareaEnterSubmit(event, {
+                            getValue: () => finalDiagnosis,
+                            isDisabled: !finalDiagnosis.trim(),
+                            onSubmit: confirmDiagnosis,
+                          })
+                        }
                       />
                     </div>
 
@@ -1174,7 +1213,7 @@ export function SimulatorClient({
                     {gameStatus === "wrong_diagnosis" && (
                       <div className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-rose-800">
                         Diagnosi Errata. Il trattamento somministrato ha peggiorato il quadro.
-                        {expectedConditionText && (
+                        {isAdmin && expectedConditionText && (
                           <div className="mt-2 text-[11px] text-rose-700">
                             <span className="font-medium">Patologia corretta:</span>{" "}
                             {expectedConditionText}
@@ -1193,7 +1232,31 @@ export function SimulatorClient({
                       </div>
                     )}
 
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex flex-col items-end gap-3">
+                      {reportLoading ? (
+                        <div className="w-full rounded-2xl border border-zinc-200/80 bg-zinc-50 px-4 py-3">
+                          <ReportGenerationProgress
+                            progress={reportProgress}
+                            message={reportProgressMessage}
+                          />
+                        </div>
+                      ) : null}
+                      {reportError ? (
+                        <div className="w-full rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 space-y-2">
+                          <p>{reportError}</p>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="text-xs"
+                            onClick={() => void generateReportAndNavigate()}
+                            disabled={reportLoading}
+                          >
+                            Riprova
+                          </Button>
+                        </div>
+                      ) : null}
+                      <div className="flex items-center justify-end gap-2">
                       {gameStatus === "complication" ? (
                         <Button
                           type="button"
@@ -1236,61 +1299,14 @@ export function SimulatorClient({
                           type="button"
                           size="md"
                           className="text-xs px-4"
-                          onClick={async () => {
-                            setReportError(null);
-                            setReportLoading(true);
-                            try {
-                              const res = await fetch("/api/evaluate", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                  caseId: initialCaseData.id,
-                                  chatHistory: messages
-                                    .filter((m) => m.role === "user" || m.role === "assistant")
-                                    .map((m) => ({ role: m.role, content: m.content })),
-                                  exams: selectedExams,
-                                  reportText: "",
-                                  caseContext: initialCaseData.patientPrompt,
-                                  finalDiagnosis,
-                                }),
-                              });
-                              const data = await res.json().catch(() => null);
-                              if (!res.ok) {
-                                throw new Error(
-                                  (data && (data.error as string | undefined)) ||
-                                    "Errore nella generazione del report.",
-                                );
-                              }
-                              const evaluatedSessionId =
-                                data && typeof data.sessionId === "string" ? data.sessionId : null;
-                              if (!evaluatedSessionId) {
-                                throw new Error("Sessione report non disponibile.");
-                              }
-                              router.push(
-                                `/case/${initialCaseData.id}/results?sessionId=${evaluatedSessionId}`,
-                              );
-                              router.refresh();
-                            } catch (e) {
-                              const message =
-                                e instanceof Error
-                                  ? e.message
-                                  : "Errore nella generazione del report.";
-                              setReportError(message);
-                            } finally {
-                              setReportLoading(false);
-                            }
-                          }}
+                          onClick={() => void generateReportAndNavigate()}
                           disabled={reportLoading}
                         >
                           {reportLoading ? "Generazione report..." : "Vai al Report"}
                         </Button>
                       )}
                     </div>
-                    {reportError ? (
-                      <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-700">
-                        {reportError}
-                      </div>
-                    ) : null}
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -1403,7 +1419,7 @@ export function SimulatorClient({
                         >
                           <p className="text-zinc-800 font-medium">{exam.name}</p>
                           <p className="text-zinc-600 mt-1 whitespace-pre-line">
-                            {formatCaseExamFindingOnly(exam.id, caseAdvancedExamValues)}
+                            {formatExamFinding(exam.id, examCatalog, caseAdvancedExamValues)}
                           </p>
                         </li>
                       ))}
@@ -1464,6 +1480,28 @@ export function SimulatorClient({
   );
 }
 
+function getChatMessageText(message: ChatMessageLike): string {
+  if (typeof message.content === "string" && message.content.trim()) {
+    return message.content;
+  }
+  if (Array.isArray(message.content)) {
+    return message.content
+      .map((part) => {
+        if (typeof part === "string") return part;
+        if (part && typeof part === "object" && typeof part.text === "string") return part.text;
+        return "";
+      })
+      .join("");
+  }
+  if (Array.isArray(message.parts)) {
+    return message.parts
+      .filter((part) => part?.type === "text" && typeof part.text === "string")
+      .map((part) => part.text as string)
+      .join("");
+  }
+  return "";
+}
+
 type HistoryChatProps = {
   messages: {
     id: string;
@@ -1485,6 +1523,7 @@ function HistoryChat({
   isLoading,
 }: HistoryChatProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   const messageText = (message: HistoryChatProps["messages"][number]): string => {
     if (typeof message.content === "string" && message.content.trim()) {
@@ -1514,10 +1553,14 @@ function HistoryChat({
     (m) => m.role === "user" || m.role === "assistant",
   );
 
+  const scrollAnchor = visibleMessages
+    .map((message) => messageText(message))
+    .join("\u0000");
+
   useEffect(() => {
     if (!scrollRef.current) return;
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [visibleMessages.length, isLoading]);
+  }, [scrollAnchor, isLoading]);
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl bg-white/70 border border-zinc-200/80 p-3 h-[420px] overflow-hidden">
@@ -1558,6 +1601,7 @@ function HistoryChat({
         })}
       </div>
       <form
+        ref={formRef}
         onSubmit={onSubmit}
         className="mt-1 space-y-1.5"
       >
@@ -1567,10 +1611,17 @@ function HistoryChat({
           placeholder="Formula la prossima domanda o esplora un sintomo (es. caratteristiche del dolore, fattori di rischio, sintomi associati)..."
           value={input}
           onChange={onInputChange}
+          onKeyDown={(event) =>
+            handleTextareaEnterSubmit(event, {
+              getValue: () => input,
+              isDisabled: isLoading,
+              onSubmit: () => formRef.current?.requestSubmit(),
+            })
+          }
         />
         <div className="flex items-center justify-between gap-3">
           <p className="text-[11px] text-zinc-500">
-            L&apos;IA risponde solo come paziente, senza formulare diagnosi o spiegare linee guida.
+            Invio per inviare · Shift+Invio per andare a capo. L&apos;IA risponde solo come paziente.
           </p>
           <Button
             type="submit"
@@ -1590,6 +1641,9 @@ type ExamsPanelProps = {
   selectedExamIds: string[];
   onToggleExam: (id: string) => void;
   caseExamValues: Record<string, CaseExamStoredValues>;
+  examCatalog: Record<string, ExamClinicalMeta>;
+  examMacroCatalog: ExamMacroCategory[];
+  availableExams: Exam[];
 };
 
 type ExamSelectionCardProps = {
@@ -1597,6 +1651,7 @@ type ExamSelectionCardProps = {
   isSelected: boolean;
   onToggle: (id: string) => void;
   caseExamValues: Record<string, CaseExamStoredValues>;
+  examCatalog: Record<string, ExamClinicalMeta>;
   nameNode?: ReactNode;
   className: string;
 };
@@ -1614,6 +1669,7 @@ function ExamSelectionCard({
   isSelected,
   onToggle,
   caseExamValues,
+  examCatalog,
   nameNode,
   className,
 }: ExamSelectionCardProps) {
@@ -1629,7 +1685,7 @@ function ExamSelectionCard({
       ) : null}
       {isSelected ? (
         <p className="text-[10px] text-emerald-800 mt-1 whitespace-pre-line">
-          {formatCaseExamFindingOnly(exam.id, caseExamValues)}
+          {formatExamFinding(exam.id, examCatalog, caseExamValues)}
         </p>
       ) : null}
     </button>
@@ -1640,9 +1696,12 @@ function ExamsPanel({
   selectedExamIds,
   onToggleExam,
   caseExamValues,
+  examCatalog,
+  examMacroCatalog,
+  availableExams,
 }: ExamsPanelProps) {
   const [query, setQuery] = useState("");
-  const [openMacroId, setOpenMacroId] = useState<string | null>(EXAM_CATALOG[0]?.id ?? null);
+  const [openMacroId, setOpenMacroId] = useState<string | null>(examMacroCatalog[0]?.id ?? null);
   const [openGroupIds, setOpenGroupIds] = useState<Record<string, string | null>>({});
   const macroVisuals: Record<string, { short: string; icon: ComponentType<{ className?: string }> }> = {
     lab: { short: "Lab", icon: FlaskConical },
@@ -1655,8 +1714,8 @@ function ExamsPanel({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return AVAILABLE_EXAMS.filter((exam) => exam.name.toLowerCase().includes(q));
-  }, [query]);
+    return availableExams.filter((exam) => exam.name.toLowerCase().includes(q));
+  }, [availableExams, query]);
 
   const highlight = (text: string, q: string) => {
     if (!q.trim()) return text;
@@ -1706,6 +1765,7 @@ function ExamsPanel({
                     isSelected={isSelected}
                     onToggle={onToggleExam}
                     caseExamValues={caseExamValues}
+                    examCatalog={examCatalog}
                     nameNode={<span className="font-medium">{highlight(exam.name, query)}</span>}
                     className={
                       "w-full text-left rounded-xl border px-3 py-2 transition-colors " +
@@ -1721,7 +1781,7 @@ function ExamsPanel({
         ) : (
           <div className="space-y-2">
             <div className="mb-2 flex flex-wrap items-center gap-1.5 rounded-2xl border border-zinc-200/80 bg-zinc-100/70 p-1.5">
-              {EXAM_CATALOG.map((macro) => {
+              {examMacroCatalog.map((macro) => {
                 const Icon = macroVisuals[macro.id]?.icon ?? FlaskConical;
                 const short = macroVisuals[macro.id]?.short ?? macro.label;
                 const active = openMacroId === macro.id;
@@ -1743,7 +1803,7 @@ function ExamsPanel({
                 );
               })}
             </div>
-            {EXAM_CATALOG.filter((macro) => macro.id === openMacroId).map((macro) => (
+            {examMacroCatalog.filter((macro) => macro.id === openMacroId).map((macro) => (
               <div key={macro.id} className="rounded-2xl border border-zinc-200/80 bg-white p-2 space-y-2">
                 {macro.groups.length === 1 ? (
                   <div className="px-1 pb-1 space-y-1.5">
@@ -1756,6 +1816,7 @@ function ExamsPanel({
                           isSelected={isSelected}
                           onToggle={onToggleExam}
                           caseExamValues={caseExamValues}
+                          examCatalog={examCatalog}
                           className={
                             "w-full text-left rounded-lg border px-2.5 py-2 transition-colors " +
                             (isSelected
@@ -1790,6 +1851,7 @@ function ExamsPanel({
                                   isSelected={isSelected}
                                   onToggle={onToggleExam}
                                   caseExamValues={caseExamValues}
+                                  examCatalog={examCatalog}
                                   className={
                                     "w-full text-left rounded-lg border px-2.5 py-2 transition-colors " +
                                     (isSelected

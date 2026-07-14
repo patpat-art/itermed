@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "../../../lib/prisma";
 import { getSessionUserId } from "../../../lib/api-session";
 import { userCanPlayCase, verifyLiveSessionOwner } from "../../../lib/access";
+import { sanitizeForExternalAI } from "@/lib/security/sanitize-for-ai";
 
 const bodySchema = z.object({
   sessionId: z.string().optional(),
@@ -28,7 +29,9 @@ export async function POST(req: Request) {
   }
 
   const json = await req.json();
-  const { sessionId, caseId, examId, examType, patientPrompt } = bodySchema.parse(json);
+  const parsed = bodySchema.parse(json);
+  const { sessionId, caseId, examId, examType, patientPrompt } = parsed;
+  const sanitizedPatientPrompt = sanitizeForExternalAI(patientPrompt);
 
   if (sessionId) {
     const owns = await verifyLiveSessionOwner(sessionId, userId);
@@ -312,7 +315,7 @@ Devi restituire SOLO un JSON con i campi:
     schema: examResultSchema,
     prompt: `
 Contesto clinico/paziente:
-${patientPrompt}
+${sanitizedPatientPrompt}
 `.trim(),
   });
 

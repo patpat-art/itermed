@@ -1,9 +1,11 @@
 import { notFound, redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
 import { prisma } from "../../../lib/prisma";
-import { authOptions } from "../../../lib/auth-options";
+import { config } from "../../../lib/config";
 import { userCanPlayCase } from "../../../lib/access";
+import { requireUser, isDevAuthBypass } from "../../../lib/require-user";
 import { SimulatorClient } from "../../../components/simulator/SimulatorClient";
+import { getExamValuesCatalog, getCaseExamOverrides } from "../../../lib/exam-values-service";
+import { EXAM_DEFAULT_VALUES } from "../../../lib/exam-default-values";
 
 const FALLBACK_CASES: Record<
   string,
@@ -67,7 +69,7 @@ export default async function CasePage(props: CasePageProps) {
   const rawId = params.id || "";
   const idNormalized = rawId.trim().toLowerCase();
 
-  const hasDatabase = Boolean(process.env.DATABASE_URL);
+  const hasDatabase = Boolean(config.DATABASE_URL);
 
   const sessionId = searchParams?.sessionId;
 
@@ -81,18 +83,15 @@ export default async function CasePage(props: CasePageProps) {
           sessionId={sessionId}
           isAdmin={false}
           persistReports={false}
+          examCatalog={EXAM_DEFAULT_VALUES}
         />
       );
     }
     return notFound();
   }
 
-  const authSession = await getServerSession(authOptions);
-  if (!authSession?.user?.id) {
-    const qs = sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : "";
-    redirect(`/login?callbackUrl=${encodeURIComponent(`/case/${rawId}${qs}`)}`);
-  }
-  const userId = authSession.user.id;
+  const user = await requireUser();
+  const userId = user.id;
 
   try {
     const canPlay = await userCanPlayCase(userId, rawId);
@@ -100,22 +99,34 @@ export default async function CasePage(props: CasePageProps) {
       return notFound();
     }
 
-    const [caseData, session] = await Promise.all([
-      prisma.clinicalCase.findUnique({
-        where: { id: rawId },
-        include: { nodes: { orderBy: { order: "asc" }, take: 1 } },
-      }),
+    const caseData = await prisma.clinicalCase.findUnique({
+      where: { id: rawId },
+      include: { nodes: { orderBy: { order: "asc" }, take: 1 } },
+    });
+
+    if (!caseData) {
+      return notFound();
+    }
+
+    const [session, examCatalog, caseExamOverrides] = await Promise.all([
       sessionId
         ? prisma.caseSession.findUnique({
             where: { id: sessionId },
           })
         : Promise.resolve(null),
+      getExamValuesCatalog(),
+      getCaseExamOverrides(rawId, caseData.baselineExamFindings),
     ]);
 
     if (
       sessionId &&
+      !isDevAuthBypass() &&
       (!session || session.userId !== userId || session.caseId !== rawId)
     ) {
+      redirect(`/case/${rawId}`);
+    }
+
+    if (sessionId && isDevAuthBypass() && session && session.caseId !== rawId) {
       redirect(`/case/${rawId}`);
     }
 
@@ -145,6 +156,10 @@ export default async function CasePage(props: CasePageProps) {
           context: demographics.context ?? null,
         },
         baselineExamFindings: baseline as Record<string, unknown>,
+        timeLimitMinutes: caseData.timeLimitMinutes ?? null,
+        examLatencies: (caseData.examLatencies as Record<string, number> | null) ?? null,
+        goldStandardPath: (caseData.goldStandardPath as string[] | null) ?? null,
+        patientDeteriorationThreshold: caseData.patientDeteriorationThreshold ?? null,
       };
 
       return (
@@ -152,8 +167,10 @@ export default async function CasePage(props: CasePageProps) {
           initialCaseData={initialCaseData}
           isVariant={isVariant}
           sessionId={session?.id ?? sessionId}
-          isAdmin={authSession.user.role === "ADMIN"}
+          isAdmin={user.role === "ADMIN"}
           persistReports
+          examCatalog={examCatalog}
+          caseExamOverrides={caseExamOverrides}
         />
       );
     }

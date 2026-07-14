@@ -42,16 +42,22 @@ export async function GET(req: Request) {
     });
   }
 
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+  const isAdmin = user?.role === "ADMIN";
+
   const target =
     session.currentTargetCondition ??
     session.variantSolution ??
-    (session.case as any)?.correctSolution ??
+    (session.case as { correctSolution?: string | null })?.correctSolution ??
     null;
 
   return new Response(
     JSON.stringify({
       sessionId: session.id,
-      targetCondition: target,
+      ...(isAdmin ? { targetCondition: target } : {}),
     }),
     { status: 200, headers: { "Content-Type": "application/json" } },
   );

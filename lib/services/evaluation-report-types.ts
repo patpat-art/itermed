@@ -1,0 +1,39 @@
+import { z } from "zod";
+
+export const LegalProtectionStatusSchema = z.object({
+  status: z.enum(["PROTECTED", "PARTIALLY_EXPOSED", "HIGHLY_EXPOSED"]),
+  justification: z.string().max(800),
+  referenceDocuments: z.array(z.string().max(120)).max(12).default([]),
+});
+
+export const ClinicalDeltaRowSchema = z.object({
+  protocolAction: z.string().max(200),
+  userAction: z.string().max(200),
+  status: z.enum(["MET", "MISSED", "DELAYED"]),
+  penaltyOrBonusReason: z.string().max(320),
+});
+
+export const EconomicExpenseSchema = z.object({
+  examName: z.string().max(120),
+  cost: z.number().min(0),
+  reason: z.string().max(280),
+});
+
+export const EconomicAnalysisSchema = z.object({
+  targetBudget: z.number().min(0),
+  actualSpent: z.number().min(0),
+  unnecessaryExpenses: z.array(EconomicExpenseSchema).max(15).default([]),
+  missedRequiredExams: z.array(EconomicExpenseSchema).max(15).default([]),
+});
+
+export const CoachingFeedbackSchema = z.object({
+  empatia: z.string().max(400),
+  tutelaLegale: z.string().max(400),
+  economicita: z.string().max(400),
+  accuratezza: z.string().max(400),
+});
+
+export type LegalProtectionStatus = z.infer<typeof LegalProtectionStatusSchema>;
+export type ClinicalDeltaRow = z.infer<typeof ClinicalDeltaRowSchema>;
+export type EconomicAnalysis = z.infer<typeof EconomicAnalysisSchema>;
+export type CoachingFeedback = z.infer<typeof CoachingFeedbackSchema>;

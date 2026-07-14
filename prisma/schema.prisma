@@ -13,6 +13,7 @@ enum UserRole {
   ADMIN
 }
 
+/// Clinical case difficulty tier (EASY → HARD).
 enum CaseDifficulty {
   EASY
   MEDIUM
@@ -28,81 +29,155 @@ enum CaseNodeType {
   NOTE
 }
 
+/// Async report generation lifecycle (polling from the client).
+enum SessionReportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  role      UserRole @default(STUDENT)
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  role         UserRole @default(STUDENT)
   passwordHash String?
+
+  /// Stripe billing — customer and active subscription linkage.
+  stripeCustomerId     String?  @unique
+  stripeSubscriptionId String?
+  subscriptionStatus   String?
+  planType             String   @default("FREE")
+  freeTrialUsageCount  Int      @default(0)
+  purchasedBundleIds   String[] @default([])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   createdCases ClinicalCase[] @relation("CreatedCases")
-  decks        CaseDeck[]
   sessions     SessionReport[]
   liveSessions CaseSession[]  @relation("UserLiveSessions")
 }
 
-model CaseDeck {
-  id          String        @id @default(cuid())
-  title       String
+/// Canonical medical specialty taxonomy (Cardiologia, Emergenza, …).
+model MedicalSpecialty {
+  id          String  @id @default(cuid())
+  name        String  @unique
   description String?
-  isPublic    Boolean       @default(false)
 
-  ownerId String
-  owner   User          @relation(fields: [ownerId], references: [id])
-
-  cases   ClinicalCase[]
+  cases          ClinicalCase[]
+  legalPackages  LegalProtectionPackage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// Named bundle of legal/guideline documents applicable to a specialty or case.
+model LegalProtectionPackage {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+
+  specialtyId String?
+  specialty   MedicalSpecialty? @relation(fields: [specialtyId], references: [id], onDelete: SetNull)
+
+  documents LegalProtectionDocument[]
+  cases     ClinicalCase[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([specialtyId])
+}
+
+/// Many-to-many join: legal protection package ↔ guideline document.
+model LegalProtectionDocument {
+  packageId  String
+  documentId String
+  sortOrder  Int    @default(0)
+
+  package  LegalProtectionPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  document GuidelineDocument      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@id([packageId, documentId])
+  @@index([documentId])
 }
 
 model ClinicalCase {
   id          String         @id @default(cuid())
   title       String
   description String
+  /// Legacy free-text specialty label; prefer `medicalSpecialty` relation for new data.
   specialty   String?
   difficulty  CaseDifficulty @default(MEDIUM)
   isGlobal    Boolean        @default(false)
+  /// Optional paid bundle gate — requires purchase or active subscription.
+  caseBundleId String?
 
-  estimatedDurationMinutes Int? // rough expected time to complete the case
+  estimatedDurationMinutes Int?
   isActive                 Boolean @default(true)
 
-  // Dati clinici strutturati aggiuntivi
-  pastMedicalHistory String? // comorbilità / patologie pregresse rilevanti
-  correctSolution    String? // soluzione attesa del caso (diagnosi + gestione)
-
-  // Valori di esame obiettivo / parametri vitali di base per il caso,
-  // salvati come JSON strutturato (es. vitals, torace, addome, neurologico).
+  pastMedicalHistory   String?
+  correctSolution      String?
   baselineExamFindings Json?
 
-  deckId String?
-  deck   CaseDeck? @relation(fields: [deckId], references: [id])
+  /// Max simulation wall-clock (minutes) before forced wrap-up.
+  timeLimitMinutes Int?
+  /// Ordered key clinical actions required to pass (Gold Standard).
+  goldStandardPath Json?
+  /// Per-exam reporting latency in minutes (examId → minutes).
+  examLatencies Json?
+  /// Minutes without life-saving actions before patient deteriorates.
+  patientDeteriorationThreshold Int?
+
+  medicalSpecialtyId String?
+  medicalSpecialty   MedicalSpecialty? @relation(fields: [medicalSpecialtyId], references: [id], onDelete: SetNull)
+
+  legalProtectionPackageId String?
+  legalProtectionPackage   LegalProtectionPackage? @relation(fields: [legalProtectionPackageId], references: [id], onDelete: SetNull)
 
   createdById String
-  createdBy   User        @relation("CreatedCases", fields: [createdById], references: [id])
+  createdBy   User @relation("CreatedCases", fields: [createdById], references: [id])
 
-  nodes        CaseNode[]
-  sessions     SessionReport[]
-  liveSessions CaseSession[] @relation("CaseLiveSessions")
+  nodes          CaseNode[]
+  sessions       SessionReport[]
+  liveSessions   CaseSession[]             @relation("CaseLiveSessions")
+  legalDocuments ClinicalCaseLegalDocument[]
+  caseExamValues CaseExamValue[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([medicalSpecialtyId])
+  @@index([legalProtectionPackageId])
+  @@index([difficulty])
+  @@index([createdById])
+  @@index([isActive, isGlobal])
+}
+
+/// Case-specific legal document overrides (in addition to the protection package).
+model ClinicalCaseLegalDocument {
+  caseId     String
+  documentId String
+  sortOrder  Int    @default(0)
+
+  case     ClinicalCase      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  document GuidelineDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@id([caseId, documentId])
+  @@index([documentId])
 }
 
 model CaseNode {
-  id      String       @id @default(cuid())
-  caseId  String
-  case    ClinicalCase @relation(fields: [caseId], references: [id])
+  id     String       @id @default(cuid())
+  caseId String
+  case   ClinicalCase @relation(fields: [caseId], references: [id])
 
-  order   Int
-  type    CaseNodeType
+  order Int
+  type  CaseNodeType
 
-  // Flexible JSON payload to describe the node content (prompt, options, expected answers, etc.)
   content  Json
-  // Additional configuration, scoring weights, timing constraints, etc.
   metadata Json?
 
   createdAt DateTime @default(now())
@@ -111,35 +186,53 @@ model CaseNode {
   @@index([caseId, order])
 }
 
+/// Completed simulation score record — one row per user × case attempt.
 model SessionReport {
-  id        String   @id @default(cuid())
+  id String @id @default(cuid())
 
   userId String
-  user   User   @relation(fields: [userId], references: [id])
+  user   User @relation(fields: [userId], references: [id])
 
   caseId String
   case   ClinicalCase @relation(fields: [caseId], references: [id])
 
-  // Five core evaluation dimensions (0–100). We can later enforce ranges at application level.
-  clinicalAccuracy          Float
+  /// Accuratezza clinica (0–100).
+  clinicalAccuracy Float
+  /// Tutela medico-legale (0–100).
   legalComplianceGelliBianco Float
+  /// Appropriatezza prescrittiva / esami (0–100).
   prescribingAppropriateness Float
-  economicSustainability     Float
-  empathy                    Float
+  /// Sostenibilità economica (0–100).
+  economicSustainability Float
+  /// Empatia e comunicazione (0–100).
+  empathy Float
 
   totalScore Float
 
-  // Serialized trace of the session useful for audit / medico-legal reconstruction.
+  status          SessionReportStatus @default(PENDING)
+  progress        Int                 @default(0)
+  progressMessage String              @default("Inizializzazione report...")
+
+  /// Denormalized snapshot for analytics when case metadata changes later.
+  medicalSpecialtyIdSnapshot String?
+  medicalSpecialtyNameSnapshot String?
+  difficultySnapshot         CaseDifficulty?
+
   rawTrace Json?
   notes    String?
 
-  startedAt   DateTime @default(now())
+  startedAt   DateTime  @default(now())
   completedAt DateTime?
 
   createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([caseId])
+  @@index([userId, completedAt])
+  @@index([userId, caseId, completedAt])
+  @@index([medicalSpecialtyIdSnapshot])
+  @@index([status])
+  @@index([userId, status])
 }
 
 model CaseSession {
@@ -151,16 +244,25 @@ model CaseSession {
   caseId String
   case   ClinicalCase @relation("CaseLiveSessions", fields: [caseId], references: [id])
 
-  isVariant       Boolean @default(false)
-  variantPrompt   String?
-  variantSolution String?
-  examOverrides   Json?
+  isVariant              Boolean @default(false)
+  variantPrompt          String?
+  variantSolution        String?
+  examOverrides          Json?
   currentTargetCondition String?
+  /// Persisted doctor ↔ patient chat turns (appended via stream `onFinish`).
+  chatHistory            Json?
+  /// Accumulated simulation time (exam latencies) in minutes.
+  elapsedMinutes         Int      @default(0)
+  /// Gold Standard steps completed by the learner in this session.
+  completedGoldSteps     String[] @default([])
+  /// Diagnostic exams requested so far (for latency accounting).
+  requestedExamIds       String[] @default([])
 
   createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([caseId])
+  @@index([userId, caseId])
 }
 
 model GuidelineDocument {
@@ -174,7 +276,57 @@ model GuidelineDocument {
   vectorIds  Json?
   isActive   Boolean  @default(true)
 
+  legalPackages LegalProtectionDocument[]
+  clinicalCases ClinicalCaseLegalDocument[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
+/// Key-value application config (e.g. exam default values).
+model AppConfig {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+/// Global exam catalog metadata (costs, ranges, turnaround).
+model ExamMetadata {
+  id                    String  @id
+  name                  String
+  category              String
+  unit                  String  @default("")
+  normalRangeMin        Float?
+  normalRangeMax        Float?
+  baseCost              Float   @default(0)
+  baseTurnaroundMinutes Int     @default(60)
+  urgencyTiming         String  @default("n.p.")
+  routineTiming         String  @default("n.p.")
+  normalFindingText     String  @default("")
+
+  caseValues CaseExamValue[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([name])
+}
+
+/// Per-case exam result values (simulation instance).
+model CaseExamValue {
+  caseId     String
+  examId     String
+  value      Float?
+  isAbnormal Boolean @default(false)
+  customCost Float?
+
+  case ClinicalCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  exam ExamMetadata  @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([caseId, examId])
+  @@index([examId])
+}

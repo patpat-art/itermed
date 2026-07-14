@@ -1,0 +1,450 @@
+import { openai } from "@ai-sdk/openai";
+import { generateObject, type LanguageModel } from "ai";
+import type { CaseDifficulty } from "@prisma/client";
+import { z } from "zod";
+import { AIServiceError } from "@/lib/errors";
+import { createLogger, type Logger } from "@/lib/logger";
+import type { ExamClinicalMeta } from "@/lib/exam-default-values";
+import type { RelevantGuidelines } from "@/lib/services/rag-service";
+import {
+  ClinicalDeltaRowSchema,
+  CoachingFeedbackSchema,
+  EconomicAnalysisSchema,
+  LegalProtectionStatusSchema,
+} from "@/lib/services/evaluation-report-types";
+import {
+  deriveDimensionScores,
+  resolveExamBudgetEuro,
+  resolveExamCostsFromCatalog,
+  type ScoreBreakdown,
+} from "@/lib/services/evaluation-scoring";
+import { sanitizeForExternalAI } from "@/lib/security/sanitize-for-ai";
+
+const criticalActionSchema = z.object({
+  description: z.string().max(200),
+  performed: z.boolean(),
+  criticalLevel: z.enum(["HIGH", "MEDIUM"]),
+  feedback: z.string().max(320),
+});
+
+const inappropriateActionSchema = z.object({
+  description: z.string().max(200),
+  performed: z.boolean(),
+  penaltyWeight: z.number().min(0).max(100),
+  feedback: z.string().max(320),
+});
+
+const empathyChecklistItemSchema = z.object({
+  parameter: z.string().max(120),
+  met: z.boolean(),
+  feedback: z.string().max(280),
+});
+
+/** Schema compilato dall'AI: solo checklist oggettive, nessun punteggio numerico. */
+export const AnalyticalEvaluationSchema = z.object({
+  criticalActions: z.array(criticalActionSchema).min(3).max(12),
+  inappropriateActions: z.array(inappropriateActionSchema).max(12).default([]),
+  empathyChecklist: z.array(empathyChecklistItemSchema).min(4).max(10),
+  feedback: z.object({
+    strengths: z.array(z.string().max(160)).max(3).default([]),
+    weaknesses: z.array(z.string().max(160)).max(3).default([]),
+    clinicalNote: z.string().max(400),
+    legalComplianceNote: z.string().max(400),
+    prescribingNote: z.string().max(400),
+    empathyNote: z.string().max(300),
+    economyNote: z.string().max(300),
+    correctSolution: z.string().max(320),
+  }),
+  evidence: z.object({
+    legalSources: z.array(z.string().max(120)).max(8).default([]),
+    protocolSources: z.array(z.string().max(120)).max(6).default([]),
+  }),
+  legalInstrumentReviews: z
+    .array(
+      z.object({
+        instrument: z.string().max(80),
+        documentTitle: z.string().max(120).optional(),
+        compliance: z.enum(["rispettato", "violato", "parziale", "non_applicabile"]),
+        rationale: z.string().max(220),
+      }),
+    )
+    .max(8)
+    .default([]),
+  legalProtectionStatus: LegalProtectionStatusSchema,
+  clinicalDeltaTable: z.array(ClinicalDeltaRowSchema).min(3).max(20),
+  economicAnalysis: EconomicAnalysisSchema,
+  coachingFeedback: CoachingFeedbackSchema,
+});
+
+export type AnalyticalEvaluation = z.infer<typeof AnalyticalEvaluationSchema>;
+
+/** @deprecated Use {@link AnalyticalEvaluationSchema}. */
+export const EvaluationSchema = AnalyticalEvaluationSchema;
+
+export type EvaluationResult = AnalyticalEvaluation & {
+  scores: {
+    clinical: number;
+    legal: number;
+    exams: number;
+    economy: number;
+    empathy: number;
+  };
+  scoreBreakdown: ScoreBreakdown;
+  resolvedExams: ExamPayload[];
+  examBudgetEuro: number;
+  totalExamCostEuro: number;
+};
+
+export type ChatMessage = {
+  role: "system" | "user" | "assistant";
+  content: string;
+};
+
+export type ExamPayload = {
+  id: string;
+  name: string;
+  cost: number;
+  timeMinutes: number;
+};
+
+export type EvaluateSimulationInput = {
+  chatHistory: ChatMessage[];
+  exams: ExamPayload[];
+  reportText: string;
+  caseContext?: string;
+  finalDiagnosis?: string;
+  guidelines: RelevantGuidelines;
+  difficulty?: CaseDifficulty;
+  specialty?: string;
+  examBudgetEuro?: number;
+  baselineExamFindings?: unknown;
+  examCatalog?: Record<string, ExamClinicalMeta>;
+  goldStandardPath?: string[];
+};
+
+export type GenerateObjectFn = typeof generateObject;
+
+export type EvaluationServiceDeps = {
+  generateObject: GenerateObjectFn;
+  getEvaluationModel: () => LanguageModel;
+  logger: Logger;
+};
+
+const EMPTY_REPORT_FALLBACK = "Nessun referto scritto inserito dal medico.";
+const MAX_CHAT_MESSAGES = 48;
+const MAX_CHAT_MESSAGE_CHARS = 1500;
+
+export function normalizeReportText(reportText: string | undefined | null): string {
+  const trimmed = reportText?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : EMPTY_REPORT_FALLBACK;
+}
+
+export function sanitizeChatHistory(chatHistory: ChatMessage[] | undefined): ChatMessage[] {
+  if (!Array.isArray(chatHistory)) return [];
+
+  return chatHistory
+    .filter(
+      (m) =>
+        (m.role === "user" || m.role === "assistant") &&
+        typeof m.content === "string" &&
+        m.content.trim().length > 0,
+    )
+    .map((m) => ({
+      role: m.role,
+      content:
+        m.role === "user"
+          ? sanitizeForExternalAI(m.content.trim().slice(0, MAX_CHAT_MESSAGE_CHARS))
+          : m.content.trim().slice(0, MAX_CHAT_MESSAGE_CHARS),
+    }))
+    .slice(-MAX_CHAT_MESSAGES);
+}
+
+export function computeTotalScore(scores: EvaluationResult["scores"]): number {
+  return (scores.clinical + scores.legal + scores.exams + scores.economy + scores.empathy) / 5;
+}
+
+export function buildDeterministicEvaluation(
+  analytical: AnalyticalEvaluation,
+  params: {
+    exams: ExamPayload[];
+    examBudgetEuro: number;
+    examCatalog?: Record<string, ExamClinicalMeta>;
+  },
+): Pick<
+  EvaluationResult,
+  "scores" | "scoreBreakdown" | "resolvedExams" | "examBudgetEuro" | "totalExamCostEuro"
+> {
+  const { exams: resolvedExams, totalCostEuro } = resolveExamCostsFromCatalog(
+    params.exams,
+    params.examCatalog ?? {},
+  );
+
+  const { scores, breakdown } = deriveDimensionScores({
+    criticalActions: analytical.criticalActions,
+    inappropriateActions: analytical.inappropriateActions,
+    empathyChecklist: analytical.empathyChecklist,
+    legalInstrumentReviews: analytical.legalInstrumentReviews,
+    totalCostEuro,
+    budgetEuro: params.examBudgetEuro,
+  });
+
+  return {
+    scores,
+    scoreBreakdown: breakdown,
+    resolvedExams,
+    examBudgetEuro: params.examBudgetEuro,
+    totalExamCostEuro: totalCostEuro,
+  };
+}
+
+function buildDifficultyInstructions(difficulty?: CaseDifficulty): string {
+  switch (difficulty) {
+    case "EASY":
+      return `
+MODALITÀ DIFFICOLTÀ: EASY
+- Identifica almeno 4-6 azioni critiche fondamentali.
+- penaltyWeight per inappropriateActions: 15-30 per errori evidenti.`.trim();
+    case "HARD":
+      return `
+MODALITÀ DIFFICOLTÀ: HARD
+- Valuta ragionamento clinico complesso; criticalLevel=MEDIUM per step non vitali.
+- penaltyWeight moderati (5-20) se giustificati dal contesto.`.trim();
+    default:
+      return `MODALITÀ DIFFICOLTÀ: MEDIUM — bilancia rigore e costruttività.`.trim();
+  }
+}
+
+function buildSpecialtyPersona(specialty?: string): string {
+  const label = specialty?.trim() || "Medicina Clinica";
+  return `RUOLO: Primario di ${label}, valutatore clinico-medico-legale d'élite.
+Compila checklist oggettive e analisi strutturate; NON assegnare punteggi numerici (calcolati dal server).`;
+}
+
+function buildSystemPrompt(params: {
+  caseContext?: string;
+  guidelines: RelevantGuidelines;
+  retrievedLegalText: string;
+  retrievedProtocolText: string;
+  retrievedLegalSources: string[];
+  difficulty?: CaseDifficulty;
+  specialty?: string;
+  examBudgetEuro: number;
+  goldStandardPath?: string[];
+}): string {
+  const {
+    caseContext,
+    guidelines,
+    retrievedLegalText,
+    retrievedProtocolText,
+    retrievedLegalSources,
+    difficulty,
+    specialty,
+    examBudgetEuro,
+    goldStandardPath,
+  } = params;
+
+  const goldBlock =
+    goldStandardPath?.length ?
+      `GOLD STANDARD (percorso obbligatorio):\n${goldStandardPath.map((s, i) => `${i + 1}. ${s}`).join("\n")}`
+    : "GOLD STANDARD: non definito — costruisci clinicalDeltaTable da linee guida e best practice.";
+
+  return `
+Sei un valutatore clinico-medico-legale IterMed di livello élite. Compila TUTTI i campi dello schema JSON con precisione spietata.
+
+${buildSpecialtyPersona(specialty)}
+${buildDifficultyInstructions(difficulty)}
+
+CONTESTO CASO: """${caseContext || "N/D"}"""
+BUDGET ESAMI TARGET: €${examBudgetEuro}
+
+${goldBlock}
+
+CORPUS LEGALE (${guidelines.legal.source}) — CITA NOMI FILE in referenceDocuments:
+"""${retrievedLegalText}"""
+
+FONTI RAG LEGALI:
+${retrievedLegalSources.map((s) => `- ${s}`).join("\n") || "- Nessuna"}
+
+PROTOCOLLI CLINICI:
+"""${retrievedProtocolText}"""
+
+ISTRUZIONI ANALITICHE (OBBLIGATORIE):
+
+1) criticalActions / inappropriateActions / empathyChecklist / legalInstrumentReviews — come prima.
+
+2) legalProtectionStatus:
+   - status: PROTECTED se documentazione e percorso difendibile; PARTIALLY_EXPOSED se lacune; HIGHLY_EXPOSED se violazioni gravi.
+   - justification: cita articoli/norme dal corpus legale caricato (Gelli-Bianco, consenso, cartella, ecc.).
+   - referenceDocuments: nomi esatti dei file RAG citati.
+
+3) clinicalDeltaTable — una riga per ogni tappa Gold Standard o azione protocollo chiave:
+   - protocolAction: cosa richiede il Gold Standard / linea guida.
+   - userAction: cosa ha fatto il medico (da chat + referto + esami).
+   - status: MET | MISSED | DELAYED (ritardo clinicamente significativo).
+   - penaltyOrBonusReason: spiegazione quantitativa/qualitativa dello scostamento.
+
+4) economicAnalysis — usa costi reali degli esami dal catalogo DB:
+   - targetBudget / actualSpent (somma costi esami richiesti).
+   - unnecessaryExpenses: esami superflui con costo € e motivazione.
+   - missedRequiredExams: esami necessari NON richiesti con costo stimato e motivazione.
+
+5) coachingFeedback — consigli actionable per pilastro: empatia, tutelaLegale, economicita, accuratezza.
+
+Sii rigoroso: evidenzia errori, ritardi, sprechi economici e gap medico-legali. NON inventare punteggi numerici globali.
+`.trim();
+}
+
+function buildUserPrompt(params: {
+  guidelines: RelevantGuidelines;
+  finalDiagnosis?: string;
+  caseContext?: string;
+  chatHistory: ChatMessage[];
+  exams: ExamPayload[];
+  reportText: string;
+  difficulty?: CaseDifficulty;
+  specialty?: string;
+  examBudgetEuro: number;
+  totalExamCostEuro: number;
+  goldStandardPath?: string[];
+}): string {
+  const {
+    guidelines,
+    finalDiagnosis,
+    caseContext,
+    chatHistory,
+    exams,
+    reportText,
+    difficulty,
+    specialty,
+    examBudgetEuro,
+    totalExamCostEuro,
+    goldStandardPath,
+  } = params;
+
+  return `
+QUERY RAG: """${guidelines.query}"""
+DIAGNOSI FINALE MEDICO: """${finalDiagnosis ?? ""}"""
+SPECIALITÀ: """${specialty?.trim() || "N/D"}"""
+DIFFICOLTÀ: """${difficulty ?? "MEDIUM"}"""
+CONTESTO: """${caseContext ?? "N/D"}"""
+
+GOLD STANDARD ATTESO:
+${goldStandardPath?.map((s, i) => `${i + 1}. ${s}`).join("\n") || "Non definito nel caso."}
+
+TRASCRIZIONE CHAT (analizza ogni scelta clinica):
+${chatHistory.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n") || "Nessun messaggio."}
+
+ESAMI RICHIESTI (costi da catalogo DB — usali in economicAnalysis):
+${exams.map((e) => `- [${e.id}] ${e.name}: €${e.cost.toFixed(2)}, ${e.timeMinutes} min`).join("\n") || "Nessun esame."}
+COSTO TOTALE CATALOGO: €${totalExamCostEuro.toFixed(2)} | BUDGET TARGET: €${examBudgetEuro}
+
+REFERTO SCRITTO:
+"""${reportText}"""
+
+Compila clinicalDeltaTable confrontando RIGIDAMENTE userAction vs Gold Standard e protocolli RAG.
+Quantifica economicAnalysis con i costi sopra. legalProtectionStatus deve citare il corpus legale.
+`.trim();
+}
+
+export class EvaluationService {
+  constructor(private readonly deps: EvaluationServiceDeps) {}
+
+  async evaluateSimulation(input: EvaluateSimulationInput): Promise<EvaluationResult> {
+    const sanitizedChat = sanitizeChatHistory(input.chatHistory);
+    const normalizedReport = normalizeReportText(input.reportText);
+
+    const examBudgetEuro =
+      input.examBudgetEuro ??
+      resolveExamBudgetEuro(input.difficulty, input.baselineExamFindings);
+
+    const { totalCostEuro } = resolveExamCostsFromCatalog(
+      input.exams,
+      input.examCatalog ?? {},
+    );
+
+    const retrievedLegalText =
+      input.guidelines.legal.combinedText ||
+      "Nessun estratto legale recuperato.";
+    const retrievedProtocolText =
+      input.guidelines.protocol.combinedText ||
+      "Nessun estratto protocollo recuperato.";
+
+    try {
+      const evalStartedAt = Date.now();
+      const { object: analytical } = await this.deps.generateObject({
+        model: this.deps.getEvaluationModel(),
+        schema: AnalyticalEvaluationSchema,
+        temperature: 0,
+        system: buildSystemPrompt({
+          caseContext: input.caseContext,
+          guidelines: input.guidelines,
+          retrievedLegalText,
+          retrievedProtocolText,
+          retrievedLegalSources: input.guidelines.legal.sources,
+          difficulty: input.difficulty,
+          specialty: input.specialty,
+          examBudgetEuro,
+          goldStandardPath: input.goldStandardPath,
+        }),
+        prompt: buildUserPrompt({
+          guidelines: input.guidelines,
+          finalDiagnosis: input.finalDiagnosis,
+          caseContext: input.caseContext,
+          chatHistory: sanitizedChat,
+          exams: input.exams,
+          reportText: normalizedReport,
+          difficulty: input.difficulty,
+          specialty: input.specialty,
+          examBudgetEuro,
+          totalExamCostEuro: totalCostEuro,
+          goldStandardPath: input.goldStandardPath,
+        }),
+      });
+
+      const analyticalWithEconomics = {
+        ...analytical,
+        economicAnalysis: {
+          ...analytical.economicAnalysis,
+          targetBudget: examBudgetEuro,
+          actualSpent: totalCostEuro,
+        },
+      };
+
+      const deterministic = buildDeterministicEvaluation(analyticalWithEconomics, {
+        exams: input.exams,
+        examBudgetEuro,
+        examCatalog: input.examCatalog,
+      });
+
+      this.deps.logger.info("Simulation evaluation completed (deterministic scoring)", {
+        scores: deterministic.scores,
+        totalExamCostEuro: deterministic.totalExamCostEuro,
+        examBudgetEuro,
+        durationMs: Date.now() - evalStartedAt,
+      });
+
+      return { ...analyticalWithEconomics, ...deterministic };
+    } catch (error) {
+      this.deps.logger.error("Simulation evaluation failed", { error });
+      throw AIServiceError.fromUnknown(error);
+    }
+  }
+}
+
+export function createEvaluationService(
+  overrides: Partial<EvaluationServiceDeps> = {},
+): EvaluationService {
+  return new EvaluationService({
+    generateObject: overrides.generateObject ?? generateObject,
+    getEvaluationModel: overrides.getEvaluationModel ?? (() => openai("gpt-4o")),
+    logger: overrides.logger ?? createLogger("evaluation-service"),
+  });
+}
+
+const defaultEvaluationService = createEvaluationService();
+
+export const evaluationService = defaultEvaluationService;
+
+export function evaluateSimulation(input: EvaluateSimulationInput): Promise<EvaluationResult> {
+  return defaultEvaluationService.evaluateSimulation(input);
+}

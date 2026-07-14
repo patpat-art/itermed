@@ -1,17 +1,17 @@
 import { Pinecone, type Index } from "@pinecone-database/pinecone";
+import { config } from "@/lib/config";
 
 export type PineconeIndex = Index<Record<string, string | number | boolean | string[]>>;
 
 let cachedClient: Pinecone | null = null;
 
 export function getPineconeClient(): Pinecone | null {
-  const apiKey = process.env.PINECONE_API_KEY;
-  if (!apiKey) {
+  if (!config.isPineconeConfigured || !config.PINECONE_API_KEY) {
     return null;
   }
 
   if (!cachedClient) {
-    cachedClient = new Pinecone({ apiKey });
+    cachedClient = new Pinecone({ apiKey: config.PINECONE_API_KEY });
   }
 
   return cachedClient;
@@ -19,12 +19,10 @@ export function getPineconeClient(): Pinecone | null {
 
 export function getPineconeIndex(): PineconeIndex | null {
   const client = getPineconeClient();
-  const indexName = process.env.PINECONE_INDEX;
 
-  if (!client || !indexName) {
+  if (!client || !config.PINECONE_INDEX) {
     return null;
   }
 
-  return client.index(indexName);
+  return client.index(config.PINECONE_INDEX);
 }
-

@@ -1,7 +1,13 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { isDevAuthBypass } from "../../lib/require-user";
 import { LoginForm } from "./LoginForm";
 
 export default function LoginPage() {
+  if (isDevAuthBypass()) {
+    redirect("/dashboard");
+  }
+
   return (
     <Suspense
       fallback={

@@ -1,17 +1,13 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
-import { prisma } from "./prisma";
-
-const secret =
-  process.env.NEXTAUTH_SECRET ||
-  process.env.AUTH_SECRET ||
-  "itermed-dev-secret-set-NEXTAUTH_SECRET-for-production";
+import { config } from "@/lib/config";
+import { prisma } from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
-  secret,
+  secret: config.AUTH_SECRET,
   providers: [
     CredentialsProvider({
       name: "credentials",

@@ -1,6 +1,5 @@
 import { revalidatePath } from "next/cache";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../../../lib/auth-options";
+import { requireUser } from "../../../lib/require-user";
 import { prisma } from "../../../lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
 import { Button } from "../../ui/button";
@@ -8,8 +7,8 @@ import { Button } from "../../ui/button";
 async function setUserRole(formData: FormData) {
   "use server";
 
-  const session = await getServerSession(authOptions);
-  const actorId = session?.user?.id;
+  const user = await requireUser();
+  const actorId = user.id;
   if (!actorId) return;
 
   const userId = formData.get("userId");
@@ -27,8 +26,8 @@ async function setUserRole(formData: FormData) {
 }
 
 export default async function AdminUsersPage() {
-  const session = await getServerSession(authOptions);
-  const currentUserId = session?.user?.id ?? null;
+  const user = await requireUser();
+  const currentUserId = user.id;
 
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "desc" },

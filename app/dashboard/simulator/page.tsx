@@ -1,39 +1,85 @@
-import Link from "next/link";
-import { prisma } from "../../../lib/prisma";
-import { visibleCasesWhere } from "../../../lib/access";
+import { Suspense } from "react";
+import { config } from "../../../lib/config";
 import { requireUser } from "../../../lib/require-user";
+import {
+  fetchFilteredClinicalCases,
+  fetchMedicalSpecialtyOptions,
+  parseCaseDifficulty,
+  type CaseFilterParams,
+} from "../../../lib/dashboard-queries";
+import { CaseFilters } from "../../../components/dashboard/CaseFilters";
+import { ClinicalCaseGrid } from "../../../components/dashboard/ClinicalCaseGrid";
+import { type ClinicalCaseRow } from "../../../components/dashboard/ClinicalCaseCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
-import { Badge } from "../../ui/badge";
 
-export default async function DashboardSimulatorPage() {
+type DashboardSimulatorPageProps = {
+  searchParams?:
+    | Promise<{ specialtyId?: string; specialty?: string; difficulty?: string }>
+    | { specialtyId?: string; specialty?: string; difficulty?: string };
+};
+
+const DEMO_CASES = (userId: string): ClinicalCaseRow[] => [
+  {
+    id: "cs_001",
+    title: "Dolore toracico in PS",
+    specialty: "Emergenza",
+    difficulty: "MEDIUM",
+    createdById: "seed",
+    isGlobal: true,
+  },
+  {
+    id: "cs_002",
+    title: "Febbre persistente in paziente anziano",
+    specialty: "Medicina interna",
+    difficulty: "EASY",
+    createdById: userId,
+    isGlobal: false,
+  },
+];
+
+function filterDemoCases(cases: ClinicalCaseRow[], filters: CaseFilterParams): ClinicalCaseRow[] {
+  return cases.filter((c) => {
+    if (filters.difficulty && c.difficulty !== filters.difficulty) return false;
+    if (filters.specialtyId || filters.specialtyName) {
+      const specialtyName = c.medicalSpecialty?.name ?? c.specialty ?? "";
+      const target = filters.specialtyName ?? filters.specialtyId ?? "";
+      if (specialtyName.toLowerCase() !== target.toLowerCase()) return false;
+    }
+    return true;
+  });
+}
+
+export default async function DashboardSimulatorPage({ searchParams }: DashboardSimulatorPageProps) {
   const user = await requireUser();
-  const hasDatabase = Boolean(process.env.DATABASE_URL);
-  let cases:
-    | {
-        id: string;
-        title: string;
-        specialty: string | null;
-        difficulty: string;
-        createdById: string;
-        isGlobal: boolean;
-        deck: { title: string } | null;
-      }[]
-    | null = null;
+  const hasDatabase = Boolean(config.DATABASE_URL);
+  const resolvedSearch =
+    searchParams && "then" in searchParams ? await searchParams : searchParams;
+
+  const filters: CaseFilterParams = {
+    specialtyId: resolvedSearch?.specialtyId,
+    specialtyName: resolvedSearch?.specialty,
+    difficulty: parseCaseDifficulty(resolvedSearch?.difficulty),
+  };
+
+  let cases: ClinicalCaseRow[] | null = null;
+  let specialties: { id: string; name: string }[] = [];
 
   if (hasDatabase) {
     try {
-      const rows = await prisma.clinicalCase.findMany({
-        where: visibleCasesWhere(user.id),
-        orderBy: { updatedAt: "desc" },
-        include: { deck: true },
-        take: 12,
-      });
-      cases = rows;
+      const [caseRows, specialtyRows] = await Promise.all([
+        fetchFilteredClinicalCases(user.id, filters, 30),
+        fetchMedicalSpecialtyOptions(),
+      ]);
+      cases = caseRows as ClinicalCaseRow[];
+      specialties = specialtyRows;
     } catch {
-      // se Prisma fallisce (db non pronto), restiamo sui casi demo
       cases = null;
     }
   }
+
+  const source = cases ?? filterDemoCases(DEMO_CASES(user.id), filters);
+  const globalCases = source.filter((c) => c.isGlobal);
+  const personalCases = source.filter((c) => !c.isGlobal && c.createdById === user.id);
 
   return (
     <div className="flex flex-col gap-6">
@@ -45,87 +91,42 @@ export default async function DashboardSimulatorPage() {
         </p>
       </header>
 
+      {hasDatabase && specialties.length > 0 ? (
+        <Suspense fallback={<p className="text-xs text-zinc-500">Caricamento filtri…</p>}>
+          <CaseFilters specialties={specialties} resultCount={source.length} />
+        </Suspense>
+      ) : null}
+
       <Card className="bg-white/80 border-zinc-200/80">
         <CardHeader>
           <CardTitle className="text-sm font-medium text-zinc-950">Scegli un caso</CardTitle>
-          <CardDescription>Globali per tutti + individuali personali.</CardDescription>
+          <CardDescription>
+            {source.length} {source.length === 1 ? "caso" : "casi"} disponibili con i filtri attivi.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="text-sm">
-          {(() => {
-            const source =
-              cases ??
-              [
-                {
-                  id: "cs_001",
-                  title: "Dolore toracico in PS",
-                  specialty: "Emergenza",
-                  difficulty: "MEDIUM",
-                  createdById: "seed",
-                  isGlobal: true,
-                  deck: { title: "Core – Urgenze" },
-                },
-                {
-                  id: "cs_002",
-                  title: "Febbre persistente in paziente anziano",
-                  specialty: "Medicina interna",
-                  difficulty: "EASY",
-                  createdById: user.id,
-                  isGlobal: false,
-                  deck: null,
-                },
-              ];
-
-            const globalCases = source.filter((c) => c.isGlobal);
-            const personalCases = source.filter((c) => !c.isGlobal && c.createdById === user.id);
-            const renderRow = (c: (typeof source)[number]) => (
-              <Link
-                key={c.id}
-                href={`/case/${c.id}`}
-                className="flex items-center justify-between gap-4 py-3 rounded-2xl px-2 -mx-2 hover:bg-zinc-100 transition-colors"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-zinc-950">{c.title}</p>
-                  <p className="text-xs text-zinc-500">
-                    {c.specialty ?? "Specialità N/D"}
-                    {c.isGlobal
-                      ? c.deck?.title
-                        ? ` · Globale · ${c.deck.title}`
-                        : " · Globale"
-                      : " · Individuale"}
-                  </p>
-                </div>
-                <Badge className="shrink-0">{String(c.difficulty)}</Badge>
-              </Link>
-            );
-
-            return (
-              <div className="space-y-4">
-                <section>
-                  <p className="text-xs font-medium text-zinc-600 mb-1.5">Globali (tutti)</p>
-                  <div className="divide-y divide-zinc-200/80">
-                    {globalCases.length === 0 ? (
-                      <p className="text-xs text-zinc-500 py-2">Nessun caso globale disponibile.</p>
-                    ) : (
-                      globalCases.map(renderRow)
-                    )}
-                  </div>
-                </section>
-                <section>
-                  <p className="text-xs font-medium text-zinc-600 mb-1.5">I tuoi casi individuali</p>
-                  <div className="divide-y divide-zinc-200/80">
-                    {personalCases.length === 0 ? (
-                      <p className="text-xs text-zinc-500 py-2">Non hai casi individuali.</p>
-                    ) : (
-                      personalCases.map(renderRow)
-                    )}
-                  </div>
-                </section>
-              </div>
-            );
-          })()}
+        <CardContent className="text-sm space-y-8">
+          <section>
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-3">
+              Globali (tutti)
+            </p>
+            <ClinicalCaseGrid
+              cases={globalCases}
+              mode="link"
+              emptyMessage="Nessun caso globale con questi filtri."
+            />
+          </section>
+          <section>
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-3">
+              I tuoi casi individuali
+            </p>
+            <ClinicalCaseGrid
+              cases={personalCases}
+              mode="link"
+              emptyMessage="Nessun caso individuale con questi filtri."
+            />
+          </section>
         </CardContent>
       </Card>
     </div>
   );
 }
-

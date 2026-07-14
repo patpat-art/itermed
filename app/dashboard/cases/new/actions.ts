@@ -188,7 +188,6 @@ export async function createCase(formData: FormData) {
         typeof pastHistory === "string" && pastHistory.trim() ? pastHistory.trim() : null,
       correctSolution:
         typeof correctSolution === "string" && correctSolution.trim() ? correctSolution.trim() : null,
-      deckId: null,
       createdById: user.id,
       isGlobal: canPublishGlobal && formData.get("isGlobal") === "on",
       baselineExamFindings,
@@ -204,5 +203,5 @@ export async function createCase(formData: FormData) {
     },
   });
 
-  redirect("/dashboard/decks");
+  redirect("/dashboard/cases");
 }

@@ -73,6 +73,9 @@ export async function POST(req: Request) {
       economicSustainability: 0,
       empathy: 0,
       totalScore: 0,
+      status: "COMPLETED",
+      progress: 100,
+      progressMessage: "Report pronto!",
       completedAt: new Date(),
       notes:
         "Caso abbandonato dall'utente (Dismiss case): tutti i punteggi registrati a 0 per policy IterMed.",

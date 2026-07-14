@@ -2,8 +2,10 @@ import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { prisma } from "../../../../lib/prisma";
-import { userCanPlayCase } from "../../../../lib/access";
+import { assertUserCanPlayCase } from "../../../../lib/access";
 import { getSessionUserId } from "../../../../lib/api-session";
+import { assertCanStartSimulation, gateToResponse } from "@/lib/billing/access-gate";
+import { getUserBillingProfile } from "@/lib/billing/user-billing";
 
 const bodySchema = z.object({
   caseId: z.string().min(1),
@@ -27,12 +29,20 @@ export async function POST(req: Request) {
   const json = await req.json();
   const { caseId, mode } = bodySchema.parse(json);
 
-  const allowed = await userCanPlayCase(userId, caseId);
-  if (!allowed) {
-    return new Response(JSON.stringify({ error: "Forbidden" }), {
-      status: 403,
+  const accessDenied = await assertUserCanPlayCase(userId, caseId);
+  if (accessDenied) return accessDenied;
+
+  const billingProfile = await getUserBillingProfile(userId);
+  if (!billingProfile) {
+    return new Response(JSON.stringify({ error: "User not found" }), {
+      status: 404,
       headers: { "Content-Type": "application/json" },
     });
+  }
+
+  const simGate = assertCanStartSimulation(billingProfile);
+  if (!simGate.allowed) {
+    return gateToResponse(simGate);
   }
 
   const clinicalCase = await prisma.clinicalCase.findUnique({

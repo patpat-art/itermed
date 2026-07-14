@@ -28,7 +28,6 @@ export async function GET(
     where: { id: caseId },
     include: {
       nodes: { orderBy: { order: "asc" }, take: 1 },
-      deck: true,
     },
   });
 
@@ -52,7 +51,6 @@ export async function GET(
       specialty: clinicalCase.specialty,
       difficulty: clinicalCase.difficulty,
       estimatedDurationMinutes: clinicalCase.estimatedDurationMinutes,
-      deckTitle: clinicalCase.deck?.title ?? null,
       casePrompt,
     }),
     {

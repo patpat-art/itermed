@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "./auth-options";
+import { authOptions } from "@/lib/auth-options";
+import { config } from "@/lib/config";
 
 export type SessionUser = {
   id: string;
@@ -9,7 +10,44 @@ export type SessionUser = {
   role: string;
 };
 
+const DEV_MOCK_USER: SessionUser = {
+  id: "mock-dev-user-id",
+  email: "test@itermed.com",
+  name: "Dev User",
+  role: "ADMIN",
+};
+
+export function isDevAuthBypass(): boolean {
+  return config.isDevelopment;
+}
+
+export function getDevMockUser(): SessionUser {
+  return DEV_MOCK_USER;
+}
+
+export async function requireAdmin(): Promise<SessionUser> {
+  if (isDevAuthBypass()) {
+    return getDevMockUser();
+  }
+
+  const session = await getServerSession(authOptions);
+  const id = session?.user?.id;
+  if (!id) redirect("/login?callbackUrl=/admin/knowledge");
+  if (session.user.role !== "ADMIN") redirect("/dashboard");
+
+  return {
+    id,
+    email: session.user.email ?? null,
+    name: session.user.name ?? null,
+    role: session.user.role ?? "STUDENT",
+  };
+}
+
 export async function requireUser(): Promise<SessionUser> {
+  if (isDevAuthBypass()) {
+    return getDevMockUser();
+  }
+
   const session = await getServerSession(authOptions);
   const id = session?.user?.id;
   if (!id) redirect("/login");

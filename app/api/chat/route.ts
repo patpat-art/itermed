@@ -1,8 +1,33 @@
-import { prisma } from "../../../lib/prisma";
-import { getSessionUserId } from "../../../lib/api-session";
-import { verifyLiveSessionOwner } from "../../../lib/access";
-import { generatePatientResponse } from "../../../lib/simulator/generatePatientResponse";
-import { buildPatientSimulatorCaseInput } from "../../../lib/simulator/patientCaseContext";
+import { getSessionUserId } from "@/lib/api-session";
+import { verifyLiveSessionOwner } from "@/lib/access";
+import {
+  assertAllowedChatModel,
+  assertCanSendChatMessage,
+  assertCanStartSimulation,
+  gateToResponse,
+  resolveChatModel,
+} from "@/lib/billing/access-gate";
+import { getUserBillingProfile } from "@/lib/billing/user-billing";
+import { createLogger } from "@/lib/logger";
+import { prisma } from "@/lib/prisma";
+import { sanitizeUserMessagesForAI } from "@/lib/security/sanitize-for-ai";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { buildPatientSimulatorCaseInput } from "@/lib/simulator/patientCaseContext";
+import { generatePatientResponse } from "@/lib/simulator/generatePatientResponse";
+import { persistChatTurn } from "@/lib/simulator/persist-chat-turn";
+import {
+  buildDeteriorationInstruction,
+  computeElapsedMinutesFromExams,
+  inferCompletedGoldSteps,
+  isGoldStandardMet,
+  parseExamLatencies,
+  parseGoldStandardPath,
+} from "@/lib/cases/simulation-time";
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
+const chatLogger = createLogger("chat-api");
 
 type ChatBody = Record<string, unknown> & {
   messages?: unknown;
@@ -10,6 +35,9 @@ type ChatBody = Record<string, unknown> & {
   sessionId?: unknown;
   patientStress?: unknown;
   caseId?: unknown;
+  requestedExamIds?: unknown;
+  completedGoldSteps?: unknown;
+  model?: unknown;
 };
 
 type ChatTurn = { role: "user" | "assistant" | "system"; content: string };
@@ -28,6 +56,20 @@ function normalizeChatMessages(raw: unknown): ChatTurn[] {
   ) as ChatTurn[];
 }
 
+function getLastUserMessage(messages: ChatTurn[]): string | undefined {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (messages[i].role === "user" && messages[i].content.trim()) {
+      return messages[i].content.trim();
+    }
+  }
+  return undefined;
+}
+
+function parseStringArray(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+}
+
 export async function POST(req: Request) {
   const userId = await getSessionUserId();
   if (!userId) {
@@ -37,22 +79,120 @@ export async function POST(req: Request) {
     });
   }
 
-  const body = (await req.json()) as ChatBody;
-  const { messages, casePrompt, sessionId, patientStress, caseId } = body;
+  const rateLimited = enforceRateLimit(req, {
+    namespace: "api-chat",
+    limit: 15,
+    userId,
+  });
+  if (rateLimited) return rateLimited;
+
+  const billingProfile = await getUserBillingProfile(userId);
+  if (!billingProfile) {
+    return new Response(JSON.stringify({ error: "User not found" }), {
+      status: 404,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  let body: ChatBody;
+  try {
+    body = (await req.json()) as ChatBody;
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const { messages, casePrompt, sessionId, patientStress, caseId, requestedExamIds, completedGoldSteps, model } = body;
   const stressClamped = clampStress(patientStress);
+  const chatMessagesPreview = normalizeChatMessages(messages);
+
+  const chatGate = assertCanSendChatMessage(billingProfile, chatMessagesPreview);
+  if (!chatGate.allowed) {
+    return gateToResponse(chatGate);
+  }
+
+  const simGate = assertCanStartSimulation(billingProfile);
+  if (!simGate.allowed) {
+    return gateToResponse(simGate);
+  }
+
+  const modelGate = assertAllowedChatModel(billingProfile, model);
+  if (!modelGate.allowed) {
+    return gateToResponse(modelGate);
+  }
+
+  const chatModel = resolveChatModel(billingProfile);
+
+  const liveSessionId =
+    typeof sessionId === "string" && sessionId.trim().length > 0 ? sessionId.trim() : null;
+  const clientRequestedExams = parseStringArray(requestedExamIds);
+  const clientGoldSteps = parseStringArray(completedGoldSteps);
 
   let sessionVariantPrompt: string | null = null;
-  if (sessionId) {
-    const ok = await verifyLiveSessionOwner(String(sessionId), userId);
+  let elapsedMinutes = 0;
+  let deteriorationInstruction: string | null = null;
+
+  if (liveSessionId) {
+    const ok = await verifyLiveSessionOwner(liveSessionId, userId);
     if (!ok) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { "Content-Type": "application/json" },
       });
     }
-    const session = await prisma.caseSession.findUnique({ where: { id: String(sessionId) } });
+    const session = await prisma.caseSession.findUnique({
+      where: { id: liveSessionId },
+      include: {
+        case: {
+          select: {
+            examLatencies: true,
+            goldStandardPath: true,
+            patientDeteriorationThreshold: true,
+          },
+        },
+      },
+    });
+
     if (session?.variantPrompt) {
       sessionVariantPrompt = session.variantPrompt;
+    }
+
+    if (session?.case) {
+      const examLatencies = parseExamLatencies(session.case.examLatencies);
+      const goldPath = parseGoldStandardPath(session.case.goldStandardPath);
+      const mergedExamIds = [
+        ...new Set([...session.requestedExamIds, ...clientRequestedExams]),
+      ];
+
+      elapsedMinutes = computeElapsedMinutesFromExams(mergedExamIds, examLatencies);
+
+      const chatMessagesForInference = chatMessagesPreview;
+      const lastUserMessage = getLastUserMessage(chatMessagesForInference);
+
+      const inferredGold = inferCompletedGoldSteps({
+        goldStandardPath: goldPath,
+        requestedExamIds: mergedExamIds,
+        clientCompletedSteps: [...session.completedGoldSteps, ...clientGoldSteps],
+        lastUserMessage,
+      });
+
+      const goldMet = isGoldStandardMet(goldPath, inferredGold);
+      deteriorationInstruction = buildDeteriorationInstruction({
+        elapsedMinutes,
+        threshold: session.case.patientDeteriorationThreshold,
+        goldStandardMet: goldMet,
+      });
+
+      await prisma.caseSession.update({
+        where: { id: liveSessionId },
+        data: {
+          elapsedMinutes,
+          requestedExamIds: mergedExamIds,
+          completedGoldSteps: inferredGold,
+        },
+      });
     }
   }
 
@@ -60,6 +200,9 @@ export async function POST(req: Request) {
     description: string;
     correctSolution: string | null;
     baselineExamFindings: unknown;
+    examLatencies?: unknown;
+    goldStandardPath?: unknown;
+    patientDeteriorationThreshold?: number | null;
   } | null = null;
 
   if (caseId && typeof caseId === "string" && caseId.trim()) {
@@ -69,10 +212,31 @@ export async function POST(req: Request) {
         description: true,
         correctSolution: true,
         baselineExamFindings: true,
+        examLatencies: true,
+        goldStandardPath: true,
+        patientDeteriorationThreshold: true,
       },
     });
     if (row) {
       clinicalCase = row;
+
+      if (!liveSessionId) {
+        const examLatencies = parseExamLatencies(row.examLatencies);
+        const goldPath = parseGoldStandardPath(row.goldStandardPath);
+        elapsedMinutes = computeElapsedMinutesFromExams(clientRequestedExams, examLatencies);
+        const chatMessagesForInference = chatMessagesPreview;
+        const inferredGold = inferCompletedGoldSteps({
+          goldStandardPath: goldPath,
+          requestedExamIds: clientRequestedExams,
+          clientCompletedSteps: clientGoldSteps,
+          lastUserMessage: getLastUserMessage(chatMessagesForInference),
+        });
+        deteriorationInstruction = buildDeteriorationInstruction({
+          elapsedMinutes,
+          threshold: row.patientDeteriorationThreshold,
+          goldStandardMet: isGoldStandardMet(goldPath, inferredGold),
+        });
+      }
     }
   }
 
@@ -89,12 +253,50 @@ export async function POST(req: Request) {
     };
   }
 
-  const chatMessages = normalizeChatMessages(messages);
+  if (deteriorationInstruction) {
+    caseData = {
+      ...caseData,
+      deteriorationInstruction,
+      patientStress: Math.max(caseData.patientStress, 85),
+    };
+  }
 
-  const result = generatePatientResponse({
-    caseData,
-    messages: chatMessages,
+  const chatMessages = sanitizeUserMessagesForAI(chatMessagesPreview);
+  const lastUserMessage = getLastUserMessage(chatMessages);
+
+  chatLogger.info("Patient chat stream started", {
+    userId,
+    sessionId: liveSessionId ?? undefined,
+    caseId: typeof caseId === "string" ? caseId : undefined,
+    messageCount: chatMessages.length,
+    patientStress: stressClamped,
+    chatModel,
+    planType: billingProfile.planType,
+    elapsedMinutes,
+    deteriorating: Boolean(deteriorationInstruction),
   });
 
-  return result.toDataStreamResponse();
+  const stream = generatePatientResponse({
+    caseData,
+    messages: chatMessages,
+    model: chatModel,
+    onFinish: liveSessionId
+      ? async ({ text }) => {
+          try {
+            await persistChatTurn({
+              sessionId: liveSessionId,
+              userMessage: lastUserMessage,
+              assistantMessage: text,
+            });
+          } catch (error) {
+            chatLogger.error("Async chat persistence failed", {
+              error,
+              sessionId: liveSessionId,
+            });
+          }
+        }
+      : undefined,
+  });
+
+  return stream.toDataStreamResponse();
 }

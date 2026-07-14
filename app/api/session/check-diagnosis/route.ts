@@ -4,6 +4,10 @@ import { z } from "zod";
 import { prisma } from "../../../../lib/prisma";
 import { getSessionUserId } from "../../../../lib/api-session";
 import { userCanPlayCase, verifyLiveSessionOwner } from "../../../../lib/access";
+import { isDevAuthBypass } from "../../../../lib/require-user";
+import { sanitizeForExternalAI } from "@/lib/security/sanitize-for-ai";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../../../lib/auth-options";
 
 export const runtime = "nodejs";
 
@@ -27,6 +31,22 @@ function normalizeText(input: string): string {
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+async function isRequestingUserAdmin(): Promise<boolean> {
+  if (isDevAuthBypass()) return true;
+
+  const session = await getServerSession(authOptions);
+  return session?.user?.role === "ADMIN";
+}
+
+function stripExpectedConditionIfNeeded<T extends { expectedCondition?: string }>(
+  payload: T,
+  includeExpected: boolean,
+): T {
+  if (includeExpected) return payload;
+  const { expectedCondition: _omit, ...rest } = payload;
+  return rest as T;
 }
 
 export async function POST(req: Request) {
@@ -89,7 +109,8 @@ export async function POST(req: Request) {
     (session as any)?.variantSolution ??
     (clinicalCase.correctSolution ?? "");
   const expected = String(expectedRaw ?? "").trim();
-  const userDx = diagnosisText.trim();
+  const userDx = sanitizeForExternalAI(diagnosisText.trim());
+  const includeExpectedCondition = await isRequestingUserAdmin();
 
   // Heuristic first: if the user diagnosis is a clear substring (or vice versa), treat as correct.
   // This prevents obvious correct diagnoses (e.g. "appendicite") from being marked wrong.
@@ -98,11 +119,16 @@ export async function POST(req: Request) {
   if (nExpected && nUser) {
     if (nExpected.includes(nUser) || nUser.includes(nExpected)) {
       return new Response(
-        JSON.stringify({
-          isCorrect: true,
-          rationale: "Match testuale evidente tra diagnosi e soluzione attesa.",
-          expectedCondition: expected ? expected : undefined,
-        }),
+        JSON.stringify(
+          stripExpectedConditionIfNeeded(
+            {
+              isCorrect: true,
+              rationale: "Match testuale evidente tra diagnosi e soluzione attesa.",
+              expectedCondition: expected ? expected : undefined,
+            },
+            includeExpectedCondition,
+          ),
+        ),
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
     }
@@ -150,9 +176,12 @@ DIAGNOSI INSERITA DALL'UTENTE:
 `.trim(),
   });
 
-  return new Response(JSON.stringify(object), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+  return new Response(
+    JSON.stringify(stripExpectedConditionIfNeeded(object, includeExpectedCondition)),
+    {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    },
+  );
 }
 

@@ -1,9 +1,13 @@
 import { openai } from "@ai-sdk/openai";
 import { embedMany } from "ai";
 import { z } from "zod";
-import { getPineconeIndex } from "../../../../lib/pinecone";
-import { requireAdminApi } from "../../../../lib/require-admin-api";
-import { prisma } from "../../../../lib/prisma";
+import { config } from "@/lib/config";
+import { createLogger } from "@/lib/logger";
+import { getPineconeIndex } from "@/lib/pinecone";
+import { requireAdminApi } from "@/lib/require-admin-api";
+import { prisma } from "@/lib/prisma";
+
+const ingestGuidelinesLogger = createLogger("ingest-guidelines");
 
 const IngestBodySchema = z.object({
   title: z.string().min(1),
@@ -19,7 +23,7 @@ export async function POST(req: Request) {
   if (denied) return denied;
 
   const index = getPineconeIndex();
-  if (!index) {
+  if (!index || !config.isPineconeConfigured) {
     return new Response(
       JSON.stringify({
         error:
@@ -104,10 +108,10 @@ export async function POST(req: Request) {
     }
 
     try {
-      console.log("Pinecone guidelines upsert records length:", records.length);
+      ingestGuidelinesLogger.info("Pinecone guidelines upsert", { recordCount: records.length });
       await index.namespace(namespace).upsert({ records });
-    } catch (err: any) {
-      console.error("Pinecone upsert failed for guidelines:", err?.message ?? err);
+    } catch (err: unknown) {
+      ingestGuidelinesLogger.error("Pinecone upsert failed for guidelines", { error: err });
       return new Response(
         JSON.stringify({
           status: "partial",
