@@ -7,22 +7,26 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis,
   Radar,
+  Legend,
 } from "recharts";
 
 export type RadarDatum = {
   metric: string;
   score: number;
+  target?: number;
 };
 
 export function ResultsRadarClient({ data }: { data: RadarDatum[] }) {
+  const chartData = data.map((d) => ({
+    ...d,
+    target: d.target ?? 100,
+  }));
+
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <RadarChart data={data} outerRadius="75%">
+      <RadarChart data={chartData} outerRadius="72%">
         <PolarGrid radialLines={false} stroke="#E2E8F0" />
-        <PolarAngleAxis
-          dataKey="metric"
-          tick={{ fill: "#64748B", fontSize: 11 }}
-        />
+        <PolarAngleAxis dataKey="metric" tick={{ fill: "#64748B", fontSize: 11 }} />
         <PolarRadiusAxis
           angle={90}
           domain={[0, 100]}
@@ -30,14 +34,26 @@ export function ResultsRadarClient({ data }: { data: RadarDatum[] }) {
           tickCount={6}
         />
         <Radar
-          name="Score"
+          name="Target"
+          dataKey="target"
+          stroke="#CBD5E1"
+          fill="#E2E8F0"
+          fillOpacity={0.25}
+          strokeDasharray="4 4"
+        />
+        <Radar
+          name="Performance"
           dataKey="score"
           stroke="#345884"
           fill="#345884"
-          fillOpacity={0.18}
+          fillOpacity={0.22}
+        />
+        <Legend
+          verticalAlign="bottom"
+          height={28}
+          wrapperStyle={{ fontSize: 11, color: "#64748B" }}
         />
       </RadarChart>
     </ResponsiveContainer>
   );
 }
-

@@ -142,7 +142,7 @@ export default async function DashboardGuidelinesPage() {
       <p className="text-xs text-zinc-500">
         Gestione completa (attiva/disattiva, elimina):{" "}
         <Link href="/admin/knowledge" className="underline hover:text-zinc-800">
-          Pannello Linee Guida Admin
+          Pannello gestione documenti
         </Link>
         .
       </p>

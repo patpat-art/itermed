@@ -22,6 +22,7 @@ import { Textarea } from "@/app/ui/textarea";
 import { Button } from "@/app/ui/button";
 import { Badge } from "@/app/ui/badge";
 import { cn } from "@/app/utils/cn";
+import { Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 
 const STEPS = [
   { id: 1, label: "Anagrafica", icon: UserRound },
@@ -335,6 +336,12 @@ export function CaseCreatorWizard({ canPublishGlobal = false }: CaseCreatorWizar
               )}
             </Button>
           </div>
+          {aiGenerating ? (
+            <div className="space-y-2 rounded-xl border border-border bg-ui-bg/80 p-3" role="status">
+              <Skeleton className="h-3 w-40" />
+              <SkeletonText lines={4} />
+            </div>
+          ) : null}
           {aiMessage ? (
             <p
               className={cn(

@@ -32,6 +32,10 @@ const nextConfig: NextConfig = {
       { source: "/dashboard/simulator", destination: "/dashboard/prassi", permanent: false },
       { source: "/dashboard/simulator/:path*", destination: "/dashboard/prassi", permanent: false },
       { source: "/dashboard/cases/new", destination: "/dashboard/cases/create", permanent: false },
+      { source: "/dashboard/statistics", destination: "/dashboard/analytics", permanent: false },
+      { source: "/dashboard/statistics/:path*", destination: "/dashboard/analytics", permanent: false },
+      { source: "/dashboard/classifiche", destination: "/dashboard/analytics", permanent: false },
+      { source: "/dashboard/classifiche/:path*", destination: "/dashboard/analytics", permanent: false },
     ];
   },
   async headers() {

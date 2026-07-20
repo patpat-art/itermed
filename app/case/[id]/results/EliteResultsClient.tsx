@@ -28,6 +28,7 @@ import { MetricBar } from "./MetricBar";
 import { ScoreProgressRing } from "./ScoreProgressRing";
 import { ResultsRadarClient, type RadarDatum } from "./ResultsRadarClient";
 import { EconomicBudgetGauge } from "./EconomicBudgetGauge";
+import { GoldStandardCompare } from "./GoldStandardCompare";
 
 type RadarDatumWithKey = RadarDatum & { key?: string };
 
@@ -120,27 +121,6 @@ function legalShieldConfig(status: LegalProtectionStatus["status"]) {
         badge: "bg-rose-100 text-rose-800 border-rose-200",
         accent: "text-rose-700",
       };
-  }
-}
-
-function deltaStatusBadge(status: ClinicalDeltaRow["status"]) {
-  switch (status) {
-    case "MET":
-      return (
-        <Badge className="border-slate-200 bg-slate-50 text-[10px] text-[#345884]">
-          Conforme
-        </Badge>
-      );
-    case "DELAYED":
-      return (
-        <Badge className="border-amber-200 bg-amber-50 text-[10px] text-amber-900">
-          In ritardo
-        </Badge>
-      );
-    default:
-      return (
-        <Badge className="border-rose-200 bg-rose-50 text-[10px] text-rose-800">Omesso</Badge>
-      );
   }
 }
 
@@ -259,13 +239,13 @@ export function EliteResultsClient({
       ) : null}
 
       {/* ═══════════════════════════════════════════════════
-          D. GRID — Plancia 5 pilastri + Bilancio
+          D. GRID — Executive plancia + Bilancio
           ═══════════════════════════════════════════════════ */}
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-stretch">
         {/* D1 — Plancia dei 5 Pilastri */}
-        <Card className="rounded-2xl border-slate-100 bg-white shadow-sm lg:col-span-7 xl:col-span-8">
+        <Card className="rounded-xl border-border bg-panel-bg shadow-aequan-panel lg:col-span-7 xl:col-span-8">
           <CardHeader className="pb-3">
-            <CardTitle className="font-display text-sm font-bold tracking-tight text-[#1E324E]">
+            <CardTitle className="font-display text-sm font-bold tracking-tight text-brand-primary">
               Plancia dei 5 Pilastri
             </CardTitle>
             <CardDescription className="text-xs text-slate-500">
@@ -280,7 +260,7 @@ export function EliteResultsClient({
                 return (
                   <div
                     key={pillar.key}
-                    className="flex flex-col items-center rounded-2xl border border-slate-100 bg-slate-50/40 px-2 py-4"
+                    className="flex flex-col items-center rounded-xl border border-border bg-ui-bg/80 px-2 py-4"
                   >
                     <ScoreProgressRing
                       compact
@@ -294,7 +274,7 @@ export function EliteResultsClient({
               })}
             </div>
 
-            <div className="space-y-4 border-t border-slate-100 pt-5">
+            <div className="space-y-4 border-t border-border-subtle pt-5">
               {PILLARS.map((pillar) => (
                 <MetricBar
                   key={`bar-${pillar.key}`}
@@ -304,11 +284,11 @@ export function EliteResultsClient({
               ))}
             </div>
 
-            <div className="border-t border-slate-100 pt-5">
+            <div className="border-t border-border-subtle pt-5">
               <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                Radar competenze
+                Radar competenze vs target
               </p>
-              <div className="h-72 w-full rounded-xl border border-slate-100 bg-slate-50/40 p-2">
+              <div className="h-80 w-full rounded-xl border border-border bg-ui-bg/60 p-2">
                 <ResultsRadarClient data={radarData} />
               </div>
             </div>
@@ -318,13 +298,13 @@ export function EliteResultsClient({
         {/* D2 — Bilancio Economico */}
         <Card
           className={cn(
-            "rounded-2xl shadow-sm lg:col-span-5 xl:col-span-4",
-            "border border-[#345884]/10 bg-[#345884]/5",
+            "rounded-xl shadow-aequan-panel lg:col-span-5 xl:col-span-4",
+            "border border-brand-secondary/15 bg-brand-secondary/[0.04]",
           )}
         >
           <CardHeader>
-            <CardTitle className="font-display flex items-center gap-2 text-sm font-bold tracking-tight text-[#1E324E]">
-              <Euro className="h-4 w-4 text-[#345884]" />
+            <CardTitle className="font-display flex items-center gap-2 text-sm font-bold tracking-tight text-brand-primary">
+              <Euro className="h-4 w-4 text-brand-secondary" />
               Bilancio economico SSN
             </CardTitle>
             <CardDescription className="text-xs text-slate-500">
@@ -334,7 +314,7 @@ export function EliteResultsClient({
           <CardContent className="space-y-4">
             {economicAnalysis ? (
               <>
-                <div className="rounded-xl border border-white/80 bg-white/90 p-4">
+                <div className="rounded-xl border border-white/80 bg-white/90 p-4 shadow-sm">
                   <EconomicBudgetGauge
                     targetBudget={economicAnalysis.targetBudget}
                     actualSpent={economicAnalysis.actualSpent}
@@ -354,7 +334,7 @@ export function EliteResultsClient({
                 ) : null}
               </>
             ) : (
-              <p className="rounded-xl border border-dashed border-slate-200 bg-white/60 px-4 py-8 text-center text-xs text-slate-500">
+              <p className="rounded-xl border border-dashed border-border bg-white/60 px-4 py-8 text-center text-xs text-slate-500">
                 Bilancio economico non disponibile per questa sessione.
               </p>
             )}
@@ -362,57 +342,9 @@ export function EliteResultsClient({
         </Card>
       </section>
 
-      {/* ── E. Delta Clinico ── */}
+      {/* ── E. Gold Standard side-by-side ── */}
       {clinicalDeltaTable.length > 0 ? (
-        <Card className="overflow-hidden rounded-2xl border-slate-100 bg-white shadow-sm">
-          <CardHeader>
-            <CardTitle className="font-display text-sm font-bold text-[#1E324E]">
-              Tabella Delta Clinico
-            </CardTitle>
-            <CardDescription className="text-xs text-slate-500">
-              Confronto Gold Standard vs azioni del medico.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/80 text-left text-[10px] uppercase tracking-wide text-slate-500">
-                    <th className="px-4 py-2.5 font-medium">Protocollo</th>
-                    <th className="px-4 py-2.5 font-medium">Azione utente</th>
-                    <th className="px-4 py-2.5 font-medium">Stato</th>
-                    <th className="px-4 py-2.5 font-medium">Motivazione</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {clinicalDeltaTable.map((row, idx) => (
-                    <tr
-                      key={idx}
-                      className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50"
-                    >
-                      <td className="px-4 py-3 align-top font-medium text-slate-800">
-                        {row.protocolAction}
-                      </td>
-                      <td
-                        className={cn(
-                          "px-4 py-3 align-top text-slate-600",
-                          row.status === "MISSED" &&
-                            "text-rose-700/80 line-through decoration-rose-400",
-                        )}
-                      >
-                        {row.userAction || "—"}
-                      </td>
-                      <td className="px-4 py-3 align-top">{deltaStatusBadge(row.status)}</td>
-                      <td className="px-4 py-3 align-top leading-relaxed text-slate-600">
-                        <SafeLlmText as="span">{row.penaltyOrBonusReason}</SafeLlmText>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+        <GoldStandardCompare rows={clinicalDeltaTable} />
       ) : null}
 
       {/* ── F. Spese / Esami mancati ── */}

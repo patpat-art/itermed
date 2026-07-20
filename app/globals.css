@@ -17,6 +17,11 @@
   --aequan-status-safe: #345884;
   --aequan-status-warn: #f39c12;
   --aequan-status-risk: #c0392b;
+
+  /* Multiparameter monitor status (true clinical green/amber/red) */
+  --aequan-monitor-stable: #22c55e;
+  --aequan-monitor-warn: #f59e0b;
+  --aequan-monitor-critical: #ef4444;
 }
 
 @theme inline {
@@ -36,6 +41,9 @@
   --color-status-safe: #345884;
   --color-status-warn: #f39c12;
   --color-status-risk: #c0392b;
+  --color-monitor-stable: #22c55e;
+  --color-monitor-warn: #f59e0b;
+  --color-monitor-critical: #ef4444;
   --color-score-excellent: #345884;
   --color-score-warning: #f39c12;
   --color-score-risk: #c0392b;

@@ -12,13 +12,15 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="border-b border-slate-200 pb-4">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-indigo-800/70">
-          Performance Hub · IterMed
+      <header className="border-b border-border pb-4">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-secondary">
+          Performance Hub · Aequan
         </p>
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900 mt-1">Analytics</h1>
-        <p className="text-sm text-slate-600 mt-1 max-w-2xl">
-          Profilo performance personale, registro comparativo nazionale e analisi longitudinale delle
+        <h1 className="mt-1 font-display text-xl font-semibold tracking-tight text-brand-primary">
+          Analytics & Classifiche
+        </h1>
+        <p className="mt-1 max-w-2xl text-sm text-slate-600">
+          Profilo performance, registro classifiche, radar competenze e analisi longitudinale delle
           simulazioni cliniche completate.
         </p>
       </header>

@@ -36,6 +36,8 @@ import { handleTextareaEnterSubmit } from "@/lib/hooks/textarea-submit";
 import { Badge } from "../../app/ui/badge";
 import { PhysicalExamTab } from "./PhysicalExamTab";
 import { PatientStressBar } from "./PatientStressBar";
+import { SafeLlmText } from "@/components/ui/safe-llm-content";
+import { SkeletonChatBubble } from "@/components/ui/Skeleton";
 import { VitalSignsBoard } from "./VitalSignsBoard";
 import {
   ClinicalDischargeReportPanel,
@@ -313,7 +315,7 @@ export function SimulatorClient({
   const router = useRouter();
 
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"history" | "exam" | "tests">("history");
+  const [activeTab, setActiveTab] = useState<"history" | "exam" | "labs" | "imaging">("history");
   const [selectedExamIds, setSelectedExamIds] = useState<string[]>([]);
   const selectedExamIdsRef = useRef<string[]>([]);
   const [isPatientChartOpen, setIsPatientChartOpen] = useState(false);
@@ -396,7 +398,7 @@ export function SimulatorClient({
   useEffect(() => {
     const onClinicalAction = (event: Event) => {
       const action = (event as CustomEvent<{ action?: string }>).detail?.action;
-      if (action === "prescribe") setActiveTab("tests");
+      if (action === "prescribe") setActiveTab("labs");
       if (action === "consult") setActiveTab("history");
       if (action === "diagnose") {
         /* scroll handled by workspace shell */
@@ -1186,17 +1188,17 @@ export function SimulatorClient({
         <div className="grid grid-cols-1 gap-6 p-4 md:p-6 lg:grid-cols-12 lg:items-start">
           {/* Left — Anamnesi / Chat / Esami */}
           <div id="aequan-sim-chat" className="flex flex-col gap-4 lg:col-span-7 xl:col-span-8">
-            <Card className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-md">
-              <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/70">
+            <Card className="overflow-hidden rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
+              <CardHeader className="flex flex-col gap-3 border-b border-border-subtle bg-ui-bg/80 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <CardTitle className="font-display text-sm font-bold tracking-tight text-[#1E324E]">
-                    Interfaccia clinica
+                  <CardTitle className="font-display text-sm font-bold tracking-tight text-brand-primary">
+                    Cartella clinica elettronica
                   </CardTitle>
                   <CardDescription className="text-xs text-slate-500">
-                    Alterna tra anamnesi, esame obiettivo e richieste di esami.
+                    Anamnesi, esame obiettivo, laboratorio e imaging.
                   </CardDescription>
                 </div>
-                <TabsList>
+                <TabsList className="flex flex-wrap">
                   <TabsTrigger
                     value="history"
                     currentValue={activeTab}
@@ -1212,11 +1214,18 @@ export function SimulatorClient({
                     Esame obiettivo
                   </TabsTrigger>
                   <TabsTrigger
-                    value="tests"
+                    value="labs"
                     currentValue={activeTab}
                     onSelect={(value) => setActiveTab(value as typeof activeTab)}
                   >
-                    Richiesta esami
+                    Laboratorio
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="imaging"
+                    currentValue={activeTab}
+                    onSelect={(value) => setActiveTab(value as typeof activeTab)}
+                  >
+                    Imaging
                   </TabsTrigger>
                 </TabsList>
               </CardHeader>
@@ -1242,7 +1251,7 @@ export function SimulatorClient({
                       onExamResult={handleExamFinding}
                     />
                   </TabsContent>
-                  <TabsContent value="tests" currentValue={activeTab} className="mt-3">
+                  <TabsContent value="labs" currentValue={activeTab} className="mt-3">
                     <ExamsPanel
                       selectedExamIds={selectedExamIds}
                       onToggleExam={toggleExam}
@@ -1250,6 +1259,18 @@ export function SimulatorClient({
                       examCatalog={examCatalog}
                       examMacroCatalog={examMacroCatalog}
                       availableExams={availableExams}
+                      macroFilter={["lab"]}
+                    />
+                  </TabsContent>
+                  <TabsContent value="imaging" currentValue={activeTab} className="mt-3">
+                    <ExamsPanel
+                      selectedExamIds={selectedExamIds}
+                      onToggleExam={toggleExam}
+                      caseExamValues={caseAdvancedExamValues}
+                      examCatalog={examCatalog}
+                      examMacroCatalog={examMacroCatalog}
+                      availableExams={availableExams}
+                      macroFilter={["img", "strum", "endo"]}
                     />
                   </TabsContent>
                 </Tabs>
@@ -1259,7 +1280,7 @@ export function SimulatorClient({
 
           {/* Right — Cartella Clinica & Decisioni */}
           <div id="aequan-sim-exams" className="flex flex-col gap-4 lg:col-span-5 xl:col-span-4">
-            <div className="flex min-h-[500px] flex-col justify-between rounded-2xl border border-slate-200/60 bg-white/95 p-5 shadow-sm transition-all duration-300 hover:shadow-md">
+            <div className="flex min-h-[500px] flex-col justify-between rounded-xl border border-border bg-panel-bg p-5 shadow-aequan-panel transition-shadow duration-300 hover:shadow-md">
               <div>
                 <div className="flex items-start gap-2.5">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#1E324E]/5 text-[#345884]">
@@ -1941,6 +1962,16 @@ function HistoryChat({
             </div>
           );
         })}
+        {isLoading ? (
+          <div className="flex justify-start">
+            <div className="flex max-w-[78%] items-end gap-2.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 ring-2 ring-white shadow-sm">
+                <User className="h-4 w-4 text-slate-500" />
+              </div>
+              <SkeletonChatBubble />
+            </div>
+          </div>
+        ) : null}
       </div>
       <form
         ref={formRef}
@@ -1986,6 +2017,8 @@ type ExamsPanelProps = {
   examCatalog: Record<string, ExamClinicalMeta>;
   examMacroCatalog: ExamMacroCategory[];
   availableExams: Exam[];
+  /** When set, only these macro category ids are shown (e.g. lab / img). */
+  macroFilter?: string[];
 };
 
 type ExamSelectionCardProps = {
@@ -2041,9 +2074,15 @@ function ExamsPanel({
   examCatalog,
   examMacroCatalog,
   availableExams,
+  macroFilter,
 }: ExamsPanelProps) {
+  const macros = useMemo(() => {
+    if (!macroFilter?.length) return examMacroCatalog;
+    return examMacroCatalog.filter((m) => macroFilter.includes(m.id));
+  }, [examMacroCatalog, macroFilter]);
+
   const [query, setQuery] = useState("");
-  const [openMacroId, setOpenMacroId] = useState<string | null>(examMacroCatalog[0]?.id ?? null);
+  const [openMacroId, setOpenMacroId] = useState<string | null>(macros[0]?.id ?? null);
   const [openGroupIds, setOpenGroupIds] = useState<Record<string, string | null>>({});
   const macroVisuals: Record<string, { short: string; icon: ComponentType<{ className?: string }> }> = {
     lab: { short: "Lab", icon: FlaskConical },
@@ -2052,6 +2091,12 @@ function ExamsPanel({
     endo: { short: "Endo", icon: TestTube2 },
   };
   const selectedSet = useMemo(() => new Set(selectedExamIds), [selectedExamIds]);
+
+  useEffect(() => {
+    if (!macros.some((m) => m.id === openMacroId)) {
+      setOpenMacroId(macros[0]?.id ?? null);
+    }
+  }, [macros, openMacroId]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -2123,7 +2168,7 @@ function ExamsPanel({
         ) : (
           <div className="space-y-2">
             <div className="mb-2 flex flex-wrap items-center gap-1.5 rounded-2xl border border-zinc-200/80 bg-zinc-100/70 p-1.5">
-              {examMacroCatalog.map((macro) => {
+              {macros.map((macro) => {
                 const Icon = macroVisuals[macro.id]?.icon ?? FlaskConical;
                 const short = macroVisuals[macro.id]?.short ?? macro.label;
                 const active = openMacroId === macro.id;
@@ -2145,7 +2190,7 @@ function ExamsPanel({
                 );
               })}
             </div>
-            {examMacroCatalog.filter((macro) => macro.id === openMacroId).map((macro) => (
+            {macros.filter((macro) => macro.id === openMacroId).map((macro) => (
               <div key={macro.id} className="rounded-2xl border border-zinc-200/80 bg-white p-2 space-y-2">
                 {macro.groups.length === 1 ? (
                   <div className="px-1 pb-1 space-y-1.5">

@@ -66,14 +66,14 @@ export function LiveAequanClinicalWorkspace({
   };
 
   return (
-    <div className="min-h-dvh flex flex-col bg-ui-bg text-text-primary">
+    <div className="flex min-h-dvh flex-col bg-ui-bg text-text-primary">
       <AequanNavbar
         navLinks={LIVE_NAV}
         sticky
         trailing={
           <Link
             href={backHref}
-            className="aequan-interactive inline-flex items-center gap-1.5 rounded-aequan border border-border bg-panel-bg px-3 py-2 text-xs font-medium text-text-primary hover:bg-ui-bg"
+            className="aequan-interactive inline-flex items-center gap-1.5 rounded-xl border border-border bg-panel-bg px-3 py-2 text-xs font-medium text-text-primary hover:bg-ui-bg"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Libreria casi
@@ -81,26 +81,31 @@ export function LiveAequanClinicalWorkspace({
         }
       />
 
-      <div className="border-b border-border bg-panel-bg px-4 md:px-6 py-3">
+      <div className="border-b border-border bg-panel-bg px-4 py-3 shadow-sm md:px-6">
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-base font-semibold text-text-primary">{caseMeta.title}</h1>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-secondary">
+              Workspace clinico
+            </p>
+            <h1 className="font-display text-base font-semibold text-text-primary">{caseMeta.title}</h1>
             <p className="mt-0.5 text-xs text-text-secondary">
               {caseMeta.specialty?.trim() || "Specialità non specificata"} · Paziente {ageLabel} (
               {sexLabel}) · {caseMeta.caseId.slice(0, 8).toUpperCase()}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge className="rounded-aequan border-brand-primary/30 bg-brand-primary/10 text-[10px] text-brand-primary">
+            <Badge className="rounded-xl border-brand-primary/30 bg-brand-primary/10 text-[10px] text-brand-primary">
               Sessione clinica live
             </Badge>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-2 p-3 md:p-4">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3 p-3 md:p-4">
         <ClinicalActionBar onAction={handleAction} />
-        <div className="min-h-0 flex-1">{children}</div>
+        <div className="min-h-0 flex-1 rounded-xl border border-border bg-panel-bg/40 p-2 shadow-aequan-panel md:p-3">
+          {children}
+        </div>
       </div>
     </div>
   );
