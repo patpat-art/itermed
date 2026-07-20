@@ -28,7 +28,7 @@ export function LegalPageShell({ title, lastUpdated, children }: LegalPageShellP
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-          Documento legale · bozza / placeholder
+          Documento legale
         </p>
         <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-[#2F4156] sm:text-3xl">
           {title}
@@ -38,11 +38,6 @@ export function LegalPageShell({ title, lastUpdated, children }: LegalPageShellP
         <article className="prose-legal mt-8 space-y-6 text-sm leading-relaxed text-slate-700">
           {children}
         </article>
-
-        <p className="mt-10 rounded-xl border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-xs text-amber-950">
-          Questo testo è un segnaposto. Sostituiscilo con i documenti definitivi (es. Iubenda o consulenza
-          legale) prima del lancio commerciale.
-        </p>
       </main>
     </div>
   );

@@ -12,8 +12,20 @@ export default function PrivacyPage() {
     <LegalPageShell title="Privacy Policy (GDPR)" lastUpdated="20 luglio 2026">
       <LegalSection title="1. Titolare del trattamento">
         <p>
-          [PLACEHOLDER — Ragione sociale, sede, P. IVA, email del Titolare e, se nominato, del DPO /
-          Responsabile della protezione dei dati.]
+          Il <strong>Titolare del trattamento</strong> dei dati personali è{" "}
+          <strong>Christopher Uguzzoni</strong>, con sede / residenza in{" "}
+          <strong>Pavullo nel Frignano (MO), Italia</strong>, Codice Fiscale{" "}
+          <strong>GZZCRS01T12G393M</strong>.
+        </p>
+        <p>
+          Contatto per privacy e esercizio dei diritti:{" "}
+          <a
+            href="mailto:chris01.ugo@gmail.com"
+            className="font-mono text-xs font-medium text-[#1E324E] underline-offset-2 hover:underline"
+          >
+            chris01.ugo@gmail.com
+          </a>
+          . Al momento non è stato nominato un Responsabile della protezione dei dati (DPO).
         </p>
       </LegalSection>
 
@@ -60,9 +72,17 @@ export default function PrivacyPage() {
 
       <LegalSection title="4. Destinatari e trasferimenti">
         <p>
-          [PLACEHOLDER — Elencare fornitori (hosting, database Neon, autenticazione, Stripe,
-          OpenAI/Pinecone per funzionalità AI, email) e indicare se i dati lasciano lo SEE, con
-          garanzie (SCC, decisioni di adeguatezza, ecc.).]
+          I dati possono essere trattati, per conto del Titolare e nei limiti delle finalità
+          indicate, da fornitori di servizi tecnici indispensabili all&apos;erogazione della
+          Piattaforma, tra cui: hosting e infrastruttura cloud, database (Neon), servizi di
+          autenticazione, elaborazione pagamenti (Stripe, se attivata), modelli e infrastrutture
+          AI (es. OpenAI, Pinecone) per le funzionalità di simulazione e recupero documentale.
+        </p>
+        <p>
+          Ove un trattamento comporti trasferimento di dati personali al di fuori dello Spazio
+          Economico Europeo, il Titolare adotta garanzie adeguate ai sensi del GDPR (decisioni di
+          adeguatezza della Commissione europea, Clausole Contrattuali Standard o misure
+          equivalenti).
         </p>
       </LegalSection>
 
@@ -81,7 +101,13 @@ export default function PrivacyPage() {
           reclamo all&apos;Autorità Garante per la protezione dei dati personali.
         </p>
         <p>
-          Contatto privacy: <span className="font-mono text-xs">[privacy@example.com]</span>
+          Contatto privacy:{" "}
+          <a
+            href="mailto:chris01.ugo@gmail.com"
+            className="font-mono text-xs font-medium text-[#1E324E] underline-offset-2 hover:underline"
+          >
+            chris01.ugo@gmail.com
+          </a>
         </p>
       </LegalSection>
 
@@ -95,7 +121,11 @@ export default function PrivacyPage() {
 
       <LegalSection title="8. Minori">
         <p>
-          [PLACEHOLDER — Indicare età minima di utilizzo / consenso genitoriale se applicabile.]
+          La Piattaforma è destinata esclusivamente a{" "}
+          <strong>studenti di medicina e professionisti sanitari</strong> che abbiano compiuto{" "}
+          <strong>18 anni</strong>. Non raccogliamo consapevolmente dati di minori di 18 anni. Se
+          venisse a conoscenza di un account creato da un minore, il Titolare provvederà alla
+          cancellazione senza indebito ritardo.
         </p>
       </LegalSection>
 
