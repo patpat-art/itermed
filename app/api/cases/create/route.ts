@@ -3,6 +3,8 @@ import { getSessionUserId } from "@/lib/api-session";
 import { AdvancedCaseCreateSchema } from "@/lib/cases/case-creator-schemas";
 import { requireAuthApi } from "@/lib/cases/require-teacher-api";
 import { prisma } from "@/lib/prisma";
+import { AI_RATE_LIMITS } from "@/lib/security/ai-rate-limits";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -35,6 +37,13 @@ export async function POST(request: Request) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rateLimited = await enforceRateLimit(request, {
+    namespace: "api-cases-create",
+    limit: AI_RATE_LIMITS.casesCreate,
+    userId,
+  });
+  if (rateLimited) return rateLimited;
 
   let json: unknown;
   try {

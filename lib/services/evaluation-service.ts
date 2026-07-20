@@ -24,6 +24,7 @@ import {
   type ScoreBreakdown,
 } from "@/lib/services/evaluation-scoring";
 import { sanitizeForExternalAI } from "@/lib/security/sanitize-for-ai";
+import { AI_PROMPT_INJECTION_GUARD } from "@/lib/security/ai-prompt-guards";
 
 const criticalActionSchema = z.object({
   description: z.string().max(200),
@@ -266,6 +267,8 @@ function buildSystemPrompt(params: {
 
   return `
 Sei un valutatore clinico-medico-legale IterMed di livello élite. Compila TUTTI i campi dello schema JSON con precisione spietata.
+
+${AI_PROMPT_INJECTION_GUARD}
 
 ${buildSpecialtyPersona(specialty)}
 ${buildDifficultyInstructions(difficulty)}

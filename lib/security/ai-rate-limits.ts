@@ -1,4 +1,4 @@
-/** Shared per-minute limits for OpenAI-backed API routes (in-memory limiter). */
+/** Shared per-minute limits for OpenAI-backed / abuse-sensitive API routes. */
 export const AI_RATE_LIMITS = {
   /** Max chat turns per user per minute — protects LLM API keys from abuse. */
   chat: 10,
@@ -10,6 +10,9 @@ export const AI_RATE_LIMITS = {
   sessionStartVariant: 3,
   examine: 20,
   generateExams: 8,
+  generateCaseFields: 8,
+  casesCreate: 10,
+  casesRead: 60,
   checkDiagnosis: 15,
   sessionOutcome: 10,
   sessionComplication: 10,

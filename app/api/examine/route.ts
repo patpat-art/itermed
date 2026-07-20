@@ -5,6 +5,8 @@ import { prisma } from "../../../lib/prisma";
 import { getSessionUserId } from "../../../lib/api-session";
 import { userCanPlayCase, verifyLiveSessionOwner } from "../../../lib/access";
 import { sanitizeForExternalAI } from "@/lib/security/sanitize-for-ai";
+import { AI_RATE_LIMITS } from "@/lib/security/ai-rate-limits";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const bodySchema = z.object({
   sessionId: z.string().optional(),
@@ -27,6 +29,13 @@ export async function POST(req: Request) {
       headers: { "Content-Type": "application/json" },
     });
   }
+
+  const rateLimited = await enforceRateLimit(req, {
+    namespace: "api-examine",
+    limit: AI_RATE_LIMITS.examine,
+    userId,
+  });
+  if (rateLimited) return rateLimited;
 
   const json = await req.json();
   const parsed = bodySchema.parse(json);

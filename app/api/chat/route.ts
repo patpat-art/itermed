@@ -16,6 +16,7 @@ import {
   shouldRejectUserChatInput,
 } from "@/lib/security/prompt-injection-guard";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { AI_RATE_LIMITS } from "@/lib/security/ai-rate-limits";
 import { buildPatientSimulatorCaseInput } from "@/lib/simulator/patientCaseContext";
 import { generatePatientResponse } from "@/lib/simulator/generatePatientResponse";
 import { persistChatTurn } from "@/lib/simulator/persist-chat-turn";
@@ -85,7 +86,7 @@ export async function POST(req: Request) {
 
   const rateLimited = await enforceRateLimit(req, {
     namespace: "api-chat",
-    limit: 15,
+    limit: AI_RATE_LIMITS.chat,
     userId,
   });
   if (rateLimited) return rateLimited;

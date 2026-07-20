@@ -5,6 +5,9 @@ import { EXAM_DEFAULT_VALUES } from "@/lib/exam-default-values";
 import { createLogger } from "@/lib/logger";
 import { mergeExamProfile, parseLlmExamJson } from "@/lib/merge-exam-profile";
 import { sanitizeForExternalAI } from "@/lib/security/sanitize-for-ai";
+import { AI_RATE_LIMITS } from "@/lib/security/ai-rate-limits";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { AI_PROMPT_INJECTION_GUARD } from "@/lib/security/ai-prompt-guards";
 import { generateCaseMetadataAndObjective } from "@/lib/simulator/generate-case-metadata";
 
 const generateExamsLogger = createLogger("generate-exams");
@@ -56,6 +59,8 @@ async function runExamProfileMerge(params: {
 
   if (hasCaseBrief) {
     systemPrompt = `Sei un medico primario esperto. Il tuo compito è definire il profilo di esami di laboratorio e strumentali (referti / valori) per un simulatore medico, a partire dalla descrizione narrativa del caso fornita dall'autore.
+
+${AI_PROMPT_INJECTION_GUARD}
 
 DESCRIZIONE DEL CASO (fonte principale):
 """
@@ -159,6 +164,13 @@ export async function POST(req: Request) {
   if (!userId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rateLimited = await enforceRateLimit(req, {
+    namespace: "api-generate-exams",
+    limit: AI_RATE_LIMITS.generateExams,
+    userId,
+  });
+  if (rateLimited) return rateLimited;
 
   let body: GenerateExamsBody;
   try {

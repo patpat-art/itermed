@@ -1,9 +1,11 @@
 import { prisma } from "../../../../lib/prisma";
 import { userCanPlayCase } from "../../../../lib/access";
 import { getSessionUserId } from "../../../../lib/api-session";
+import { AI_RATE_LIMITS } from "@/lib/security/ai-rate-limits";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 export async function GET(
-  _req: Request,
+  req: Request,
   context: { params: Promise<{ id: string }> },
 ) {
   const { id: caseId } = await context.params;
@@ -15,6 +17,13 @@ export async function GET(
       headers: { "Content-Type": "application/json" },
     });
   }
+
+  const rateLimited = await enforceRateLimit(req, {
+    namespace: "api-cases-read",
+    limit: AI_RATE_LIMITS.casesRead,
+    userId,
+  });
+  if (rateLimited) return rateLimited;
 
   const allowed = await userCanPlayCase(userId, caseId);
   if (!allowed) {

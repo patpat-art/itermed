@@ -36,10 +36,12 @@ bootstrapEnvFromDisk();
 
 const normalizedEnv = {
   ...process.env,
+  // Prefer Neon pooled URLs (Vercel Neon / DATABASE_POOL_URL) for runtime Prisma.
   DATABASE_URL:
+    process.env.DATABASE_POOL_URL ??
+    process.env.POSTGRES_PRISMA_URL ??
     process.env.DATABASE_URL ??
-    process.env.POSTGRES_URL ??
-    process.env.POSTGRES_PRISMA_URL,
+    process.env.POSTGRES_URL,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? process.env.OPENAI_KEY,
 };
 

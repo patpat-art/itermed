@@ -6,6 +6,8 @@ import { requireAuthApi } from "@/lib/cases/require-teacher-api";
 import { createLogger } from "@/lib/logger";
 import { sanitizeForExternalAI } from "@/lib/security/sanitize-for-ai";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { AI_RATE_LIMITS } from "@/lib/security/ai-rate-limits";
+import { AI_PROMPT_INJECTION_GUARD } from "@/lib/security/ai-prompt-guards";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -49,7 +51,7 @@ export async function POST(req: Request) {
   const userId = await getSessionUserId();
   const rateLimited = await enforceRateLimit(req, {
     namespace: "api-generate-case-fields",
-    limit: 8,
+    limit: AI_RATE_LIMITS.generateCaseFields,
     userId,
   });
   if (rateLimited) return rateLimited;
@@ -84,6 +86,8 @@ export async function POST(req: Request) {
       temperature: 0.35,
       system: `Sei un medico primario esperto che progetta casi clinici per un simulatore formativo medico-legale (AEQUAN).
 Dato un breve testo riassuntivo, genera un profilo di caso completo, coerente e realistico in italiano.
+
+${AI_PROMPT_INJECTION_GUARD}
 
 Regole:
 - Tutti i campi sono stringhe (tranne difficulty e sex che seguono lo schema).
