@@ -18,22 +18,22 @@ export function ResultsRadarClient({ data }: { data: RadarDatum[] }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <RadarChart data={data} outerRadius="75%">
-        <PolarGrid radialLines={false} stroke="#e4e4e7" />
+        <PolarGrid radialLines={false} stroke="#E2E8F0" />
         <PolarAngleAxis
           dataKey="metric"
-          tick={{ fill: "#52525b", fontSize: 11 }}
+          tick={{ fill: "#64748B", fontSize: 11 }}
         />
         <PolarRadiusAxis
           angle={90}
           domain={[0, 100]}
-          tick={{ fill: "#a1a1aa", fontSize: 10 }}
+          tick={{ fill: "#94A3B8", fontSize: 10 }}
           tickCount={6}
         />
         <Radar
           name="Score"
           dataKey="score"
-          stroke="#2563eb"
-          fill="#2563eb"
+          stroke="#345884"
+          fill="#345884"
           fillOpacity={0.18}
         />
       </RadarChart>

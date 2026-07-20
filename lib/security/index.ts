@@ -12,4 +12,8 @@ export {
   sanitizeOptionalForExternalAI,
   sanitizeUserMessagesForAI,
 } from "@/lib/security/sanitize-for-ai";
-export { enforceRateLimit } from "@/lib/security/rate-limit";
+export {
+  enforceRateLimit,
+  enforceLLMRateLimit,
+  isUpstashRateLimitConfigured,
+} from "@/lib/security/rate-limit";

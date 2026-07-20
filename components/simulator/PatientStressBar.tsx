@@ -14,39 +14,37 @@ export function PatientStressBar({ value, className }: PatientStressBarProps) {
 
   const track =
     tier === "danger"
-      ? "bg-rose-100 border-rose-200/80"
+      ? "border-rose-700/30 bg-rose-950/10 shadow-inner"
       : tier === "warning"
-        ? "bg-amber-100 border-amber-200/80"
-        : "bg-emerald-50 border-emerald-200/70";
+        ? "border-amber-300/60 bg-amber-50 shadow-inner"
+        : "border-slate-200 bg-slate-100 shadow-inner";
 
   const fill =
     tier === "danger"
-      ? "bg-gradient-to-r from-rose-500 to-red-600"
+      ? "bg-rose-600"
       : tier === "warning"
-        ? "bg-gradient-to-r from-amber-400 to-orange-500"
-        : "bg-gradient-to-r from-emerald-500 to-teal-600";
+        ? "animate-[pulse_2.8s_ease-in-out_infinite] bg-amber-500"
+        : "bg-[#345884]";
 
   const labelClass =
     tier === "danger"
-      ? "text-rose-900"
+      ? "text-rose-700"
       : tier === "warning"
-        ? "text-amber-900"
-        : "text-emerald-900";
+        ? "text-amber-800"
+        : "text-[#2F4156]";
 
   return (
     <div className={className ?? ""}>
-      <div className="flex items-center justify-between gap-2 mb-1.5">
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-700">
-          <Gauge className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-600">
+          <Gauge className="h-3.5 w-3.5 shrink-0 text-slate-500" />
           Stress / urgenza
         </span>
         <span className={`text-[11px] font-semibold tabular-nums ${labelClass}`}>{v}%</span>
       </div>
-      <div className={`h-2.5 w-full overflow-hidden rounded-full border ${track}`}>
+      <div className={`h-2.5 w-full overflow-hidden rounded-full border shadow-inner ${track}`}>
         <div
-          className={`h-full rounded-full transition-all duration-500 ease-out ${fill} ${
-            tier === "danger" ? "shadow-[0_0_12px_rgba(225,29,72,0.45)]" : ""
-          }`}
+          className={`h-full rounded-full transition-all duration-500 ease-out ${fill}`}
           style={{ width: `${v}%` }}
           role="progressbar"
           aria-valuenow={v}

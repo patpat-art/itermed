@@ -62,8 +62,14 @@ const COACH_PLAYBOOK: Record<
   },
 };
 
-function formatTrendLabel(date: Date): string {
-  return date.toLocaleDateString("it-IT", { day: "2-digit", month: "short" });
+function formatTrendLabel(date: Date, includeTime: boolean): string {
+  const day = date.toLocaleDateString("it-IT", { day: "2-digit", month: "short" });
+  if (!includeTime) return day;
+  const time = date.toLocaleTimeString("it-IT", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${day} ${time}`;
 }
 
 function buildCoachInsights(
@@ -120,11 +126,19 @@ export async function fetchStatisticsPageData(userId: string): Promise<Statistic
     empathy: Math.round(aggregates._avg.empathy ?? 0),
   };
 
-  const trend: ScoreTrendPoint[] = sessions.map((session) => {
-    const date = session.completedAt ?? session.createdAt;
+  const sessionDates = sessions.map((session) => session.completedAt ?? session.createdAt);
+  const dayCounts = new Map<string, number>();
+  for (const date of sessionDates) {
+    const key = date.toDateString();
+    dayCounts.set(key, (dayCounts.get(key) ?? 0) + 1);
+  }
+
+  const trend: ScoreTrendPoint[] = sessions.map((session, index) => {
+    const date = sessionDates[index] ?? new Date();
+    const sameDayCount = dayCounts.get(date.toDateString()) ?? 1;
     return {
       sessionId: session.id,
-      label: formatTrendLabel(date),
+      label: formatTrendLabel(date, sameDayCount > 1 || sessions.length > 8),
       averageScore: Math.round(session.totalScore ?? 0),
       clinicalAccuracy: Math.round(session.clinicalAccuracy ?? 0),
       legalCompliance: Math.round(session.legalComplianceGelliBianco ?? 0),

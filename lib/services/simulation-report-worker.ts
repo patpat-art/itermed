@@ -48,23 +48,31 @@ export async function processSimulationReportJob(input: SimulationReportJobInput
     }
 
     const prefetchStartedAt = Date.now();
-    const [clinicalCase, guidelines, examCatalog] = await Promise.all([
-      prisma.clinicalCase.findUnique({
-        where: { id: input.caseId },
-        select: {
-          difficulty: true,
-          medicalSpecialtyId: true,
-          specialty: true,
-          baselineExamFindings: true,
-          goldStandardPath: true,
-          medicalSpecialty: { select: { id: true, name: true } },
-        },
-      }),
+    // Load case first so RAG can apply a strict specialtyId filter.
+    const clinicalCase = await prisma.clinicalCase.findUnique({
+      where: { id: input.caseId },
+      select: {
+        difficulty: true,
+        medicalSpecialtyId: true,
+        specialty: true,
+        baselineExamFindings: true,
+        goldStandardPath: true,
+        medicalSpecialty: { select: { id: true, name: true } },
+      },
+    });
+
+    const specialtyId =
+      clinicalCase?.medicalSpecialtyId ?? clinicalCase?.medicalSpecialty?.id ?? undefined;
+    const specialtyName =
+      clinicalCase?.medicalSpecialty?.name ?? clinicalCase?.specialty ?? undefined;
+
+    const [guidelines, examCatalog] = await Promise.all([
       ragService.getRelevantGuidelines({
         finalDiagnosis: input.finalDiagnosis,
         caseContext: input.caseContext,
         reportText: input.normalizedReportText,
-        specialtyName: input.caseContext,
+        specialtyId,
+        specialtyName,
       }),
       getExamValuesCatalog(),
     ]);
@@ -78,8 +86,6 @@ export async function processSimulationReportJob(input: SimulationReportJobInput
       },
     });
 
-    const specialtyName =
-      clinicalCase?.medicalSpecialty?.name ?? clinicalCase?.specialty ?? undefined;
     const caseDifficulty = clinicalCase?.difficulty;
     const examBudgetEuro = resolveExamBudgetEuro(
       caseDifficulty,
@@ -90,7 +96,8 @@ export async function processSimulationReportJob(input: SimulationReportJobInput
       prefetchDurationMs,
       legalSource: guidelines.legal.source,
       protocolSource: guidelines.protocol.source,
-      specialtyName,
+      specialtyId: specialtyId ?? null,
+      specialtyName: specialtyName ?? null,
       difficulty: caseDifficulty,
       examBudgetEuro,
     });

@@ -1,4 +1,5 @@
 import type { CaseDifficulty, Prisma } from "@prisma/client";
+import { unstable_cache } from "next/cache";
 import { visibleCasesWhere } from "@/lib/access-queries";
 import { prisma } from "@/lib/prisma";
 
@@ -48,7 +49,19 @@ export async function fetchFilteredClinicalCases(
   return prisma.clinicalCase.findMany({
     where: filteredCasesWhere(userId, filters),
     orderBy: { updatedAt: "desc" },
-    include: { medicalSpecialty: true },
+    select: {
+      id: true,
+      title: true,
+      difficulty: true,
+      specialty: true,
+      isGlobal: true,
+      medicalSpecialty: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
     take,
   });
 }
@@ -60,6 +73,16 @@ export async function fetchMedicalSpecialtyOptions() {
     select: { id: true, name: true },
   });
 }
+
+/**
+ * Shared specialty list — cached across requests (not user-specific).
+ * Revalidates every 5 minutes to keep Prassi filters snappy under load.
+ */
+export const fetchMedicalSpecialtyOptionsCached = unstable_cache(
+  async () => fetchMedicalSpecialtyOptions(),
+  ["medical-specialty-options-v1"],
+  { revalidate: 300, tags: ["medical-specialties"] },
+);
 
 export function parseCaseDifficulty(value: string | undefined): CaseDifficulty | undefined {
   if (value === "EASY" || value === "MEDIUM" || value === "HARD") {

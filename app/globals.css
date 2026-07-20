@@ -1,35 +1,460 @@
 @import "tailwindcss";
+@config "../tailwind.config.js";
+
+/* ── AEQUAN design tokens (Enterprise Institutional Theme) ────────────────── */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --aequan-ui-bg: #f8fafc;
+  --aequan-brand-primary: #1e324e;
+  --aequan-brand-primary-hover: #2a486d;
+  --aequan-brand-secondary: #345884;
+  --aequan-brand-primary-light: #345884;
+  --aequan-text-primary: #2f4156;
+  --aequan-text-secondary: #64748b;
+  --aequan-panel-bg: #ffffff;
+  --aequan-border: #e2e8f0;
+  --aequan-border-subtle: #f1f5f9;
+  --aequan-status-safe: #345884;
+  --aequan-status-warn: #f39c12;
+  --aequan-status-risk: #c0392b;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Brand & surfaces — official AEQUAN institutional palette */
+  --color-brand-primary: #1e324e;
+  --color-brand-primary-hover: #2a486d;
+  --color-brand-secondary: #345884;
+  --color-brand-primary-light: #345884;
+  --color-text-primary: #2f4156;
+  --color-text-secondary: #64748b;
+  --color-ui-bg: #f8fafc;
+  --color-panel-bg: #ffffff;
+  --color-border: #e2e8f0;
+  --color-border-subtle: #f1f5f9;
+
+  /* SessionReport semantic scores (safe → clinical blue, not acid green) */
+  --color-status-safe: #345884;
+  --color-status-warn: #f39c12;
+  --color-status-risk: #c0392b;
+  --color-score-excellent: #345884;
+  --color-score-warning: #f39c12;
+  --color-score-risk: #c0392b;
+
+  /* Legacy clinical aliases */
+  --color-clinical-bg: #f8fafc;
+  --color-clinical-navy: #1e324e;
+  --color-clinical-blue: #345884;
+  --color-clinical-teal: #345884;
+  --color-clinical-rose: #c0392b;
+
+  /* App shell (maps legacy zinc utilities → AEQUAN) */
+  --color-background: #f8fafc;
+  --color-foreground: #2f4156;
+  --color-zinc-50: #f8fafc;
+  --color-zinc-100: #f1f5f9;
+  --color-zinc-200: #e2e8f0;
+  --color-zinc-500: #64748b;
+  --color-zinc-600: #475569;
+  --color-zinc-700: #334155;
+  --color-zinc-800: #2f4156;
+  --color-zinc-900: #2f4156;
+  --color-zinc-950: #1e324e;
+
+  /* Primary CTA legacy classes */
+  --color-sky-50: #f1f5f9;
+  --color-sky-100: #e2e8f0;
+  --color-sky-200: #cbd5e1;
+  --color-sky-600: #345884;
+  --color-sky-700: #1e324e;
+
+  /* Soften emerald “acid green” → clinical blue washes for enterprise UI */
+  --color-emerald-50: #f1f5f9;
+  --color-emerald-100: #e2e8f0;
+  --color-emerald-200: #cbd5e1;
+  --color-emerald-300: #94a3b8;
+  --color-emerald-400: #64748b;
+  --color-emerald-500: #345884;
+  --color-emerald-600: #345884;
+  --color-emerald-700: #1e324e;
+  --color-emerald-800: #1e324e;
+
+  --color-teal-50: #f1f5f9;
+  --color-teal-500: #345884;
+  --color-teal-600: #345884;
+
+  --color-amber-50: #fef5e7;
+  --color-amber-100: #fdebd0;
+  --color-amber-200: #fad7a0;
+  --color-amber-300: #f8c471;
+  --color-amber-800: #d68910;
+  --color-amber-900: #b9770e;
+
+  --color-rose-50: #f9ebea;
+  --color-rose-100: #f2d7d5;
+  --color-rose-200: #e6b0aa;
+  --color-rose-300: #d98880;
+  --color-rose-700: #c0392b;
+  --color-rose-800: #a93226;
+
+  /* Typography — Inter body, Plus Jakarta Sans display */
+  --font-sans: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+  --font-display: var(--font-plus-jakarta), var(--font-inter), system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Radii */
+  --radius-clinical: 0.5rem;
+  --radius-clinical-card: 0.75rem;
+  --radius-aequan: 0.625rem;
+  --radius-aequan-lg: 1rem;
+  --radius-aequan-xl: 1.25rem;
+
+  /* Shadows */
+  --shadow-clinical: 0 1px 3px 0 rgba(30, 50, 78, 0.06);
+  --shadow-aequan: 0 4px 24px -4px rgba(30, 50, 78, 0.12);
+  --shadow-aequan-panel: 0 1px 2px 0 rgba(30, 50, 78, 0.04),
+    0 8px 24px -8px rgba(52, 88, 132, 0.1);
+
+  /* Motion */
+  --duration-aequan: 300ms;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+@layer base {
+  body {
+    background-color: #f8fafc;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 0% -20%, rgba(52, 88, 132, 0.06), transparent 55%),
+      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(30, 50, 78, 0.04), transparent 50%);
+    background-attachment: fixed;
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--color-text-primary);
+    font-family: var(--font-display);
+  }
+
+  button,
+  .aequan-btn-primary {
+    font-family: var(--font-display);
+  }
 }
 
-/* Apple-style polish: crisp selection + focus rings */
 ::selection {
-  background: rgba(59, 130, 246, 0.22);
+  background: color-mix(in srgb, var(--aequan-brand-secondary) 22%, transparent);
 }
 
 :focus-visible {
   outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--aequan-brand-secondary) 28%, transparent);
+}
+
+/* ── Component primitives ─────────────────────────────────────────────────── */
+
+@layer components {
+  /* Primary action buttons (legacy Button uses bg-zinc-950) */
+  button.bg-zinc-950,
+  a.bg-zinc-950 {
+    background-color: var(--aequan-brand-primary) !important;
+    color: #ffffff !important;
+  }
+
+  button.bg-zinc-950:hover:not(:disabled),
+  a.bg-zinc-950:hover {
+    background-color: var(--aequan-brand-primary-hover) !important;
+  }
+
+  .aequan-btn-primary {
+    background-color: var(--aequan-brand-primary);
+    color: #ffffff;
+    transition: background-color var(--duration-aequan) ease, box-shadow var(--duration-aequan) ease;
+  }
+
+  .aequan-btn-primary:hover {
+    background-color: var(--aequan-brand-primary-hover);
+  }
+
+  /* Chat — user / doctor messages */
+  .aequan-chat-user,
+  .chat-bubble-user {
+    background-color: var(--aequan-brand-primary);
+    color: #ffffff;
+  }
+
+  .aequan-title {
+    color: var(--aequan-text-primary);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  /* SessionReport score utilities */
+  .score-excellent,
+  .text-score-excellent {
+    color: var(--aequan-status-safe);
+  }
+
+  .bg-score-excellent {
+    background-color: color-mix(in srgb, var(--aequan-status-safe) 12%, white);
+  }
+
+  .border-score-excellent {
+    border-color: color-mix(in srgb, var(--aequan-status-safe) 35%, white);
+  }
+
+  .score-warning,
+  .text-score-warning {
+    color: var(--aequan-status-warn);
+  }
+
+  .bg-score-warning {
+    background-color: color-mix(in srgb, var(--aequan-status-warn) 10%, white);
+  }
+
+  .border-score-warning {
+    border-color: color-mix(in srgb, var(--aequan-status-warn) 35%, white);
+  }
+
+  .score-risk,
+  .text-score-risk {
+    color: var(--aequan-status-risk);
+  }
+
+  .bg-score-risk {
+    background-color: color-mix(in srgb, var(--aequan-status-risk) 10%, white);
+  }
+
+  .border-score-risk {
+    border-color: color-mix(in srgb, var(--aequan-status-risk) 35%, white);
+  }
+
+  .aequan-interactive {
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+    transition-duration: var(--duration-aequan);
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .font-tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .scrollbar-aequan {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--aequan-brand-secondary) 35%, transparent) transparent;
+  }
+
+  .scrollbar-aequan::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-aequan::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--aequan-brand-secondary) 35%, transparent);
+    border-radius: 9999px;
+  }
+
+  .aequan-citation {
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: var(--aequan-text-secondary);
+    background-color: var(--aequan-ui-bg);
+    border-left: 2px solid var(--aequan-brand-secondary);
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-aequan);
+  }
+
+  /* ── SessionReport elite HTML (evaluation-report-assembler) ───────────── */
+
+  .empatia-elite-report {
+    color: var(--aequan-text-primary);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .empatia-section {
+    border: 1px solid var(--aequan-border);
+    border-radius: var(--radius-aequan-lg);
+    background: var(--aequan-panel-bg);
+    padding: 1.25rem 1.5rem;
+    box-shadow: var(--shadow-aequan-panel);
+  }
+
+  .empatia-h2 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--aequan-text-primary);
+    margin-bottom: 1rem;
+  }
+
+  .empatia-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+
+  .empatia-table th,
+  .empatia-table td {
+    border-bottom: 1px solid var(--aequan-border);
+    padding: 0.625rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .empatia-table th {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--aequan-text-secondary);
+  }
+
+  .empatia-num {
+    font-variant-numeric: tabular-nums;
+    font-family: var(--font-mono);
+  }
+
+  .empatia-total-row td {
+    border-top: 2px solid var(--aequan-border);
+    font-weight: 600;
+  }
+
+  .empatia-total-row .empatia-num strong {
+    color: var(--aequan-brand-primary);
+  }
+
+  .empatia-alert {
+    margin-top: 1rem;
+    padding: 0.875rem 1rem;
+    border-radius: var(--radius-aequan);
+    font-size: 0.875rem;
+  }
+
+  .empatia-alert-fatal {
+    background: color-mix(in srgb, var(--aequan-status-risk) 8%, white);
+    border: 1px solid color-mix(in srgb, var(--aequan-status-risk) 35%, white);
+    color: var(--aequan-status-risk);
+  }
+
+  .empatia-gap-card {
+    border: 1px solid var(--aequan-border);
+    border-radius: var(--radius-aequan);
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    background: var(--aequan-ui-bg);
+  }
+
+  .empatia-gap-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--aequan-text-primary);
+    margin-bottom: 0.5rem;
+  }
+
+  .empatia-gap-dl dt {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--aequan-text-secondary);
+    margin-top: 0.5rem;
+  }
+
+  .empatia-gap-dl dd {
+    margin-left: 0;
+    font-size: 0.875rem;
+    color: var(--aequan-text-primary);
+  }
+
+  .empatia-vivid {
+    color: var(--aequan-status-risk);
+    font-style: italic;
+  }
+
+  .empatia-muted {
+    color: var(--aequan-text-secondary);
+    font-size: 0.875rem;
+  }
+
+  .empatia-prose p {
+    font-size: 0.9rem;
+    line-height: 1.65;
+    color: var(--aequan-text-primary);
+    margin-bottom: 0.75rem;
+  }
+
+  .empatia-forensic-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+
+  .empatia-forensic-block {
+    background: var(--aequan-ui-bg);
+    border: 1px solid var(--aequan-border);
+    border-radius: var(--radius-aequan);
+    padding: 1rem;
+  }
+
+  .empatia-forensic-block h3 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--aequan-text-secondary);
+    margin-bottom: 0.5rem;
+  }
+
+  .empatia-forensic-wide {
+    grid-column: 1 / -1;
+  }
+
+  .empatia-citations {
+    list-style: disc;
+    padding-left: 1.25rem;
+    font-size: 0.85rem;
+    color: var(--aequan-text-secondary);
+  }
+
+  .empatia-risk {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .empatia-risk-low {
+    background: color-mix(in srgb, var(--aequan-status-safe) 12%, white);
+    color: var(--aequan-status-safe);
+    border: 1px solid color-mix(in srgb, var(--aequan-status-safe) 30%, white);
+  }
+
+  .empatia-risk-medium {
+    background: color-mix(in srgb, var(--aequan-status-warn) 12%, white);
+    color: var(--aequan-status-warn);
+    border: 1px solid color-mix(in srgb, var(--aequan-status-warn) 30%, white);
+  }
+
+  .empatia-risk-high,
+  .empatia-risk-catastrophic {
+    background: color-mix(in srgb, var(--aequan-status-risk) 12%, white);
+    color: var(--aequan-status-risk);
+    border: 1px solid color-mix(in srgb, var(--aequan-status-risk) 30%, white);
+  }
 }

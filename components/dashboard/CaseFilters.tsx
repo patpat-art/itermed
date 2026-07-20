@@ -49,9 +49,9 @@ export function CaseFilters({ specialties, resultCount }: CaseFiltersProps) {
   const hasActiveFilters = Boolean(activeSpecialtyId || activeDifficulty);
 
   return (
-    <div className="rounded-3xl border border-zinc-200/80 bg-white/80 backdrop-blur-sm px-4 py-4 shadow-[0_10px_40px_rgba(0,0,0,0.04)] space-y-4">
+    <div className="rounded-xl border border-slate-100 bg-white px-5 py-5 shadow-sm space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-xs font-medium text-zinc-600">
+        <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
           <Filter className="h-3.5 w-3.5" />
           <span>Filtra i casi clinici</span>
         </div>

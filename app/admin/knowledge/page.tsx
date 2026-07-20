@@ -6,7 +6,6 @@ import { embedMany } from "ai";
 import { prisma } from "../../../lib/prisma";
 import { getPineconeIndex } from "../../../lib/pinecone";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
-import { Button } from "../../ui/button";
 
 function chunkText(text: string, chunkSize: number, overlap: number): string[] {
   const normalized = text.replace(/\r\n/g, "\n").trim();
@@ -128,15 +127,17 @@ export default async function KnowledgeAdminPage() {
     <div className="flex flex-col gap-6">
       <header className="flex items-end justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-950">Guidelines</h1>
-          <p className="text-sm text-zinc-500">
+          <h1 className="text-xl font-semibold tracking-tight text-[#2F4156]">Guidelines</h1>
+          <p className="text-sm text-slate-500">
             Archivio linee guida caricate nel motore RAG. Puoi attivarle/disattivarle o eliminarle.
           </p>
         </div>
-        <Link href="/admin/knowledge/new">
-          <Button type="button" size="icon" variant="outline" title="Aggiungi guideline">
-            <Plus className="h-4 w-4" />
-          </Button>
+        <Link
+          href="/admin/knowledge/new"
+          className="inline-flex items-center gap-2 rounded-lg bg-[#1E324E] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#2A486D]"
+        >
+          <Plus className="h-4 w-4" />
+          Carica Linea Guida
         </Link>
       </header>
 
@@ -179,8 +180,8 @@ export default async function KnowledgeAdminPage() {
                       type="submit"
                       className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors ${
                         doc.isActive
-                          ? "bg-emerald-500/90 border-emerald-600"
-                          : "bg-zinc-200 border-zinc-300"
+                          ? "bg-[#345884] border-[#345884]"
+                          : "bg-slate-100 border-slate-200"
                       }`}
                       aria-pressed={doc.isActive}
                       title={doc.isActive ? "Disabilita guideline" : "Abilita guideline"}
@@ -194,10 +195,14 @@ export default async function KnowledgeAdminPage() {
                   </form>
                   <form action={deleteGuideline}>
                     <input type="hidden" name="id" value={doc.id} />
-                    <Button type="submit" size="sm" variant="outline" className="text-xs">
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Elimina
-                    </Button>
+                    <button
+                      type="submit"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                      title="Elimina documento"
+                      aria-label="Elimina documento"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </form>
                 </div>
               </div>

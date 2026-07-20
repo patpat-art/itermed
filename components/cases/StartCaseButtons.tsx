@@ -3,13 +3,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
-import { Button } from "../../app/ui/button";
 
 type StartCaseButtonsProps = {
   caseId: string;
+  /** Se fornito, avvia la sessione senza navigazione diretta (master-detail Prassi). */
+  onSessionStart?: (caseId: string, sessionId: string) => void;
+  /** Destinazione di fallback se `onSessionStart` non è passato. */
+  playBasePath?: string;
 };
 
-export function StartCaseButtons({ caseId }: StartCaseButtonsProps) {
+export function StartCaseButtons({
+  caseId,
+  onSessionStart,
+  playBasePath = "/dashboard/prassi/play",
+}: StartCaseButtonsProps) {
   const router = useRouter();
   const [isStartingOriginal, setIsStartingOriginal] = useState(false);
   const [isStartingVariant, setIsStartingVariant] = useState(false);
@@ -33,7 +40,11 @@ export function StartCaseButtons({ caseId }: StartCaseButtonsProps) {
       }
 
       const data = (await res.json()) as { sessionId: string };
-      router.push(`/case/${caseId}?sessionId=${data.sessionId}`);
+      if (onSessionStart) {
+        onSessionStart(caseId, data.sessionId);
+      } else {
+        router.push(`${playBasePath}/${caseId}?sessionId=${data.sessionId}`);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -42,35 +53,33 @@ export function StartCaseButtons({ caseId }: StartCaseButtonsProps) {
     }
   };
 
+  const isBusy = isStartingOriginal || isStartingVariant;
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Button
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <button
         type="button"
-        variant="secondary"
-        size="sm"
-        className="text-[11px]"
+        className="inline-flex min-h-10 w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
         onClick={() => start("original")}
-        disabled={isStartingOriginal || isStartingVariant}
+        disabled={isBusy}
       >
         {isStartingOriginal ? "Avvio..." : "Gioca caso originale"}
-      </Button>
-      <Button
+      </button>
+      <button
         type="button"
-        size="sm"
-        className="text-[11px] bg-purple-600 hover:bg-purple-700 text-white"
+        className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-[#1E324E] px-4 py-2 font-display text-sm font-medium text-white transition-colors hover:bg-[#2A486D] disabled:cursor-not-allowed disabled:opacity-60"
         onClick={() => start("variant")}
-        disabled={isStartingOriginal || isStartingVariant}
+        disabled={isBusy}
       >
         {isStartingVariant ? (
           "Generazione variante..."
         ) : (
           <>
-            <Sparkles className="w-3 h-3 mr-1" />
+            <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
             Genera variante IA
           </>
         )}
-      </Button>
+      </button>
     </div>
   );
 }
-

@@ -73,12 +73,12 @@ export default async function CaseResultsPage({ params, searchParams }: ResultsP
   ];
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-950 flex items-stretch justify-center px-4 py-10">
+    <div className="min-h-screen bg-slate-50 text-slate-950 flex items-stretch justify-center px-4 py-10">
       <div className="w-full max-w-6xl flex flex-col gap-6">
         <div className="flex justify-start">
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200/80 bg-white/80 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Dashboard

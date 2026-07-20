@@ -33,7 +33,7 @@ export function TabsList({ children, className }: TabsListProps) {
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1 rounded-full bg-white/80 p-1 border border-zinc-200/80 shadow-[0_10px_30px_rgba(0,0,0,0.06)]",
+        "inline-flex items-center gap-1 rounded-lg bg-white p-1 border border-slate-200 shadow-sm",
         className,
       )}
     >
@@ -63,10 +63,10 @@ export function TabsTrigger({
       type="button"
       onClick={() => onSelect(value)}
       className={cn(
-        "px-3.5 py-1.5 text-xs font-medium rounded-full transition-colors",
+        "px-3.5 py-1.5 text-xs font-medium rounded-md transition-colors",
         isActive
-          ? "bg-zinc-950 text-zinc-50 shadow-sm"
-          : "bg-transparent text-zinc-600 hover:text-zinc-950",
+          ? "bg-[#1E324E] text-white shadow-sm"
+          : "bg-transparent text-slate-500 hover:text-[#2F4156]",
         className,
       )}
     >

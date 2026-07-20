@@ -25,8 +25,10 @@ const nextConfig: NextConfig = {
     : undefined,
   async redirects() {
     return [
-      { source: "/dashboard/decks", destination: "/dashboard/cases", permanent: true },
-      { source: "/dashboard/decks/:path*", destination: "/dashboard/cases", permanent: true },
+      { source: "/dashboard/decks", destination: "/dashboard/prassi", permanent: true },
+      { source: "/dashboard/decks/:path*", destination: "/dashboard/prassi", permanent: true },
+      { source: "/dashboard/cases", destination: "/dashboard/prassi", permanent: false },
+      { source: "/dashboard/simulator", destination: "/dashboard/prassi", permanent: false },
     ];
   },
   async headers() {

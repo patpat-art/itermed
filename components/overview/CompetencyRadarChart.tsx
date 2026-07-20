@@ -43,12 +43,12 @@ export function CompetencyRadarChart({ data }: CompetencyRadarChartProps) {
         <RadarChart data={data} outerRadius="78%" cx="50%" cy="54%">
           <defs>
             <linearGradient id="itermedRadarFill" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.45} />
-              <stop offset="100%" stopColor="#1d4ed8" stopOpacity={0.12} />
+              <stop offset="0%" stopColor="#345884" stopOpacity={0.4} />
+              <stop offset="100%" stopColor="#1E324E" stopOpacity={0.1} />
             </linearGradient>
           </defs>
-          <PolarGrid radialLines={false} stroke="#e4e4e7" />
-          <PolarAngleAxis dataKey="metric" tick={{ fill: "#52525b", fontSize: 11 }} />
+          <PolarGrid radialLines={false} stroke="#E2E8F0" />
+          <PolarAngleAxis dataKey="metric" tick={{ fill: "#64748B", fontSize: 11 }} />
           <PolarRadiusAxis
             angle={90}
             domain={[0, 100]}
@@ -60,7 +60,7 @@ export function CompetencyRadarChart({ data }: CompetencyRadarChartProps) {
           <Radar
             name="Score"
             dataKey="score"
-            stroke="#2563eb"
+            stroke="#345884"
             strokeWidth={2}
             fill="url(#itermedRadarFill)"
             fillOpacity={1}

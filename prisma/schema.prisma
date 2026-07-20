@@ -37,6 +37,13 @@ enum SessionReportStatus {
   FAILED
 }
 
+/// How a user appears on the public leaderboard.
+enum LeaderboardNameType {
+  REAL_NAME
+  NICKNAME
+  ANONYMOUS
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -52,22 +59,31 @@ model User {
   freeTrialUsageCount  Int      @default(0)
   purchasedBundleIds   String[] @default([])
 
+  /// Leaderboard gamification preferences.
+  leaderboardOptIn     Boolean              @default(true)
+  leaderboardNameType  LeaderboardNameType  @default(REAL_NAME)
+  nickname             String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   createdCases ClinicalCase[] @relation("CreatedCases")
   sessions     SessionReport[]
   liveSessions CaseSession[]  @relation("UserLiveSessions")
+
+  @@index([leaderboardOptIn])
 }
 
 /// Canonical medical specialty taxonomy (Cardiologia, Emergenza, …).
+/// Central pillar linking clinical cases and specialty-scoped guideline documents (RAG).
 model MedicalSpecialty {
   id          String  @id @default(cuid())
   name        String  @unique
   description String?
 
-  cases          ClinicalCase[]
-  legalPackages  LegalProtectionPackage[]
+  cases               ClinicalCase[]
+  guidelineDocuments  GuidelineDocument[]
+  legalPackages       LegalProtectionPackage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -233,6 +249,7 @@ model SessionReport {
   @@index([medicalSpecialtyIdSnapshot])
   @@index([status])
   @@index([userId, status])
+  @@index([status, userId, totalScore])
 }
 
 model CaseSession {
@@ -257,12 +274,29 @@ model CaseSession {
   completedGoldSteps     String[] @default([])
   /// Diagnostic exams requested so far (for latency accounting).
   requestedExamIds       String[] @default([])
+  milestones             SimulationMilestone[]
 
   createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([caseId])
   @@index([userId, caseId])
+}
+
+/// Per-session clinical/legal milestones detected during simulation (first detection wins).
+model SimulationMilestone {
+  id           String      @id @default(cuid())
+  sessionId    String
+  session      CaseSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  milestoneKey String
+  label        String
+  category     String
+  source       String
+  evidence     String?
+  detectedAt   DateTime    @default(now())
+
+  @@unique([sessionId, milestoneKey])
+  @@index([sessionId])
 }
 
 model GuidelineDocument {
@@ -276,11 +310,18 @@ model GuidelineDocument {
   vectorIds  Json?
   isActive   Boolean  @default(true)
 
+  /// Specialty this guideline/law belongs to. Null = transversal corpus (e.g. Gelli-Bianco).
+  medicalSpecialtyId String?
+  medicalSpecialty   MedicalSpecialty? @relation(fields: [medicalSpecialtyId], references: [id], onDelete: SetNull)
+
   legalPackages LegalProtectionDocument[]
   clinicalCases ClinicalCaseLegalDocument[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([medicalSpecialtyId])
+  @@index([isActive, medicalSpecialtyId])
 }
 
 /// Key-value application config (e.g. exam default values).

@@ -37,3 +37,48 @@ export type LegalProtectionStatus = z.infer<typeof LegalProtectionStatusSchema>;
 export type ClinicalDeltaRow = z.infer<typeof ClinicalDeltaRowSchema>;
 export type EconomicAnalysis = z.infer<typeof EconomicAnalysisSchema>;
 export type CoachingFeedback = z.infer<typeof CoachingFeedbackSchema>;
+
+/** Clinically fatal error that triggers the Killer Switch grade cap. */
+export type FatalError = {
+  description: string;
+  rationale: string;
+};
+
+export type MacroAreaScore = {
+  key: "clinical" | "legal" | "economy" | "empathy";
+  label: string;
+  shortLabel: string;
+  weightPercent: number;
+  scorePercent: number;
+  contributionTrentesimi: number;
+  rationale: string;
+};
+
+export type ReportDashboardPayload = {
+  version: 1;
+  finalScore: number;
+  rawScore: number;
+  killerSwitchApplied: boolean;
+  macroAreas: MacroAreaScore[];
+  radarData: Array<{ metric: string; score: number; fullMark: number }>;
+  fatalErrors: FatalError[];
+};
+
+export type ClinicalGapItem = {
+  errorOrOmission: string;
+  scientificGap: string;
+  vividDamageScenario: string;
+  clinicalRiskLevel: "BASSO" | "MEDIO" | "ALTO" | "CATASTROFICO";
+};
+
+export type ForensicLegalAssessment = {
+  legalFramework: string;
+  culpabilityProfile: string;
+  materialCausality: string;
+};
+
+export type GoldStandardGuide = {
+  perfectClinicalPathway: string;
+  pathophysiologyContext: string;
+  formalGuidelineCitations: string[];
+};

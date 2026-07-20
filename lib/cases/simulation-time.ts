@@ -1,5 +1,3 @@
-import "server-only";
-
 export type ExamLatenciesMap = Record<string, number>;
 
 /** Normalizes step/exam ids for fuzzy matching (rx_torace ↔ rx-torace). */

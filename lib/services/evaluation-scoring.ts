@@ -313,3 +313,22 @@ export function deriveDimensionScores(params: {
     },
   };
 }
+
+/** Weight distribution for the four macro-areas (must sum to 1). */
+export const MACRO_AREA_WEIGHTS = {
+  clinicalDiagnostic: 0.3,
+  legalCompliance: 0.3,
+  economicSustainability: 0.2,
+  empathy: 0.2,
+} as const;
+
+/** Weighted sum of dimension scores on a 0–30 trentesimi scale. */
+export function computeTotalScoreTrentesimi(scores: DimensionScores): number {
+  const w = MACRO_AREA_WEIGHTS;
+  const total =
+    (scores.clinical / 100) * w.clinicalDiagnostic * 30 +
+    (scores.legal / 100) * w.legalCompliance * 30 +
+    (scores.exams / 100) * w.economicSustainability * 30 +
+    (scores.empathy / 100) * w.empathy * 30;
+  return Math.round(total * 10) / 10;
+}

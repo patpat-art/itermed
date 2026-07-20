@@ -36,7 +36,7 @@ export function RecentSessionsTimeline({ sessions }: RecentSessionsTimelineProps
             <p className="text-xs text-zinc-500 mt-1.5">{item.completedLabel}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-zinc-950 text-zinc-50 text-sm font-semibold shadow-sm">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#1E324E] text-white text-sm font-semibold shadow-sm">
               {item.score}
             </div>
             <ChevronRight className="h-4 w-4 text-zinc-400 group-hover:text-zinc-700 transition-colors" />

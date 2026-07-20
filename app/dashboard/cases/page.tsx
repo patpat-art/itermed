@@ -10,7 +10,6 @@ import {
 import { CaseFilters } from "../../../components/dashboard/CaseFilters";
 import { ClinicalCaseGrid } from "../../../components/dashboard/ClinicalCaseGrid";
 import { type ClinicalCaseRow } from "../../../components/dashboard/ClinicalCaseCard";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
 
 type DashboardCasesPageProps = {
   searchParams?:
@@ -81,53 +80,56 @@ export default async function DashboardCasesPage({ searchParams }: DashboardCase
   const personalCases = source.filter((c) => !c.isGlobal && c.createdById === user.id);
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight">Casi</h1>
-        <p className="text-sm text-zinc-400">
-          Libreria casi clinici.
+    <div className="flex flex-col gap-8">
+      <header className="space-y-2">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-800">Casi</h1>
+        <p className="max-w-2xl text-sm leading-relaxed text-slate-500">
+          Libreria casi clinici medico-legali.
           {hasDatabase
-            ? " Filtra per specialità e difficoltà, poi avvia un caso."
+            ? " Filtra per specialità e difficoltà, poi avvia un caso o genera una variante IA."
             : " Il database non è configurato: vengono mostrati solo esempi statici."}
         </p>
       </header>
 
       {hasDatabase && specialties.length > 0 ? (
-        <Suspense fallback={<p className="text-xs text-zinc-500">Caricamento filtri…</p>}>
+        <Suspense fallback={<p className="text-xs text-slate-400">Caricamento filtri…</p>}>
           <CaseFilters specialties={specialties} resultCount={source.length} />
         </Suspense>
       ) : null}
 
-      <Card className="bg-white/80 border-zinc-200/80">
-        <CardHeader>
-          <CardTitle className="text-sm font-medium text-zinc-950">Casi disponibili</CardTitle>
-          <CardDescription>
-            {source.length} {source.length === 1 ? "caso" : "casi"} corrispondenti ai filtri attivi.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-sm space-y-6">
-          <section>
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-3">
-              Globali (tutti)
-            </p>
-            <ClinicalCaseGrid
-              cases={globalCases}
-              mode="start"
-              emptyMessage="Nessun caso globale con questi filtri."
-            />
-          </section>
-          <section>
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-3">
+      <div className="space-y-10">
+        <section>
+          <div className="mb-4 flex items-baseline justify-between gap-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Globali
+            </h2>
+            <span className="text-xs text-slate-400">
+              {globalCases.length} {globalCases.length === 1 ? "caso" : "casi"}
+            </span>
+          </div>
+          <ClinicalCaseGrid
+            cases={globalCases}
+            mode="start"
+            emptyMessage="Nessun caso globale con questi filtri."
+          />
+        </section>
+
+        <section>
+          <div className="mb-4 flex items-baseline justify-between gap-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               I tuoi casi individuali
-            </p>
-            <ClinicalCaseGrid
-              cases={personalCases}
-              mode="start"
-              emptyMessage="Nessun caso individuale con questi filtri."
-            />
-          </section>
-        </CardContent>
-      </Card>
+            </h2>
+            <span className="text-xs text-slate-400">
+              {personalCases.length} {personalCases.length === 1 ? "caso" : "casi"}
+            </span>
+          </div>
+          <ClinicalCaseGrid
+            cases={personalCases}
+            mode="start"
+            emptyMessage="Nessun caso individuale con questi filtri."
+          />
+        </section>
+      </div>
     </div>
   );
 }

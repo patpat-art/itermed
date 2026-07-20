@@ -74,6 +74,15 @@ export const AnalyticalEvaluationSchema = z.object({
   clinicalDeltaTable: z.array(ClinicalDeltaRowSchema).min(3).max(20),
   economicAnalysis: EconomicAnalysisSchema,
   coachingFeedback: CoachingFeedbackSchema,
+  fatalErrors: z
+    .array(
+      z.object({
+        description: z.string().max(200),
+        rationale: z.string().max(320),
+      }),
+    )
+    .max(8)
+    .optional(),
 });
 
 export type AnalyticalEvaluation = z.infer<typeof AnalyticalEvaluationSchema>;

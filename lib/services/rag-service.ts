@@ -100,7 +100,41 @@ type PineconeMetadata = {
   title?: string;
   tags?: string | string[];
   documentId?: string;
+  medicalSpecialtyId?: string;
 };
+
+/**
+ * When a case has a specialty, retrieve only docs tagged with that specialty
+ * plus transversal docs (`medicalSpecialtyId` null / missing) so national legal
+ * frameworks remain available without pulling other specialties' protocols.
+ */
+function buildPostgresSpecialtyFilter(specialtyId?: string): {
+  OR: Array<{ medicalSpecialtyId: string | null }>;
+} | Record<string, never> {
+  if (!specialtyId) return {};
+  return {
+    OR: [{ medicalSpecialtyId: specialtyId }, { medicalSpecialtyId: null }],
+  };
+}
+
+function buildPineconeSpecialtyFilter(specialtyId?: string): Record<string, unknown> | undefined {
+  if (!specialtyId) return undefined;
+  return {
+    $or: [
+      { medicalSpecialtyId: { $eq: specialtyId } },
+      { medicalSpecialtyId: { $exists: false } },
+    ],
+  };
+}
+
+function mergePineconeFilters(
+  ...filters: Array<Record<string, unknown> | undefined>
+): Record<string, unknown> | undefined {
+  const present = filters.filter((f): f is Record<string, unknown> => Boolean(f));
+  if (present.length === 0) return undefined;
+  if (present.length === 1) return present[0];
+  return { $and: present };
+}
 
 function chunkText(text: string, size = CHUNK_SIZE, overlap = CHUNK_OVERLAP): string[] {
   const normalized = text.replace(/\r\n/g, "\n").trim();
@@ -296,9 +330,10 @@ export class RagService {
    */
   async getRelevantGuidelines(params: GetRelevantGuidelinesParams): Promise<RelevantGuidelines> {
     const query = buildRagQuery(params);
+    const specialtyId = params.specialtyId?.trim() || undefined;
     const specialtyHints = buildSpecialtyTagHints(params.specialtyName);
     const log = this.deps.logger.child({
-      specialtyId: params.specialtyId,
+      specialtyId,
       specialtyName: params.specialtyName,
     });
 
@@ -310,8 +345,17 @@ export class RagService {
     try {
       const embedding = await this.embedQuery(query);
       if (embedding) {
-        legalChunks = await this.retrieveLegalFromPinecone(query, embedding, specialtyHints);
-        protocolChunks = await this.retrieveProtocolFromPinecone(embedding, specialtyHints);
+        legalChunks = await this.retrieveLegalFromPinecone(
+          query,
+          embedding,
+          specialtyHints,
+          specialtyId,
+        );
+        protocolChunks = await this.retrieveProtocolFromPinecone(
+          embedding,
+          specialtyHints,
+          specialtyId,
+        );
         if (legalChunks.length > 0) legalSource = "pinecone";
         if (protocolChunks.length > 0) protocolSource = "pinecone";
       }
@@ -321,7 +365,7 @@ export class RagService {
 
     if (legalChunks.length === 0) {
       try {
-        legalChunks = await this.retrieveLegalFromPostgres(query, specialtyHints);
+        legalChunks = await this.retrieveLegalFromPostgres(query, specialtyHints, specialtyId);
         if (legalChunks.length > 0) legalSource = "postgres";
       } catch (error) {
         log.warn("PostgreSQL legal retrieval failed", { error });
@@ -330,7 +374,11 @@ export class RagService {
 
     if (protocolChunks.length === 0) {
       try {
-        protocolChunks = await this.retrieveProtocolFromPostgres(query, specialtyHints);
+        protocolChunks = await this.retrieveProtocolFromPostgres(
+          query,
+          specialtyHints,
+          specialtyId,
+        );
         if (protocolChunks.length > 0) protocolSource = "postgres";
       } catch (error) {
         log.warn("PostgreSQL protocol retrieval failed", { error });
@@ -340,7 +388,8 @@ export class RagService {
     if (legalChunks.length === 0 && protocolChunks.length === 0) {
       log.info("No guidelines retrieved from any source", { queryLength: query.length });
     } else {
-      log.info("Guidelines ranked with specialty hints", {
+      log.info("Guidelines retrieved with specialty scope", {
+        specialtyId: specialtyId ?? null,
         specialtyHintCount: specialtyHints.length,
         legalChunks: legalChunks.length,
         protocolChunks: protocolChunks.length,
@@ -379,15 +428,18 @@ export class RagService {
     query: string,
     embedding: number[],
     specialtyHints: string[],
+    specialtyId?: string,
     limit = LEGAL_TOP_K,
   ): Promise<GuidelineChunk[]> {
     const index = this.deps.getPineconeIndex();
     if (!index) return [];
 
+    const specialtyFilter = buildPineconeSpecialtyFilter(specialtyId);
     const response = await index.namespace("guidelines").query({
       topK: Math.max(limit * 3, 18),
       vector: embedding,
       includeMetadata: true,
+      ...(specialtyFilter ? { filter: specialtyFilter } : {}),
     });
 
     const ranked: Array<GuidelineChunk & { score: number }> = [];
@@ -395,6 +447,15 @@ export class RagService {
       const metadata = (match.metadata ?? {}) as PineconeMetadata;
       const content = typeof metadata.content === "string" ? metadata.content.trim() : "";
       if (!content) continue;
+
+      // Defense-in-depth: drop vectors from other specialties even if filter is ignored.
+      if (
+        specialtyId &&
+        typeof metadata.medicalSpecialtyId === "string" &&
+        metadata.medicalSpecialtyId !== specialtyId
+      ) {
+        continue;
+      }
 
       const title = typeof metadata.title === "string" ? metadata.title : "Documento legale";
       const tags = parseMetadataTags(metadata);
@@ -418,31 +479,38 @@ export class RagService {
   private async retrieveProtocolFromPinecone(
     embedding: number[],
     specialtyHints: string[],
+    specialtyId?: string,
     limit = PROTOCOL_TOP_K,
   ): Promise<GuidelineChunk[]> {
     const index = this.deps.getPineconeIndex();
     if (!index) return [];
 
-    const protocolFilter = { tags: { $in: PROTOCOL_PINECONE_TAGS } } as Record<string, unknown>;
-    const specialtyFilter =
-      specialtyHints.length > 0
-        ? ({ tags: { $in: specialtyHints } } as Record<string, unknown>)
-        : null;
+    const specialtyFilter = buildPineconeSpecialtyFilter(specialtyId);
+    const protocolFilter = mergePineconeFilters(
+      { tags: { $in: PROTOCOL_PINECONE_TAGS } },
+      specialtyFilter,
+    );
+
+    // When specialtyId is set, skip the soft tag-hint query — ID filter is authoritative.
+    const tagHintFilter =
+      !specialtyId && specialtyHints.length > 0
+        ? mergePineconeFilters({ tags: { $in: specialtyHints } }, specialtyFilter)
+        : undefined;
 
     const queries = [
       index.namespace("guidelines").query({
         topK: Math.max(limit * 2, 8),
         vector: embedding,
         includeMetadata: true,
-        filter: protocolFilter,
+        ...(protocolFilter ? { filter: protocolFilter } : {}),
       }),
-      ...(specialtyFilter
+      ...(tagHintFilter
         ? [
             index.namespace("guidelines").query({
               topK: Math.max(limit * 2, 8),
               vector: embedding,
               includeMetadata: true,
-              filter: specialtyFilter,
+              filter: tagHintFilter,
             }),
           ]
         : []),
@@ -456,6 +524,14 @@ export class RagService {
         const metadata = (match.metadata ?? {}) as PineconeMetadata;
         const content = typeof metadata.content === "string" ? metadata.content.trim() : "";
         if (!content) continue;
+
+        if (
+          specialtyId &&
+          typeof metadata.medicalSpecialtyId === "string" &&
+          metadata.medicalSpecialtyId !== specialtyId
+        ) {
+          continue;
+        }
 
         const title = typeof metadata.title === "string" ? metadata.title : "Protocollo clinico";
         const tags = parseMetadataTags(metadata);
@@ -480,12 +556,21 @@ export class RagService {
   private async retrieveLegalFromPostgres(
     query: string,
     specialtyHints: string[],
+    specialtyId?: string,
     limit = LEGAL_TOP_K,
   ): Promise<GuidelineChunk[]> {
-    const docs = await this.deps.guidelineStore.findActiveDocuments();
+    const docs = await prisma.guidelineDocument.findMany({
+      where: {
+        isActive: true,
+        tags: { hasSome: LEGAL_TAG_HINTS },
+        ...buildPostgresSpecialtyFilter(specialtyId),
+      },
+      select: { id: true, title: true, tags: true, text: true },
+      take: 15,
+    });
     const ranked: Array<GuidelineChunk & { score: number }> = [];
 
-    for (const doc of docs.filter((d) => isLegalGuideline(d.tags))) {
+    for (const doc of docs) {
       for (const content of chunkText(doc.text)) {
         ranked.push({
           content,
@@ -504,12 +589,26 @@ export class RagService {
   private async retrieveProtocolFromPostgres(
     query: string,
     specialtyHints: string[],
+    specialtyId?: string,
     limit = PROTOCOL_TOP_K,
   ): Promise<GuidelineChunk[]> {
-    const docs = await this.deps.guidelineStore.findActiveDocuments();
+    const docs = await prisma.guidelineDocument.findMany({
+      where: {
+        isActive: true,
+        ...buildPostgresSpecialtyFilter(specialtyId),
+        // With specialtyId the FK is the primary scope; tags only refine when no ID is known.
+        ...(specialtyId
+          ? {}
+          : specialtyHints.length > 0
+            ? { tags: { hasSome: specialtyHints } }
+            : { tags: { hasSome: PROTOCOL_PINECONE_TAGS } }),
+      },
+      select: { id: true, title: true, tags: true, text: true },
+      take: 10,
+    });
     const ranked: Array<GuidelineChunk & { score: number }> = [];
 
-    for (const doc of docs.filter((d) => isProtocolGuideline(d.tags))) {
+    for (const doc of docs) {
       for (const content of chunkText(doc.text)) {
         ranked.push({
           content,

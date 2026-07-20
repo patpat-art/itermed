@@ -11,6 +11,7 @@ import {
   FlaskConical,
   Loader2,
   Route,
+  Sparkles,
   Stethoscope,
   UserRound,
 } from "lucide-react";
@@ -85,10 +86,97 @@ export function CaseCreatorWizard({ canPublishGlobal = false }: CaseCreatorWizar
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newGoldStep, setNewGoldStep] = useState("");
+  const [aiBrief, setAiBrief] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiMessage, setAiMessage] = useState<string | null>(null);
 
   const update = useCallback(<K extends keyof WizardForm>(key: K, value: WizardForm[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   }, []);
+
+  const applyGeneratedFields = useCallback(
+    (fields: {
+      title: string;
+      description: string;
+      specialty: string;
+      difficulty: "EASY" | "MEDIUM" | "HARD";
+      age: string;
+      sex: "M" | "F";
+      context: string;
+      pastMedicalHistory: string;
+      correctSolution: string;
+      vitals_fc: string;
+      vitals_pa: string;
+      vitals_spo2: string;
+      vitals_temp: string;
+      vitals_fr: string;
+      abnormalExamsSummary?: string;
+    }) => {
+      const abnormal = fields.abnormalExamsSummary?.trim();
+      const pastBase = fields.pastMedicalHistory?.trim() ?? "";
+      const pastMedicalHistory =
+        abnormal && !pastBase.includes(abnormal)
+          ? [pastBase, `Alterazioni attese: ${abnormal}`].filter(Boolean).join("\n")
+          : pastBase;
+
+      setForm((prev) => ({
+        ...prev,
+        title: fields.title || prev.title,
+        description: fields.description || prev.description,
+        specialty: fields.specialty || prev.specialty,
+        difficulty: fields.difficulty || prev.difficulty,
+        age: fields.age || prev.age,
+        sex: fields.sex || prev.sex,
+        context: fields.context || prev.context,
+        pastMedicalHistory: pastMedicalHistory || prev.pastMedicalHistory,
+        correctSolution: fields.correctSolution || prev.correctSolution,
+        vitals_fc: fields.vitals_fc || prev.vitals_fc,
+        vitals_pa: fields.vitals_pa || prev.vitals_pa,
+        vitals_spo2: fields.vitals_spo2 || prev.vitals_spo2,
+        vitals_temp: fields.vitals_temp || prev.vitals_temp,
+        vitals_fr: fields.vitals_fr || prev.vitals_fr,
+      }));
+      setStep(1);
+    },
+    [],
+  );
+
+  const handleGenerateCaseFields = async () => {
+    setAiMessage(null);
+    setError(null);
+    const brief = aiBrief.trim();
+    if (brief.length < 20) {
+      setAiMessage("Inserisci un riassunto di almeno 20 caratteri.");
+      return;
+    }
+
+    setAiGenerating(true);
+    try {
+      const res = await fetch("/api/generate-case-fields", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brief }),
+      });
+      const data = (await res.json().catch(() => null)) as {
+        error?: string;
+        fields?: Parameters<typeof applyGeneratedFields>[0];
+      } | null;
+
+      if (!res.ok || !data?.fields) {
+        setAiMessage(data?.error ?? "Generazione non riuscita.");
+        return;
+      }
+
+      applyGeneratedFields(data.fields);
+      setAiMessage(
+        "Struttura caso generata. Rivedi i campi nello step Anagrafica e modifica liberamente prima del salvataggio.",
+      );
+    } catch {
+      setAiMessage("Errore di rete durante la generazione. Riprova.");
+    } finally {
+      setAiGenerating(false);
+    }
+  };
 
   const configuredExams = useMemo(
     () => Object.entries(form.examLatencies).filter(([, v]) => v.trim() !== ""),
@@ -193,7 +281,7 @@ export function CaseCreatorWizard({ canPublishGlobal = false }: CaseCreatorWizar
         setError(data?.error ?? "Errore durante la creazione del caso.");
         return;
       }
-      router.push("/dashboard/cases");
+      router.push("/dashboard/prassi");
       router.refresh();
     } catch {
       setError("Errore di rete. Riprova.");
@@ -204,6 +292,64 @@ export function CaseCreatorWizard({ canPublishGlobal = false }: CaseCreatorWizar
 
   return (
     <div className="space-y-6">
+      <Card className="overflow-hidden border-[#345884]/20 bg-gradient-to-br from-[#345884]/[0.06] via-white to-slate-50 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="font-display flex items-center gap-2 text-base font-bold tracking-tight text-[#1E324E]">
+            <span aria-hidden>✨</span>
+            Compilazione Rapida con IA AEQUAN
+          </CardTitle>
+          <CardDescription className="text-xs text-slate-500">
+            Incolla un breve riassunto clinico: l&apos;IA compilerà titolo, presentazione, vitali,
+            anamnesi e diagnosi attesa. Potrai rivedere e modificare ogni campo prima del
+            salvataggio.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Textarea
+            value={aiBrief}
+            onChange={(e) => setAiBrief(e.target.value)}
+            rows={4}
+            disabled={aiGenerating}
+            placeholder='Es. "Uomo di 62 anni con dolore toracico irradiato al braccio sinistro, iperteso, fumatore. Sospetto infarto STEMI."'
+            className="rounded-xl border-slate-200/80 bg-white/90 text-sm"
+          />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[11px] text-slate-500">Modello: gpt-4o-mini · solo docenti / admin</p>
+            <Button
+              type="button"
+              onClick={() => void handleGenerateCaseFields()}
+              disabled={aiGenerating || aiBrief.trim().length < 20}
+              className="inline-flex items-center gap-2 rounded-xl"
+            >
+              {aiGenerating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generazione in corso…
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Genera Struttura Caso
+                </>
+              )}
+            </Button>
+          </div>
+          {aiMessage ? (
+            <p
+              className={cn(
+                "rounded-xl border px-3 py-2 text-[11px]",
+                aiMessage.includes("Struttura caso generata")
+                  ? "border-emerald-200/80 bg-emerald-50/80 text-emerald-900"
+                  : "border-amber-200/80 bg-amber-50/80 text-amber-950",
+              )}
+              role="status"
+            >
+              {aiMessage}
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
+
       <nav className="flex flex-wrap gap-2">
         {STEPS.map(({ id, label, icon: Icon }) => {
           const active = step === id;
@@ -214,9 +360,9 @@ export function CaseCreatorWizard({ canPublishGlobal = false }: CaseCreatorWizar
               className={cn(
                 "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
                 active
-                  ? "border-sky-300 bg-sky-50 text-sky-900"
+                  ? "border-[#345884]/30 bg-[#345884]/10 text-[#1E324E]"
                   : done
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                    ? "border-slate-200 bg-slate-50 text-[#345884]"
                     : "border-zinc-200 bg-white text-zinc-500",
               )}
             >

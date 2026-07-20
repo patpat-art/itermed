@@ -17,6 +17,9 @@ const DEV_MOCK_USER: SessionUser = {
   role: "ADMIN",
 };
 
+/** Canonical sandbox tester id — analytics merge legacy guest ids with this account. */
+export const SANDBOX_TEST_USER_ID = "cl-tester-999";
+
 export function isDevAuthBypass(): boolean {
   return config.isDevelopment;
 }

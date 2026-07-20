@@ -79,7 +79,7 @@ export async function POST(req: Request) {
       return jsonResponse({ error: "Unauthorized", code: "UNAUTHORIZED" }, 401);
     }
 
-    const rateLimited = enforceRateLimit(req, {
+    const rateLimited = await enforceRateLimit(req, {
       namespace: "api-simulation-report",
       limit: 3,
       userId,

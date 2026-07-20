@@ -7,16 +7,18 @@ import { useChat } from "ai/react";
 import {
   Activity,
   ArrowLeft,
+  ClipboardList,
   FlaskConical,
   Clock,
   EuroIcon,
-  HeartPulse,
   Microscope,
   ScanLine,
   Search,
   Sparkles,
   FolderOpen,
   TestTube2,
+  User,
+  Stethoscope,
 } from "lucide-react";
 import {
   Dialog,
@@ -34,6 +36,12 @@ import { handleTextareaEnterSubmit } from "@/lib/hooks/textarea-submit";
 import { Badge } from "../../app/ui/badge";
 import { PhysicalExamTab } from "./PhysicalExamTab";
 import { PatientStressBar } from "./PatientStressBar";
+import { VitalSignsBoard } from "./VitalSignsBoard";
+import { MetricBar } from "@/app/case/[id]/results/MetricBar";
+import { ScoreProgressRing } from "@/app/case/[id]/results/ScoreProgressRing";
+import { patientDisplayName, deriveDemoVitals } from "@/lib/prassi/demo-vitals";
+import { resolveCaseStressProfile } from "@/lib/simulator/patient-stress-engine";
+import { AequanLogo } from "@/components/AequanLogo";
 import { EXAM_DEFAULT_VALUES, type ExamClinicalMeta } from "../../lib/exam-default-values";
 import { EXAM_CATALOG_STRUCTURE } from "@/lib/exam-catalog-structure";
 import {
@@ -98,6 +106,10 @@ type SimulatorClientProps = {
   examCatalog?: Record<string, ExamClinicalMeta>;
   /** Per-case exam values from CaseExamValue table + legacy JSON. */
   caseExamOverrides?: Record<string, CaseExamOverride>;
+  /** Modalità embedded nella sezione Prassi (layout dashboard). */
+  embedded?: boolean;
+  /** Destinazione del pulsante di ritorno (default dashboard). */
+  backHref?: string;
 };
 
 import type { EliteReportData } from "@/lib/services/simulation-report-data";
@@ -208,7 +220,7 @@ function ReportGenerationProgress({
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200">
         <div
-          className="h-full rounded-full bg-sky-600 transition-all duration-500 ease-out"
+          className="h-full rounded-full bg-[#345884] transition-all duration-500 ease-out"
           style={{ width: `${clampedProgress}%` }}
         />
       </div>
@@ -218,17 +230,50 @@ function ReportGenerationProgress({
 
 function SimulatorNavBar({
   dismissCase,
+  backHref = "/dashboard",
+  backLabel = "Dashboard",
+  embedded = false,
 }: {
   dismissCase?: { loading: boolean; onClick: () => void };
+  backHref?: string;
+  backLabel?: string;
+  embedded?: boolean;
 }) {
+  if (embedded) {
+    return (
+      <header className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-white px-4 py-2.5 shadow-sm">
+        <Link
+          href={backHref}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
+        >
+          <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
+          {backLabel}
+        </Link>
+        {dismissCase ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="text-xs border-rose-200/80 text-rose-800 hover:bg-rose-50"
+            disabled={dismissCase.loading}
+            onClick={dismissCase.onClick}
+            title="Dismiss case — all scores recorded as 0"
+          >
+            {dismissCase.loading ? "Uscita…" : "Abbandona caso"}
+          </Button>
+        ) : null}
+      </header>
+    );
+  }
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-[100] flex h-12 items-center justify-between gap-3 border-b border-zinc-200/80 bg-white/95 px-4 backdrop-blur-md shadow-sm">
+    <header className="fixed top-0 left-0 right-0 z-[100] flex h-12 items-center justify-between gap-3 border-b border-slate-100 bg-white/95 px-4 backdrop-blur-md shadow-sm">
       <Link
-        href="/dashboard"
-        className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 transition-colors"
+        href={backHref}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
       >
         <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
-        Dashboard
+        {backLabel}
       </Link>
       {dismissCase ? (
         <Button
@@ -255,6 +300,8 @@ export function SimulatorClient({
   persistReports = true,
   examCatalog = EXAM_DEFAULT_VALUES,
   caseExamOverrides = {},
+  embedded = false,
+  backHref = "/dashboard",
 }: SimulatorClientProps) {
   const router = useRouter();
 
@@ -299,12 +346,32 @@ export function SimulatorClient({
   /** 0–100: pressione temporale e carico simulato (chat, esami, errori, tempo). */
   const [patientStress, setPatientStress] = useState(0);
   const patientStressRef = useRef(patientStress);
+  /** Minuti clinici trascorsi (timer simulato + interazioni), esclusi i tempi degli esami. */
+  const [clockMinutes, setClockMinutes] = useState(0);
   const effectiveSessionIdRef = useRef(effectiveSessionId);
   const examIdsChargedForStressRef = useRef<Set<string>>(new Set());
+  const stressInitializedRef = useRef(false);
 
   useEffect(() => {
     patientStressRef.current = patientStress;
   }, [patientStress]);
+
+  // Apply case baseline stress once (e.g. STEMI seed initialStress: 75).
+  useEffect(() => {
+    if (stressInitializedRef.current) return;
+    const profile = resolveCaseStressProfile({
+      description: initialCaseData.description,
+      baselineExamFindings: initialCaseData.baselineExamFindings as Record<string, unknown> | undefined,
+      goldStandardPath: initialCaseData.goldStandardPath ?? undefined,
+    });
+    stressInitializedRef.current = true;
+    setPatientStress(profile.initialStress);
+    patientStressRef.current = profile.initialStress;
+  }, [
+    initialCaseData.description,
+    initialCaseData.baselineExamFindings,
+    initialCaseData.goldStandardPath,
+  ]);
 
   useEffect(() => {
     effectiveSessionIdRef.current = effectiveSessionId;
@@ -313,6 +380,35 @@ export function SimulatorClient({
   useEffect(() => {
     selectedExamIdsRef.current = selectedExamIds;
   }, [selectedExamIds]);
+
+  const advanceClock = useCallback((deltaMinutes = 1) => {
+    if (deltaMinutes <= 0) return;
+    setClockMinutes((m) => m + deltaMinutes);
+  }, []);
+
+  const bumpPatientStress = useCallback((delta: number) => {
+    if (delta <= 0) return;
+    setPatientStress((s) => Math.min(100, s + delta));
+  }, []);
+
+  // Timer clinico: +1 minuto simulato ogni 15s reali mentre il caso è in corso.
+  useEffect(() => {
+    if (!disclaimerAccepted || gameStatus !== "playing") return;
+    const id = window.setInterval(() => {
+      setClockMinutes((m) => m + 1);
+      bumpPatientStress(1);
+    }, 15_000);
+    return () => window.clearInterval(id);
+  }, [disclaimerAccepted, gameStatus, bumpPatientStress]);
+
+  // Pressione temporale aggiuntiva (più lenta).
+  useEffect(() => {
+    if (!disclaimerAccepted || gameStatus !== "playing") return;
+    const id = window.setInterval(() => {
+      bumpPatientStress(2);
+    }, 45_000);
+    return () => window.clearInterval(id);
+  }, [disclaimerAccepted, gameStatus, bumpPatientStress]);
 
   const demoChat = initialCaseData.demographics ?? {};
   const patientAgeForChat = demoChat.age ?? 58;
@@ -367,6 +463,10 @@ export function SimulatorClient({
         content: typeof m.content === "string" ? m.content : "",
       })),
     }),
+    onFinish: () => {
+      // Dopo ogni risposta paziente: micro-incremento stress (ansia / tempo clinico).
+      bumpPatientStress(1);
+    },
     onError: () => {
       setMessages((prev) => {
         const last = prev[prev.length - 1];
@@ -379,11 +479,6 @@ export function SimulatorClient({
       });
     },
   });
-
-  const bumpPatientStress = useCallback((delta: number) => {
-    if (delta <= 0) return;
-    setPatientStress((s) => Math.min(100, s + delta));
-  }, []);
 
   const ensureSessionId = async (): Promise<string | null> => {
     if (effectiveSessionId) return effectiveSessionId;
@@ -415,7 +510,7 @@ export function SimulatorClient({
     if (!confirmed) return;
 
     if (!persistReports) {
-      router.push("/dashboard");
+      router.push(backHref);
       router.refresh();
       return;
     }
@@ -487,22 +582,15 @@ export function SimulatorClient({
     };
   }, [effectiveSessionId, isAdmin]);
 
-  useEffect(() => {
-    if (!disclaimerAccepted || gameStatus !== "playing") return;
-    const id = window.setInterval(() => {
-      bumpPatientStress(2);
-    }, 30_000);
-    return () => window.clearInterval(id);
-  }, [disclaimerAccepted, gameStatus, bumpPatientStress]);
-
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmed = input.trim();
     if (!trimmed || isChatLoading) return;
 
-    const stressForRequest = Math.min(100, patientStress + 1);
+    const stressForRequest = Math.min(100, patientStress + 2);
     setPatientStress(stressForRequest);
     patientStressRef.current = stressForRequest;
+    advanceClock(1);
 
     submitChatMessage(event);
   };
@@ -543,7 +631,7 @@ export function SimulatorClient({
 
   const totalCost = selectedExams.reduce((sum, exam) => sum + exam.cost, 0);
   const caseExamLatencies = initialCaseData.examLatencies ?? {};
-  const totalMinutes = useMemo(() => {
+  const examLatencyMinutes = useMemo(() => {
     return selectedExamIds.reduce((sum, examId) => {
       const custom = caseExamLatencies[examId];
       if (custom != null) return sum + custom;
@@ -551,6 +639,9 @@ export function SimulatorClient({
       return sum + (exam?.timeMinutes ?? 5);
     }, 0);
   }, [selectedExamIds, caseExamLatencies, selectedExams]);
+
+  /** Tempo clinico visualizzato = timer simulato + latenze esami. */
+  const totalMinutes = clockMinutes + examLatencyMinutes;
 
   const reportGenerationAbortRef = useRef<AbortController | null>(null);
 
@@ -656,6 +747,10 @@ export function SimulatorClient({
     id: `CASE-${String(initialCaseData.id ?? "").slice(0, 6).toUpperCase() || "DEMO"}`,
   };
 
+  const ingressVitals = deriveDemoVitals(initialCaseData.id, patientStress);
+  const chartIsEmpty =
+    selectedExams.length === 0 && Object.keys(examFindings).length === 0;
+
   const handleExamFinding = (payload: {
     id: string;
     label: string;
@@ -670,6 +765,8 @@ export function SimulatorClient({
         numericValue: payload.result.numericValue,
       },
     }));
+    bumpPatientStress(3);
+    advanceClock(2);
   };
 
   const toggleExam = (examId: string) => {
@@ -681,6 +778,7 @@ export function SimulatorClient({
       if (!charged.has(examId)) {
         charged.add(examId);
         bumpPatientStress(2);
+        advanceClock(1);
       }
       return [...current, examId];
     });
@@ -766,12 +864,30 @@ export function SimulatorClient({
 
   if (gameStatus === "showing_report") {
     return (
-      <div className="min-h-screen bg-zinc-50 text-zinc-950 flex items-stretch justify-center px-4 pt-16 pb-10">
-        <SimulatorNavBar />
+      <div
+        className={
+          embedded
+            ? "bg-transparent text-[#2F4156] flex items-stretch justify-center"
+            : "min-h-screen bg-slate-50 text-[#2F4156] flex items-stretch justify-center px-4 pt-16 pb-10"
+        }
+      >
+        {!embedded ? (
+          <SimulatorNavBar backHref={backHref} backLabel="Torna alla Prassi" />
+        ) : null}
         <div className="w-full max-w-6xl flex flex-col gap-6">
-          <Card className="bg-white/80 border-zinc-200/80 rounded-3xl">
+          {embedded ? (
+            <SimulatorNavBar
+              embedded
+              backHref={backHref}
+              backLabel="Torna alla Prassi"
+            />
+          ) : null}
+          <Card className="rounded-2xl border border-slate-100 bg-white shadow-sm">
             <CardHeader>
-              <CardTitle className="text-sm font-medium">Report finale</CardTitle>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Report di performance
+              </p>
+              <CardTitle className="text-base font-semibold text-slate-900">Report finale</CardTitle>
               <CardDescription>
                 Naviga tra le sezioni del report per rivedere anamnesi, diagnostica e terapia.
               </CardDescription>
@@ -794,10 +910,10 @@ export function SimulatorClient({
                       type="button"
                       onClick={() => setActiveReportTab(t.id)}
                       className={
-                        "relative -mb-px flex items-center gap-2 rounded-t-2xl border px-4 py-2 text-[11px] font-medium transition-colors whitespace-nowrap " +
+                        "relative -mb-px flex items-center gap-2 rounded-t-xl border px-4 py-2 text-[11px] font-medium transition-colors whitespace-nowrap " +
                         (isActive
-                          ? "bg-white border-zinc-200 text-zinc-950"
-                          : "bg-zinc-100/80 border-zinc-200/80 text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100")
+                          ? "border-slate-200 bg-white text-slate-900 shadow-sm"
+                          : "border-transparent bg-slate-50 text-slate-600 hover:bg-white hover:text-slate-900")
                       }
                     >
                       {t.label}
@@ -805,7 +921,7 @@ export function SimulatorClient({
                   );
                 })}
               </div>
-              <div className="rounded-b-2xl rounded-tr-2xl border border-zinc-200/80 bg-white p-5 text-sm text-zinc-800 leading-relaxed space-y-3">
+              <div className="space-y-6 rounded-b-2xl rounded-tr-2xl border border-slate-100 bg-white p-5">
                 {reportLoading && (
                   <ReportGenerationProgress
                     progress={reportProgress}
@@ -817,62 +933,86 @@ export function SimulatorClient({
                 )}
                 {!reportLoading && reportData && (
                   <>
+                    <div className="flex flex-wrap items-center justify-center gap-10 border-b border-slate-100 pb-6">
+                      <ScoreProgressRing
+                        score={reportData.scores.clinical}
+                        label="Accuratezza clinica"
+                      />
+                      <ScoreProgressRing score={reportData.scores.legal} label="Tutela medico-legale" />
+                    </div>
+                    <div className="space-y-4">
+                      <MetricBar label="Accuratezza clinica" score={reportData.scores.clinical} />
+                      <MetricBar label="Tutela medico-legale" score={reportData.scores.legal} />
+                      <MetricBar label="Appropriatezza esami" score={reportData.scores.exams} />
+                      <MetricBar label="Empatia" score={reportData.scores.empathy} />
+                      <MetricBar label="Sostenibilità economica" score={reportData.scores.economy} />
+                    </div>
                     {activeReportTab === "clinical" && (
-                      <>
-                        <p className="text-xs text-zinc-500">
-                          Punteggio: {Math.round(reportData.scores.clinical)}/100
+                      <div className="rounded-xl border border-slate-100 border-l-4 border-l-[#345884] bg-slate-50 p-4">
+                        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Feedback clinico
                         </p>
-                        <p className="whitespace-pre-line">{reportData.feedback?.clinicalNote ?? "—"}</p>
-                      </>
+                        <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
+                          {reportData.feedback?.clinicalNote ?? "—"}
+                        </p>
+                      </div>
                     )}
                     {activeReportTab === "legal" && (
-                      <>
-                        <p className="text-xs text-zinc-500">
-                          Punteggio: {Math.round(reportData.scores.legal)}/100
+                      <div className="rounded-xl border border-slate-100 border-l-4 border-l-[#345884] bg-slate-50 p-4">
+                        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Feedback medico-legale
                         </p>
-                        <p className="whitespace-pre-line">{reportData.feedback?.legalComplianceNote ?? "—"}</p>
+                        <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
+                          {reportData.feedback?.legalComplianceNote ?? "—"}
+                        </p>
                         {reportData.evidence?.legalSources?.length ? (
-                          <div className="text-xs text-zinc-600">
+                          <div className="mt-3 text-xs text-slate-600">
                             <span className="font-medium">Fonti (tag: legale):</span>{" "}
                             {reportData.evidence.legalSources.join(" · ")}
                           </div>
                         ) : null}
-                      </>
+                      </div>
                     )}
                     {activeReportTab === "prescribing" && (
-                      <>
-                        <p className="text-xs text-zinc-500">
-                          Punteggio: {Math.round(reportData.scores.exams)}/100
+                      <div className="rounded-xl border border-slate-100 border-l-4 border-l-[#345884] bg-slate-50 p-4">
+                        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Feedback prescrittivo
                         </p>
-                        <p className="whitespace-pre-line">{reportData.feedback?.prescribingNote ?? "—"}</p>
+                        <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
+                          {reportData.feedback?.prescribingNote ?? "—"}
+                        </p>
                         {reportData.evidence?.protocolSources?.length ? (
-                          <div className="text-xs text-zinc-600">
+                          <div className="mt-3 text-xs text-slate-600">
                             <span className="font-medium">Fonti (tag: protocolli):</span>{" "}
                             {reportData.evidence.protocolSources.join(" · ")}
                           </div>
                         ) : null}
-                      </>
+                      </div>
                     )}
                     {activeReportTab === "empathy" && (
-                      <>
-                        <p className="text-xs text-zinc-500">
-                          Punteggio: {Math.round(reportData.scores.empathy)}/100
+                      <div className="rounded-xl border border-slate-100 border-l-4 border-l-[#345884] bg-slate-50 p-4">
+                        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Feedback empatia
                         </p>
-                        <p className="whitespace-pre-line">{reportData.feedback?.empathyNote ?? "—"}</p>
-                      </>
+                        <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
+                          {reportData.feedback?.empathyNote ?? "—"}
+                        </p>
+                      </div>
                     )}
                     {activeReportTab === "economy" && (
-                      <>
-                        <p className="text-xs text-zinc-500">
-                          Punteggio: {Math.round(reportData.scores.economy)}/100
+                      <div className="rounded-xl border border-slate-100 border-l-4 border-l-[#345884] bg-slate-50 p-4">
+                        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Feedback economico
                         </p>
-                        <p className="whitespace-pre-line">{reportData.feedback?.economyNote ?? "—"}</p>
-                      </>
+                        <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
+                          {reportData.feedback?.economyNote ?? "—"}
+                        </p>
+                      </div>
                     )}
                   </>
                 )}
                 {!reportLoading && !reportData && !reportError && (
-                  <div className="text-sm text-zinc-500">Report non disponibile.</div>
+                  <div className="text-sm text-slate-500">Report non disponibile.</div>
                 )}
               </div>
             </CardContent>
@@ -883,227 +1023,345 @@ export function SimulatorClient({
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-950 flex items-stretch justify-center px-4 pt-16 pb-10">
-      <SimulatorNavBar
-        dismissCase={
-          persistReports && disclaimerAccepted
-            ? { loading: dismissLoading, onClick: handleDismissCase }
-            : undefined
-        }
-      />
-      <div className="w-full max-w-6xl flex flex-col gap-8">
-        <header className="flex items-center justify-between gap-4">
+    <div
+      className={
+        embedded
+          ? "bg-transparent text-[#2F4156] flex items-stretch justify-center"
+          : "min-h-screen bg-[#F8FAFC] text-[#2F4156] flex items-stretch justify-center px-4 pt-16 pb-10"
+      }
+    >
+      {!embedded ? (
+        <SimulatorNavBar
+          backHref={backHref}
+          backLabel={backHref.includes("prassi") ? "Torna alla Prassi" : "Dashboard"}
+          dismissCase={
+            persistReports && disclaimerAccepted
+              ? { loading: dismissLoading, onClick: handleDismissCase }
+              : undefined
+          }
+        />
+      ) : null}
+      <div className="flex w-full max-w-7xl flex-col gap-5 font-[family-name:var(--font-inter)]">
+        {embedded ? (
+          <SimulatorNavBar
+            embedded
+            backHref={backHref}
+            backLabel="Torna alla libreria"
+            dismissCase={
+              persistReports && disclaimerAccepted
+                ? { loading: dismissLoading, onClick: handleDismissCase }
+                : undefined
+            }
+          />
+        ) : null}
+
+        <VitalSignsBoard
+          caseId={initialCaseData.id}
+          title={initialCaseData.title}
+          age={patient.age}
+          sex={patient.sex}
+          stress={patientStress}
+          className="rounded-xl border border-slate-900/60 shadow-md"
+        />
+
+        <header className="flex items-center justify-between gap-4 px-1 md:px-2">
           <div className="space-y-1">
-            <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
-              Simulazione caso clinico
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Simulazione attiva
             </p>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-semibold tracking-tight">{initialCaseData.title}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="font-display text-lg font-semibold tracking-tight text-[#1E324E]">
+                {initialCaseData.title}
+              </h1>
               {isVariant ? (
-                <Badge className="border-purple-500 text-purple-700 bg-purple-50 inline-flex items-center gap-1 text-[10px]">
-                  <Sparkles className="w-3 h-3" />
+                <Badge className="inline-flex items-center gap-1 border-[#345884]/30 bg-[#345884]/10 text-[10px] text-[#345884]">
+                  <Sparkles className="h-3 w-3" />
                   Variante IA
                 </Badge>
               ) : (
                 <Badge className="text-[10px]">Caso originale</Badge>
               )}
             </div>
-            <p className="text-xs text-zinc-600">
+            <p className="text-xs leading-relaxed text-slate-500">
               {initialCaseData.specialty
                 ? `${initialCaseData.specialty} · Obiettivo: ottimizzare rischio clinico, responsabilità medico-legale e risorse.`
                 : "Obiettivo: gestire il percorso diagnostico-terapeutico ottimizzando rischio clinico, responsabilità medico-legale e risorse."}
             </p>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200/80 bg-white/70 px-3 py-1.5 text-xs text-zinc-600 shadow-sm">
-            <Activity className="h-3.5 w-3.5 text-emerald-600" />
+          <div className="inline-flex items-center gap-2 rounded-xl border border-slate-100 bg-white px-3 py-1.5 text-xs text-slate-600 shadow-sm transition-colors hover:border-[#345884]/20">
+            <Activity className="h-3.5 w-3.5 text-[#345884]" />
             <span>Sessione in corso</span>
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-6 items-start">
-          <Card className="bg-white/80 border-zinc-200/80 rounded-3xl">
-            <CardHeader className="flex flex-row items-center justify-between gap-3">
-              <div>
-                <CardTitle className="text-sm font-medium">
-                  Interfaccia clinica
-                </CardTitle>
-                <CardDescription>
-                  Alterna tra anamnesi, esame obiettivo e richieste di esami.
-                </CardDescription>
-              </div>
-              <TabsList>
-                <TabsTrigger
-                  value="history"
-                  currentValue={activeTab}
-                  onSelect={(value) => setActiveTab(value as typeof activeTab)}
-                >
-                  Anamnesi
-                </TabsTrigger>
-                <TabsTrigger
-                  value="exam"
-                  currentValue={activeTab}
-                  onSelect={(value) => setActiveTab(value as typeof activeTab)}
-                >
-                  Esame obiettivo
-                </TabsTrigger>
-                <TabsTrigger
-                  value="tests"
-                  currentValue={activeTab}
-                  onSelect={(value) => setActiveTab(value as typeof activeTab)}
-                >
-                  Richiesta esami
-                </TabsTrigger>
-              </TabsList>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <Tabs
-                value={activeTab}
-                onValueChange={(value) => setActiveTab(value as typeof activeTab)}
-              >
-                <TabsContent
-                  value="history"
-                  currentValue={activeTab}
-                  className="mt-3"
-                >
-                  <HistoryChat
-                    messages={messages}
-                    input={input}
-                    onInputChange={handleInputChange}
-                    onSubmit={handleSubmit}
-                    isLoading={isChatLoading}
-                  />
-                </TabsContent>
-                <TabsContent
-                  value="exam"
-                  currentValue={activeTab}
-                  className="mt-3"
-                >
-                  <PhysicalExamTab
-                    sessionId={effectiveSessionId}
-                    patientPrompt={initialCaseData.patientPrompt}
-                    caseId={initialCaseData.id}
-                    onExamResult={handleExamFinding}
-                  />
-                </TabsContent>
-                <TabsContent
-                  value="tests"
-                  currentValue={activeTab}
-                  className="mt-3"
-                >
-                  <ExamsPanel
-                    selectedExamIds={selectedExamIds}
-                    onToggleExam={toggleExam}
-                    caseExamValues={caseAdvancedExamValues}
-                    examCatalog={examCatalog}
-                    examMacroCatalog={examMacroCatalog}
-                    availableExams={availableExams}
-                  />
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-
-          <div className="space-y-4">
-            <Card className="bg-white/80 border-zinc-200/80 rounded-3xl">
-              <CardHeader className="flex flex-row items-center justify-between gap-3">
+        <div className="grid grid-cols-1 gap-6 p-4 md:p-6 lg:grid-cols-12 lg:items-start">
+          {/* Left — Anamnesi / Chat / Esami */}
+          <div className="flex flex-col gap-4 lg:col-span-7 xl:col-span-8">
+            <Card className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-md">
+              <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/70">
                 <div>
-                  <CardTitle className="text-sm font-medium">
-                    Paziente
+                  <CardTitle className="font-display text-sm font-bold tracking-tight text-[#1E324E]">
+                    Interfaccia clinica
                   </CardTitle>
-                  <CardDescription>Identificativo caso e dati essenziali.</CardDescription>
+                  <CardDescription className="text-xs text-slate-500">
+                    Alterna tra anamnesi, esame obiettivo e richieste di esami.
+                  </CardDescription>
                 </div>
-                <span className="rounded-full bg-white border border-zinc-200/80 px-4 py-1.5 text-xs font-mono text-zinc-800 whitespace-nowrap">
-                  {patient.id}
-                </span>
+                <TabsList>
+                  <TabsTrigger
+                    value="history"
+                    currentValue={activeTab}
+                    onSelect={(value) => setActiveTab(value as typeof activeTab)}
+                  >
+                    Anamnesi
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="exam"
+                    currentValue={activeTab}
+                    onSelect={(value) => setActiveTab(value as typeof activeTab)}
+                  >
+                    Esame obiettivo
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="tests"
+                    currentValue={activeTab}
+                    onSelect={(value) => setActiveTab(value as typeof activeTab)}
+                  >
+                    Richiesta esami
+                  </TabsTrigger>
+                </TabsList>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-zinc-100">
-                      <HeartPulse className="h-5 w-5 text-rose-500" />
-                    </div>
-                    <span className="text-sm">
-                      {patient.age} anni – {patient.sex === "M" ? "Maschio" : "Femmina"}
-                    </span>
+              <CardContent className="pt-0">
+                <Tabs
+                  value={activeTab}
+                  onValueChange={(value) => setActiveTab(value as typeof activeTab)}
+                >
+                  <TabsContent value="history" currentValue={activeTab} className="mt-3">
+                    <HistoryChat
+                      messages={messages}
+                      input={input}
+                      onInputChange={handleInputChange}
+                      onSubmit={handleSubmit}
+                      isLoading={isChatLoading}
+                    />
+                  </TabsContent>
+                  <TabsContent value="exam" currentValue={activeTab} className="mt-3">
+                    <PhysicalExamTab
+                      sessionId={effectiveSessionId}
+                      patientPrompt={initialCaseData.patientPrompt}
+                      caseId={initialCaseData.id}
+                      onExamResult={handleExamFinding}
+                    />
+                  </TabsContent>
+                  <TabsContent value="tests" currentValue={activeTab} className="mt-3">
+                    <ExamsPanel
+                      selectedExamIds={selectedExamIds}
+                      onToggleExam={toggleExam}
+                      caseExamValues={caseAdvancedExamValues}
+                      examCatalog={examCatalog}
+                      examMacroCatalog={examMacroCatalog}
+                      availableExams={availableExams}
+                    />
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right — Cartella Clinica & Decisioni */}
+          <div className="flex flex-col gap-4 lg:col-span-5 xl:col-span-4">
+            <div className="flex min-h-[500px] flex-col justify-between rounded-2xl border border-slate-200/60 bg-white/95 p-5 shadow-sm transition-all duration-300 hover:shadow-md">
+              <div>
+                <div className="flex items-start gap-2.5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#1E324E]/5 text-[#345884]">
+                    <ClipboardList className="h-4 w-4" />
                   </div>
+                  <div className="min-w-0">
+                    <h3 className="font-display text-sm font-bold tracking-tight text-[#1E324E]">
+                      Cartella Clinica Attiva
+                    </h3>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">
+                      {patientDisplayName(initialCaseData.id, initialCaseData.title)}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-slate-400">
+                      ID {patient.id} · {patient.age} anni ·{" "}
+                      {patient.sex === "M" ? "Maschio" : "Femmina"}
+                    </p>
+                  </div>
+                </div>
+                <hr className="my-3 border-slate-100" />
+
+                <section className="space-y-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Anamnesi
+                  </p>
+                  <p className="rounded-xl border border-slate-100 bg-slate-50/80 p-3 text-xs leading-relaxed text-slate-700">
+                    {patient.mainComplaint ||
+                      "Motivo di accesso da approfondire con il paziente."}
+                  </p>
+                  <p className="text-[11px] text-slate-500">Contesto: {patient.context}</p>
                   <button
                     type="button"
                     onClick={() => {
                       setPatientChartTab("base");
                       setIsPatientChartOpen(true);
                     }}
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-zinc-200/80 bg-white text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
-                    title="Apri cartella paziente"
+                    className="inline-flex items-center gap-1.5 rounded-lg text-[11px] font-medium text-[#345884] transition-colors hover:text-[#1E324E] hover:underline"
                   >
-                    <FolderOpen className="h-4 w-4" />
+                    <FolderOpen className="h-3.5 w-3.5" />
+                    Apri cartella completa
                   </button>
-                </div>
-                <PatientStressBar value={patientStress} />
-              </CardContent>
-            </Card>
+                </section>
 
-            <Card className="bg-white/80 border-zinc-200/80 rounded-3xl">
-              <CardHeader className="flex flex-row items-center justify-between gap-3">
-                <div>
-                  <CardTitle className="text-sm font-medium">
-                    Monitor simulazione
-                  </CardTitle>
-                  <CardDescription>
-                    Tempo procedurale e costo cumulativo degli esami richiesti.
-                  </CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4 text-sm">
-                <div className="flex items-center justify-between gap-3 rounded-2xl bg-white border border-zinc-200/80 px-3 py-2.5 shadow-sm">
+                <section className="mt-5 space-y-2">
                   <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-sky-600" />
-                    <span className="text-sm font-medium text-zinc-800">
-                      {formatElapsedTime(totalMinutes)}
-                    </span>
+                    <Stethoscope className="h-3.5 w-3.5 text-[#345884]" />
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Esame obiettivo
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <EuroIcon className="h-4 w-4 text-emerald-600" />
-                    <span className="text-sm font-medium text-zinc-800">
-                      {totalCost.toFixed(0)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <span className="text-xs text-zinc-500">
-                    Esami richiesti
-                  </span>
-                  {selectedExams.length === 0 ? (
-                    <p className="text-xs text-zinc-500">
-                      Nessun esame ancora richiesto. Ogni richiesta aggiorna automaticamente tempo e costo simulati.
+                  {objectiveFindingsRecentFirst.length === 0 ? (
+                    <p className="text-xs text-slate-500">
+                      Nessun reperto obiettivo ancora registrato.
                     </p>
                   ) : (
-                    <ul className="space-y-1.5 text-xs max-h-28 overflow-y-auto pr-1">
-                      {selectedExamsRecentFirst.map((exam) => (
+                    <ul className="max-h-28 space-y-1.5 overflow-y-auto pr-1 text-xs">
+                      {objectiveFindingsRecentFirst.map((exam) => (
                         <li
                           key={exam.id}
-                          className="flex items-center justify-between rounded-2xl bg-white border border-zinc-200/80 px-3 py-1.5"
+                          className="rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-1.5"
                         >
-                          <span className="truncate text-zinc-950">{exam.name}</span>
-                          <span className="ml-3 flex items-center gap-3 text-[11px] text-zinc-500">
-                            <span>{exam.timeMinutes}</span>
-                            <span>{exam.cost}</span>
-                          </span>
+                          <p className="font-medium text-slate-800">{exam.label}</p>
+                          <p className="mt-0.5 text-slate-600">
+                            {exam.finding}
+                            {typeof exam.numericValue === "number" ? (
+                              <span className="ml-1 font-mono text-slate-500">
+                                ({exam.numericValue})
+                              </span>
+                            ) : null}
+                          </p>
                         </li>
                       ))}
                     </ul>
                   )}
-                </div>
-              </CardContent>
-            </Card>
+                </section>
 
-            <Card className="bg-white/80 border-zinc-200/80 rounded-3xl">
+                <section className="mt-5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <FlaskConical className="h-3.5 w-3.5 text-[#345884]" />
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Esami richiesti
+                    </p>
+                  </div>
+                  {selectedExams.length > 0 ? (
+                    <ul className="max-h-28 space-y-1.5 overflow-y-auto pr-1 text-xs">
+                      {selectedExamsRecentFirst.map((exam) => (
+                        <li
+                          key={exam.id}
+                          className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-1.5"
+                        >
+                          <span className="truncate text-slate-800">{exam.name}</span>
+                          <span className="ml-3 shrink-0 font-mono text-[11px] tabular-nums text-slate-500">
+                            €{exam.cost.toFixed(0)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : chartIsEmpty ? (
+                    <div className="relative overflow-hidden rounded-2xl border border-[#345884]/15 bg-gradient-to-br from-slate-50 via-white to-[#345884]/[0.06] p-4 shadow-sm">
+                      <div
+                        className="pointer-events-none absolute -right-2 top-2 opacity-[0.07]"
+                        aria-hidden
+                      >
+                        <AequanLogo height={56} />
+                      </div>
+                      <p className="font-display text-[10px] font-bold uppercase tracking-[0.16em] text-[#345884]">
+                        Triage d&apos;Ingresso Ospedaliero
+                      </p>
+                      <div className="mt-3 space-y-2 border-l-2 border-[#1E324E]/20 pl-3 text-[11px] leading-relaxed text-slate-600">
+                        <p>
+                          <span className="font-semibold text-[#1E324E]">Paziente:</span>{" "}
+                          {patientDisplayName(initialCaseData.id, initialCaseData.title)},{" "}
+                          {patient.age} anni · {patient.sex === "M" ? "Maschio" : "Femmina"}
+                        </p>
+                        <p>
+                          <span className="font-semibold text-[#1E324E]">ID cartella:</span>{" "}
+                          <span className="font-mono">{patient.id}</span>
+                        </p>
+                        <p>
+                          <span className="font-semibold text-[#1E324E]">
+                            Motivo di accesso:
+                          </span>{" "}
+                          {patient.mainComplaint || "Da approfondire in anamnesi"}
+                        </p>
+                        <div className="rounded-xl border border-slate-200/60 bg-white/80 px-3 py-2 font-mono text-[10px] text-slate-700">
+                          <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                            Parametri vitali all&apos;ingresso
+                          </p>
+                          <p>
+                            PA {ingressVitals.bp} · FC {ingressVitals.hr} bpm · SpO₂{" "}
+                            {ingressVitals.spo2}% · T {ingressVitals.temp}°C · FR{" "}
+                            {ingressVitals.rr}/min
+                          </p>
+                        </div>
+                      </div>
+                      <p className="mt-3 rounded-xl border border-amber-200/60 bg-amber-50/70 px-3 py-2 text-[10px] leading-relaxed text-amber-950/90">
+                        In attesa di esami diagnostici. Conduci l&apos;anamnesi via chat o esegui
+                        l&apos;esame obiettivo per popolare la cartella.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs leading-relaxed text-slate-500">
+                      Nessun esame diagnostico richiesto. Reperti di esame obiettivo già
+                      registrati in cartella.
+                    </p>
+                  )}
+                </section>
+              </div>
+
+              <div className="mt-5 space-y-4">
+                <div className="rounded-xl border border-[#345884]/10 bg-[#345884]/5 p-3.5">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#345884]">
+                      <EuroIcon className="h-3.5 w-3.5" />
+                      Costo SSN
+                    </span>
+                    <span className="text-[10px] text-slate-500">Budget rif. €250</span>
+                  </div>
+                  <p className="font-mono text-base font-semibold tracking-tight text-[#1E324E]">
+                    Costo Appropriato: €{totalCost.toFixed(2)}
+                  </p>
+                  <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-white/80 shadow-inner">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-[#1E324E] to-[#345884] transition-all duration-500"
+                      style={{ width: `${Math.min(100, (totalCost / 250) * 100)}%` }}
+                    />
+                  </div>
+                  <p className="mt-2 text-[11px] text-slate-500">
+                    Tempo simulato:{" "}
+                    <span className="font-mono font-medium text-slate-700">
+                      {formatElapsedTime(totalMinutes)}
+                    </span>
+                  </p>
+                </div>
+
+                <div>
+                  <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Stress paziente
+                  </p>
+                  <PatientStressBar value={patientStress} />
+                </div>
+              </div>
+            </div>
+
+            <Card className="rounded-2xl border border-slate-100 bg-white shadow-md">
               <CardHeader>
-                <CardTitle className="text-sm font-medium">
+                <CardTitle className="font-display text-sm font-bold tracking-tight text-[#1E324E]">
                   Conclusione caso
                 </CardTitle>
-                <CardDescription>
-                  Emetti diagnosi e trattamento, gestisci eventuali imprevisti e consulta il report finale.
+                <CardDescription className="text-xs text-slate-500">
+                  Emetti diagnosi e trattamento, gestisci eventuali imprevisti e consulta il report
+                  finale.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 text-xs">
@@ -1116,11 +1374,11 @@ export function SimulatorClient({
                       </div>
                     )}
                     <div className="space-y-2">
-                      <label className="text-[11px] font-medium text-zinc-700">
+                      <label className="text-[11px] font-medium text-slate-700">
                         Diagnosi finale
                       </label>
                       <Textarea
-                        className="min-h-24 text-xs"
+                        className="min-h-24 rounded-xl border-slate-200 text-xs transition-shadow focus:border-[#345884] focus:ring-2 focus:ring-[#345884]/20"
                         placeholder="Scrivi la diagnosi finale (es. NSTEMI, polmonite lobare, ecc.)..."
                         value={finalDiagnosis}
                         onChange={(e) => setFinalDiagnosis(e.target.value)}
@@ -1151,8 +1409,8 @@ export function SimulatorClient({
                               disabled
                               className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors ${
                                 enableAiSurprises
-                                  ? "bg-emerald-500/90 border-emerald-600"
-                                  : "bg-zinc-200 border-zinc-300 opacity-60 cursor-not-allowed"
+                                  ? "border-[#345884] bg-[#345884]"
+                                  : "cursor-not-allowed border-slate-200 bg-slate-100 opacity-60"
                               }`}
                               aria-pressed={enableAiSurprises}
                             >
@@ -1169,10 +1427,10 @@ export function SimulatorClient({
                           <button
                             type="button"
                             onClick={() => setForceAiSurprise((v) => !v)}
-                            className={`text-[11px] font-medium rounded-full border px-3 py-1.5 transition-colors ${
+                            className={`rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors ${
                               forceAiSurprise
-                                ? "bg-amber-50 border-amber-200 text-amber-900"
-                                : "bg-white border-zinc-200/80 text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100"
+                                ? "border-amber-200 bg-amber-50 text-amber-900"
+                                : "border-zinc-200/80 bg-white text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950"
                             }`}
                             title="Solo test: forza sempre l'imprevisto quando la diagnosi è corretta"
                           >
@@ -1185,7 +1443,7 @@ export function SimulatorClient({
                     <Button
                       type="button"
                       size="lg"
-                      className="w-full justify-center text-sm"
+                      className="w-full justify-center rounded-xl bg-gradient-to-r from-[#1E324E] to-[#345884] text-sm text-white shadow-sm transition-all duration-300 hover:opacity-95 hover:shadow-md"
                       onClick={confirmDiagnosis}
                       disabled={!finalDiagnosis.trim()}
                     >
@@ -1222,7 +1480,7 @@ export function SimulatorClient({
                       </div>
                     )}
                     {gameStatus === "success" && (
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-emerald-800">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[#2F4156]">
                         Diagnosi Corretta! Il paziente è stato trattato con successo ed è in via di dimissione.
                       </div>
                     )}
@@ -1261,7 +1519,7 @@ export function SimulatorClient({
                         <Button
                           type="button"
                           size="md"
-                          className="text-xs px-4"
+                          className="rounded-xl bg-gradient-to-r from-[#1E324E] to-[#345884] px-4 text-xs text-white shadow-sm transition-all duration-300 hover:opacity-95 hover:shadow-md"
                           onClick={async () => {
                             if (isStartingEmergency) return;
                             setIsStartingEmergency(true);
@@ -1298,7 +1556,7 @@ export function SimulatorClient({
                         <Button
                           type="button"
                           size="md"
-                          className="text-xs px-4"
+                          className="rounded-xl bg-gradient-to-r from-[#1E324E] to-[#345884] px-4 text-xs text-white shadow-sm transition-all duration-300 hover:opacity-95 hover:shadow-md"
                           onClick={() => void generateReportAndNavigate()}
                           disabled={reportLoading}
                         >
@@ -1460,7 +1718,7 @@ export function SimulatorClient({
           <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-end">
             <Link
               href="/dashboard"
-              className="inline-flex h-9 items-center justify-center rounded-full border border-zinc-200/80 bg-white px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+              className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
             >
               Torna al dashboard
             </Link>
@@ -1563,10 +1821,10 @@ function HistoryChat({
   }, [scrollAnchor, isLoading]);
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl bg-white/70 border border-zinc-200/80 p-3 h-[420px] overflow-hidden">
+    <div className="flex h-[460px] flex-col gap-3 overflow-hidden rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
       <div
         ref={scrollRef}
-        className="flex-1 space-y-2.5 overflow-y-auto pr-1.5"
+        className="flex-1 space-y-3 overflow-y-auto pr-1.5"
         onWheel={(event) => {
           // Some mouse wheels on Arc do not scroll nested containers reliably.
           if (!scrollRef.current) return;
@@ -1587,15 +1845,25 @@ function HistoryChat({
               key={message.id}
               className={`flex ${isDoctor ? "justify-end" : "justify-start"}`}
             >
-              <div
-                className={
-                  isDoctor
-                    ? "max-w-[70%] rounded-2xl bg-sky-600 text-white text-xs px-3 py-2 shadow-sm"
-                    : "max-w-[70%] rounded-2xl bg-zinc-100 text-zinc-900 text-xs px-3 py-2 border border-zinc-200/80"
-                }
-              >
-                {text}
-              </div>
+              {isDoctor ? (
+                <div className="flex max-w-[78%] items-end gap-2">
+                  <div className="rounded-2xl rounded-br-md bg-[#1E324E] p-4 text-sm font-medium leading-relaxed text-white shadow-sm">
+                    {text}
+                  </div>
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#2a4266] bg-[#1E324E] shadow-sm">
+                    <Stethoscope className="h-4 w-4 text-white/90" />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex max-w-[78%] items-end gap-2.5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 ring-2 ring-white shadow-sm">
+                    <User className="h-4 w-4 text-slate-500" />
+                  </div>
+                  <div className="rounded-2xl rounded-bl-md border border-slate-100 bg-slate-50 p-4 text-sm font-medium leading-relaxed text-slate-800 shadow-sm">
+                    {text}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
@@ -1606,7 +1874,7 @@ function HistoryChat({
         className="mt-1 space-y-1.5"
       >
         <Textarea
-          className="text-xs"
+          className="rounded-xl border-slate-200 text-xs shadow-sm focus:border-[#345884] focus:ring-2 focus:ring-[#345884]/25 focus-visible:outline-none"
           rows={2}
           placeholder="Formula la prossima domanda o esplora un sintomo (es. caratteristiche del dolore, fattori di rischio, sintomi associati)..."
           value={input}
@@ -1627,7 +1895,7 @@ function HistoryChat({
             type="submit"
             disabled={isLoading || !input.trim()}
             size="sm"
-            className="px-4 py-1.5 text-[11px]"
+            className="rounded-xl bg-gradient-to-r from-[#1E324E] to-[#345884] px-4 py-1.5 text-[11px] text-white shadow-sm transition-all duration-300 hover:opacity-95 hover:shadow-md"
           >
             {isLoading ? "Risposta in corso..." : "Invia domanda"}
           </Button>
@@ -1770,8 +2038,8 @@ function ExamsPanel({
                     className={
                       "w-full text-left rounded-xl border px-3 py-2 transition-colors " +
                       (isSelected
-                        ? "border-emerald-300 bg-emerald-50"
-                        : "border-zinc-200/80 bg-white hover:bg-zinc-50")
+                        ? "border-[#345884]/40 bg-slate-50"
+                        : "border-slate-200 bg-white hover:bg-slate-50")
                     }
                   />
                 );
@@ -1820,8 +2088,8 @@ function ExamsPanel({
                           className={
                             "w-full text-left rounded-lg border px-2.5 py-2 transition-colors " +
                             (isSelected
-                              ? "border-emerald-300 bg-emerald-50"
-                              : "border-zinc-200/80 bg-white hover:bg-zinc-100")
+                              ? "border-[#345884]/40 bg-slate-50"
+                              : "border-slate-200 bg-white hover:bg-slate-50")
                           }
                         />
                       );
@@ -1855,8 +2123,8 @@ function ExamsPanel({
                                   className={
                                     "w-full text-left rounded-lg border px-2.5 py-2 transition-colors " +
                                     (isSelected
-                                      ? "border-emerald-300 bg-emerald-50"
-                                      : "border-zinc-200/80 bg-white hover:bg-zinc-100")
+                                      ? "border-[#345884]/40 bg-slate-50"
+                                      : "border-slate-200 bg-white hover:bg-slate-50")
                                   }
                                 />
                               );

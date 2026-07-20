@@ -1,3 +1,4 @@
+import { Search } from "lucide-react";
 import { ClinicalCaseCard, type ClinicalCaseRow } from "@/components/dashboard/ClinicalCaseCard";
 
 type ClinicalCaseGridProps = {
@@ -6,17 +7,26 @@ type ClinicalCaseGridProps = {
   emptyMessage?: string;
 };
 
+function CasesEmptyState({ message }: { message: string }) {
+  return (
+    <div className="col-span-full rounded-xl border border-dashed border-slate-200 bg-slate-50/40 px-6 py-12 text-center">
+      <Search className="mx-auto h-8 w-8 text-slate-300" strokeWidth={1.5} aria-hidden />
+      <p className="mt-3 text-sm font-medium text-slate-400">{message}</p>
+    </div>
+  );
+}
+
 export function ClinicalCaseGrid({ cases, mode = "start", emptyMessage }: ClinicalCaseGridProps) {
   if (cases.length === 0) {
     return (
-      <p className="text-xs text-zinc-500 py-4 text-center col-span-full">
-        {emptyMessage ?? "Nessun caso con i filtri attivi."}
-      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <CasesEmptyState message={emptyMessage ?? "Nessun caso con i filtri attivi."} />
+      </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
       {cases.map((caseRow) => (
         <ClinicalCaseCard key={caseRow.id} caseRow={caseRow} mode={mode} />
       ))}

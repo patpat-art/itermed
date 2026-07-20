@@ -16,7 +16,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-950">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#2F4156]">
       <div className="flex min-h-screen max-w-7xl mx-auto px-6 py-10 gap-10">
         <DashboardSidebar
           userLabel={label}

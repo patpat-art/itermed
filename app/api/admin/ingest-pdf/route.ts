@@ -14,6 +14,7 @@ const ingestPdfLogger = createLogger("ingest-pdf");
 const FormSchema = z.object({
   title: z.string().min(1),
   tags: z.string().optional(),
+  medicalSpecialtyId: z.string().min(1).optional(),
 });
 
 const CHUNK_SIZE = 1000;
@@ -73,6 +74,7 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const rawTitle = formData.get("title");
     const rawTags = formData.get("tags");
+    const rawSpecialtyId = formData.get("medicalSpecialtyId");
     const file = formData.get("file");
 
     if (!(file instanceof File)) {
@@ -85,6 +87,10 @@ export async function POST(req: Request) {
     const parsedMeta = FormSchema.safeParse({
       title: typeof rawTitle === "string" ? rawTitle : "",
       tags: typeof rawTags === "string" ? rawTags : "",
+      medicalSpecialtyId:
+        typeof rawSpecialtyId === "string" && rawSpecialtyId.trim()
+          ? rawSpecialtyId.trim()
+          : undefined,
     });
 
     if (!parsedMeta.success) {
@@ -94,7 +100,20 @@ export async function POST(req: Request) {
       });
     }
 
-    const { title, tags } = parsedMeta.data;
+    const { title, tags, medicalSpecialtyId } = parsedMeta.data;
+
+    if (medicalSpecialtyId) {
+      const specialty = await prisma.medicalSpecialty.findUnique({
+        where: { id: medicalSpecialtyId },
+        select: { id: true },
+      });
+      if (!specialty) {
+        return new Response(JSON.stringify({ error: "medicalSpecialtyId non valido." }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
     const tagsArray = tags
       ? tags
           .split(",")
@@ -151,6 +170,7 @@ export async function POST(req: Request) {
               tags: tagsArray,
               content: chunks[globalIndex],
               source: file.name,
+              ...(medicalSpecialtyId ? { medicalSpecialtyId } : {}),
             },
           };
         });
@@ -175,6 +195,7 @@ export async function POST(req: Request) {
         chunkCount: chunks.length,
         vectorIds,
         isActive: pineconeConfigured && index ? true : false,
+        ...(medicalSpecialtyId ? { medicalSpecialtyId } : {}),
       },
     });
 

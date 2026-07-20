@@ -9,19 +9,19 @@ type OverviewQuickActionsProps = {
 
 export function OverviewQuickActions({ focusShort, casesThisWeek }: OverviewQuickActionsProps) {
   return (
-    <Card className="bg-white/80 border-zinc-200/80 h-80">
+    <Card className="bg-white border-slate-200 h-80">
       <CardHeader>
-        <CardTitle className="text-sm font-medium text-zinc-950">Simulatore</CardTitle>
-        <CardDescription>Avvia una simulazione in un click, o continua il percorso.</CardDescription>
+        <CardTitle className="text-sm font-medium text-[#2F4156]">Simulatore</CardTitle>
+        <CardDescription className="text-slate-500">Avvia una simulazione in un click, o continua il percorso.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <Link href="/dashboard/simulator" className="block">
-          <div className="rounded-3xl border border-zinc-200 bg-zinc-950 text-zinc-50 px-5 py-4 shadow-sm hover:bg-zinc-900 transition-colors">
+        <Link href="/dashboard/prassi" className="block">
+          <div className="rounded-xl border border-slate-200 bg-[#1E324E] text-white px-5 py-4 shadow-sm transition-colors hover:bg-[#2A486D]">
             <div className="flex items-center justify-between gap-4">
               <div className="space-y-1">
-                <p className="text-sm font-semibold tracking-tight">Scegli caso clinico</p>
-                <p className="text-xs text-zinc-300">
-                  Scegli un caso disponibile e avvia la simulazione.
+                <p className="font-display text-sm font-semibold tracking-tight">Prassi Clinica</p>
+                <p className="text-xs text-white/70">
+                  Libreria casi ed esercitazioni — avvia una simulazione.
                 </p>
               </div>
               <Play className="h-5 w-5" />

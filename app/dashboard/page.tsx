@@ -16,7 +16,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     searchParams && "then" in searchParams ? await searchParams : searchParams;
   if (resolvedSearch?.specialty?.trim()) {
     redirect(
-      `/dashboard/cases?specialty=${encodeURIComponent(resolvedSearch.specialty.trim())}`,
+      `/dashboard/prassi?specialty=${encodeURIComponent(resolvedSearch.specialty.trim())}`,
     );
   }
 

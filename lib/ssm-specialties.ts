@@ -52,7 +52,7 @@ export function buildSsmSpecialtyLinks(
 
 export function specialtyFilterHref(link: SsmSpecialtyLink): string {
   if (link.specialtyId) {
-    return `/dashboard/cases?specialtyId=${encodeURIComponent(link.specialtyId)}`;
+    return `/dashboard/prassi?specialtyId=${encodeURIComponent(link.specialtyId)}`;
   }
-  return `/dashboard/cases?specialty=${encodeURIComponent(link.name)}`;
+  return `/dashboard/prassi?specialty=${encodeURIComponent(link.name)}`;
 }

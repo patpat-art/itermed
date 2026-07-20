@@ -203,5 +203,5 @@ export async function createCase(formData: FormData) {
     },
   });
 
-  redirect("/dashboard/cases");
+  redirect("/dashboard/prassi");
 }

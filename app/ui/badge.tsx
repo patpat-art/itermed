@@ -10,17 +10,17 @@ type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
 };
 
 const variants: Record<BadgeVariant, string> = {
-  default: "bg-white/80 text-zinc-700 border-zinc-200/80 shadow-[0_10px_30px_rgba(0,0,0,0.05)]",
-  info: "bg-sky-50/80 text-sky-700 border-sky-200/80 shadow-[0_10px_30px_rgba(0,0,0,0.05)]",
-  success: "bg-emerald-50/80 text-emerald-700 border-emerald-200/80 shadow-[0_10px_30px_rgba(0,0,0,0.05)]",
-  warning: "bg-amber-50/80 text-amber-700 border-amber-200/80 shadow-[0_10px_30px_rgba(0,0,0,0.05)]",
+  default: "bg-white text-slate-600 border-slate-200 shadow-sm",
+  info: "bg-slate-50 text-[#345884] border-slate-200 shadow-sm",
+  success: "bg-slate-50 text-[#1E324E] border-slate-200 shadow-sm",
+  warning: "bg-amber-50/80 text-amber-800 border-amber-200/80 shadow-sm",
 };
 
 export function Badge({ className, variant = "default", ...props }: BadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium backdrop-blur-sm",
+        "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium",
         variants[variant],
         className,
       )}
@@ -28,4 +28,3 @@ export function Badge({ className, variant = "default", ...props }: BadgeProps) 
     />
   );
 }
-

@@ -5,6 +5,10 @@ import { createLogger } from "@/lib/logger";
 
 const prismaLogger = createLogger("prisma");
 
+/**
+ * Prevents connection exhaustion under HMR / concurrent serverless invocations
+ * by reusing a single PrismaClient on `globalThis`.
+ */
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
 };
@@ -17,10 +21,6 @@ if (!config.isTest && !config.DATABASE_URL.includes("-pooler.")) {
   );
 }
 
-/**
- * Singleton Prisma client — cached on `globalThis` in all environments
- * to maximise connection reuse across hot serverless invocations.
- */
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
@@ -30,4 +30,5 @@ export const prisma =
     log: config.isDevelopment ? ["warn", "error"] : ["error"],
   });
 
+// Always pin on globalThis (dev HMR + serverless warm reuse).
 globalForPrisma.prisma = prisma;

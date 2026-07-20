@@ -62,7 +62,7 @@ async function updateCase(formData: FormData) {
   }
 
   const can = await userCanManageCase(user.id, id);
-  if (!can) redirect("/dashboard/cases");
+  if (!can) redirect("/dashboard/prassi");
 
   const baselineExamFindings = {
     demographics: {
@@ -119,7 +119,7 @@ async function updateCase(formData: FormData) {
     },
   });
 
-  redirect("/dashboard/cases");
+  redirect("/dashboard/prassi");
 }
 
 export default async function EditCasePage({

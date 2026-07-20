@@ -181,7 +181,7 @@ export const ExamAccordionItem = memo(function ExamAccordionItem({
               type="button"
               disabled={saving}
               onClick={handleSave}
-              className="inline-flex h-8 items-center gap-1.5 rounded-full bg-zinc-950 px-4 text-xs font-medium text-zinc-50 disabled:opacity-60"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#1E324E] px-4 text-xs font-medium text-white transition-colors hover:bg-[#2A486D] disabled:opacity-60"
             >
               {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
               Salva esame

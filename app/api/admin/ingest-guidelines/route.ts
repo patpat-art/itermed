@@ -13,6 +13,8 @@ const IngestBodySchema = z.object({
   title: z.string().min(1),
   text: z.string().min(1),
   tags: z.array(z.string()).optional(),
+  /** Canonical MedicalSpecialty.id — scopes the document for specialty-centric RAG. */
+  medicalSpecialtyId: z.string().min(1).optional(),
 });
 
 const CHUNK_SIZE = 800;
@@ -43,7 +45,20 @@ export async function POST(req: Request) {
     });
   }
 
-  const { title, text, tags = [] } = parsed.data;
+  const { title, text, tags = [], medicalSpecialtyId } = parsed.data;
+
+  if (medicalSpecialtyId) {
+    const specialty = await prisma.medicalSpecialty.findUnique({
+      where: { id: medicalSpecialtyId },
+      select: { id: true },
+    });
+    if (!specialty) {
+      return new Response(JSON.stringify({ error: "medicalSpecialtyId non valido." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
 
   // 1. Chunking semplice a lunghezza fissa con overlap
   const normalized = text.replace(/\r\n/g, "\n").trim();
@@ -94,6 +109,7 @@ export async function POST(req: Request) {
         title,
         tags,
         content: chunks[i],
+        ...(medicalSpecialtyId ? { medicalSpecialtyId } : {}),
       },
     }));
 
@@ -133,6 +149,7 @@ export async function POST(req: Request) {
         chunkCount: chunks.length,
         vectorIds,
         isActive: true,
+        ...(medicalSpecialtyId ? { medicalSpecialtyId } : {}),
       },
     });
 

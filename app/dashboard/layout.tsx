@@ -21,14 +21,14 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-950">
-      <div className="flex min-h-screen max-w-7xl mx-auto px-6 py-10 gap-10">
+    <div className="min-h-screen bg-[#F8FAFC]/80 text-text-primary">
+      <div className="mx-auto flex min-h-screen max-w-[1600px] gap-10 px-6 py-10">
         <DashboardSidebar
           userLabel={label}
           isAdmin={user.role === "ADMIN"}
           ssmSpecialties={ssmSpecialties}
         />
-        <main className="flex-1 flex flex-col gap-8 min-h-0">{children}</main>
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-8">{children}</main>
       </div>
     </div>
   );

@@ -11,6 +11,10 @@ import { getUserBillingProfile } from "@/lib/billing/user-billing";
 import { createLogger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { sanitizeUserMessagesForAI } from "@/lib/security/sanitize-for-ai";
+import {
+  MAX_CHAT_MESSAGES,
+  shouldRejectUserChatInput,
+} from "@/lib/security/prompt-injection-guard";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { buildPatientSimulatorCaseInput } from "@/lib/simulator/patientCaseContext";
 import { generatePatientResponse } from "@/lib/simulator/generatePatientResponse";
@@ -79,7 +83,7 @@ export async function POST(req: Request) {
     });
   }
 
-  const rateLimited = enforceRateLimit(req, {
+  const rateLimited = await enforceRateLimit(req, {
     namespace: "api-chat",
     limit: 15,
     userId,
@@ -108,7 +112,35 @@ export async function POST(req: Request) {
   const stressClamped = clampStress(patientStress);
   const chatMessagesPreview = normalizeChatMessages(messages);
 
-  const chatGate = assertCanSendChatMessage(billingProfile, chatMessagesPreview);
+  if (chatMessagesPreview.length > MAX_CHAT_MESSAGES) {
+    return new Response(
+      JSON.stringify({
+        error: "Too many messages in conversation payload.",
+        code: "CHAT_PAYLOAD_TOO_LARGE",
+      }),
+      { status: 413, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const lastRawUserMessage = getLastUserMessage(chatMessagesPreview);
+  if (lastRawUserMessage && shouldRejectUserChatInput(lastRawUserMessage)) {
+    chatLogger.warn("Blocked chat input (injection / malicious payload)", {
+      userId,
+      length: lastRawUserMessage.length,
+    });
+    return new Response(
+      JSON.stringify({
+        error: "Messaggio non consentito: contenuto potenzialmente malevolo o non valido.",
+        code: "CHAT_INPUT_REJECTED",
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  // Sanitize early so downstream gold-inference never sees raw injection text.
+  const chatMessages = sanitizeUserMessagesForAI(chatMessagesPreview);
+
+  const chatGate = assertCanSendChatMessage(billingProfile, chatMessages);
   if (!chatGate.allowed) {
     return gateToResponse(chatGate);
   }
@@ -168,14 +200,13 @@ export async function POST(req: Request) {
 
       elapsedMinutes = computeElapsedMinutesFromExams(mergedExamIds, examLatencies);
 
-      const chatMessagesForInference = chatMessagesPreview;
-      const lastUserMessage = getLastUserMessage(chatMessagesForInference);
+      const lastUserMessageForGold = getLastUserMessage(chatMessages);
 
       const inferredGold = inferCompletedGoldSteps({
         goldStandardPath: goldPath,
         requestedExamIds: mergedExamIds,
         clientCompletedSteps: [...session.completedGoldSteps, ...clientGoldSteps],
-        lastUserMessage,
+        lastUserMessage: lastUserMessageForGold,
       });
 
       const goldMet = isGoldStandardMet(goldPath, inferredGold);
@@ -224,12 +255,11 @@ export async function POST(req: Request) {
         const examLatencies = parseExamLatencies(row.examLatencies);
         const goldPath = parseGoldStandardPath(row.goldStandardPath);
         elapsedMinutes = computeElapsedMinutesFromExams(clientRequestedExams, examLatencies);
-        const chatMessagesForInference = chatMessagesPreview;
         const inferredGold = inferCompletedGoldSteps({
           goldStandardPath: goldPath,
           requestedExamIds: clientRequestedExams,
           clientCompletedSteps: clientGoldSteps,
-          lastUserMessage: getLastUserMessage(chatMessagesForInference),
+          lastUserMessage: getLastUserMessage(chatMessages),
         });
         deteriorationInstruction = buildDeteriorationInstruction({
           elapsedMinutes,
@@ -261,7 +291,6 @@ export async function POST(req: Request) {
     };
   }
 
-  const chatMessages = sanitizeUserMessagesForAI(chatMessagesPreview);
   const lastUserMessage = getLastUserMessage(chatMessages);
 
   chatLogger.info("Patient chat stream started", {
