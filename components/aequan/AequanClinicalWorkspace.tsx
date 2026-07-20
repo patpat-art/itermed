@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AequanNavbar } from "@/components/layout/AequanNavbar";
 import { AequanChatPane } from "@/components/aequan/AequanChatPane";
 import { AequanContextPanel } from "@/components/aequan/AequanContextPanel";
 import { ClinicalActionBar, type ClinicalAction } from "@/components/aequan/ClinicalActionBar";
@@ -11,7 +10,7 @@ import { Badge } from "@/app/ui/badge";
 
 /**
  * AEQUAN Clinical Workspace — dual-pane Med-Tech Class layout (demo / design reference).
- * Production play uses LiveAequanClinicalWorkspace around SimulatorClient.
+ * No top nav links — navigation belongs in DashboardSidebar for app routes.
  */
 export function AequanClinicalWorkspace() {
   const sim = MOCK_SIMULATION;
@@ -26,39 +25,33 @@ export function AequanClinicalWorkspace() {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col bg-ui-bg text-text-primary">
-      <AequanNavbar
-        trailing={
-          <Link
-            href="/demo/report"
-            className="aequan-interactive rounded-aequan bg-brand-primary px-4 py-2 text-xs font-medium text-white hover:bg-brand-primary-light"
-          >
-            Vedi Report Mock
-          </Link>
-        }
-      />
-
-      <div className="border-b border-border bg-panel-bg px-4 md:px-6 py-3">
-        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-base font-semibold text-text-primary">{sim.caseTitle}</h1>
+    <div className="flex min-h-screen w-full flex-col bg-ui-bg text-text-primary">
+      <div className="border-b border-border bg-panel-bg px-4 py-3 md:px-6">
+        <div className="flex w-full flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="mb-1 flex items-center gap-2">
+              <Link
+                href="/demo/report"
+                className="aequan-interactive rounded-xl bg-brand-primary px-3 py-1.5 text-[11px] font-medium text-white hover:bg-brand-primary-hover"
+              >
+                Vedi Report Mock
+              </Link>
+              <Badge className="rounded-xl border-brand-primary/30 bg-brand-primary/10 text-[10px] text-brand-primary">
+                Demo UI
+              </Badge>
+            </div>
+            <h1 className="font-display text-base font-semibold text-text-primary">{sim.caseTitle}</h1>
             <p className="mt-0.5 text-xs text-text-secondary">
-              {sim.specialty} · Paziente {sim.patient.age} anni ({sim.patient.sex}) ·{" "}
-              {sim.patient.id}
+              {sim.specialty} · Paziente {sim.patient.age} anni ({sim.patient.sex}) · {sim.patient.id}
             </p>
           </div>
-          <Badge className="rounded-aequan border-brand-primary/30 bg-brand-primary/10 text-[10px] text-brand-primary">
-            Demo UI
-          </Badge>
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 p-3 md:p-4">
-        <div className="mx-auto grid h-[calc(100dvh-8.5rem)] max-w-[1600px] grid-cols-1 gap-3 md:gap-4 lg:grid-cols-2">
-          <div className="flex min-h-0 flex-col gap-2">
-            <AequanChatPane messages={sim.chatHistory} className="flex-1" />
-            <ClinicalActionBar onAction={handleClinicalAction} />
-          </div>
+      <div className="flex min-h-0 w-full flex-1 flex-col gap-3 p-3 md:p-4">
+        <ClinicalActionBar onAction={handleClinicalAction} />
+        <div className="grid min-h-0 w-full flex-1 grid-cols-1 gap-3 lg:grid-cols-2 md:gap-4">
+          <AequanChatPane messages={sim.chatHistory} className="min-h-[420px] flex-1" />
           <AequanContextPanel
             guidelines={sim.guidelines}
             prescriptions={sim.prescriptions}
@@ -67,7 +60,7 @@ export function AequanClinicalWorkspace() {
             elapsedMinutes={sim.elapsedMinutes}
             activeTab={contextTab}
             onTabChange={setContextTab}
-            className="flex-1"
+            className="min-h-[420px] flex-1"
           />
         </div>
       </div>

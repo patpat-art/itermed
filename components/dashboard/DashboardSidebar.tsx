@@ -102,8 +102,8 @@ export function DashboardSidebar({ userLabel, isAdmin, ssmSpecialties }: Dashboa
   const [ssmOpen, setSsmOpen] = useState(true);
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
-      <header className="flex flex-col items-center px-6 pb-5 pt-8 text-center">
+    <aside className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
+      <header className="flex shrink-0 flex-col items-center px-6 pb-5 pt-8 text-center">
         <Link
           href="/dashboard"
           className="aequan-interactive inline-flex items-center justify-center hover:opacity-90"
@@ -117,58 +117,60 @@ export function DashboardSidebar({ userLabel, isAdmin, ssmSpecialties }: Dashboa
 
       <Link
         href="/dashboard/cases/create"
-        className="aequan-btn-primary mx-6 mb-5 flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium shadow-sm"
+        className="aequan-btn-primary mx-6 mb-5 flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium shadow-sm"
       >
         <FilePlus className="h-4 w-4" />
         Crea Caso
       </Link>
 
-      <nav className="space-y-0.5 px-4 text-sm" aria-label="Navigazione principale">
-        {primaryNavItems.map((item) => (
-          <NavLink key={item.href} item={item} />
-        ))}
-        {isAdmin ? (
-          <>
-            <div className="my-3 border-t border-border-subtle" />
-            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              Admin
-            </p>
-            {adminNavItems.map((item) => (
-              <NavLink key={item.href} item={item} />
-            ))}
-          </>
-        ) : null}
-      </nav>
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+        <nav className="space-y-0.5 text-sm" aria-label="Navigazione principale">
+          {primaryNavItems.map((item) => (
+            <NavLink key={item.href} item={item} />
+          ))}
+          {isAdmin ? (
+            <>
+              <div className="my-3 border-t border-border-subtle" />
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Admin
+              </p>
+              {adminNavItems.map((item) => (
+                <NavLink key={item.href} item={item} />
+              ))}
+            </>
+          ) : null}
+        </nav>
 
-      <div className="mt-5 border-t border-border-subtle px-4 pt-4">
-        <button
-          type="button"
-          onClick={() => setSsmOpen((open) => !open)}
-          className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 transition-colors hover:bg-slate-50 hover:text-text-primary aequan-interactive"
-          aria-expanded={ssmOpen}
-        >
-          <span>Specialità (SSM)</span>
-          <ChevronDown
-            className={cn("h-4 w-4 transition-transform", ssmOpen ? "rotate-180" : "rotate-0")}
-          />
-        </button>
-        {ssmOpen ? (
-          <div className="mt-2 max-h-52 space-y-0.5 overflow-y-auto pr-1">
-            {ssmSpecialties.map((specialty) => (
-              <Link
-                key={specialty.name}
-                href={specialtyFilterHref(specialty)}
-                className="block truncate rounded-lg px-3 py-1.5 text-[12px] text-slate-500 transition-colors hover:bg-slate-50 hover:text-text-primary aequan-interactive"
-                title={specialty.name}
-              >
-                {specialty.name}
-              </Link>
-            ))}
-          </div>
-        ) : null}
+        <div className="mt-5 border-t border-border-subtle pt-4">
+          <button
+            type="button"
+            onClick={() => setSsmOpen((open) => !open)}
+            className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 transition-colors hover:bg-slate-50 hover:text-text-primary aequan-interactive"
+            aria-expanded={ssmOpen}
+          >
+            <span>Specialità (SSM)</span>
+            <ChevronDown
+              className={cn("h-4 w-4 transition-transform", ssmOpen ? "rotate-180" : "rotate-0")}
+            />
+          </button>
+          {ssmOpen ? (
+            <div className="mt-2 max-h-40 space-y-0.5 overflow-y-auto pr-1">
+              {ssmSpecialties.map((specialty) => (
+                <Link
+                  key={specialty.name}
+                  href={specialtyFilterHref(specialty)}
+                  className="block truncate rounded-lg px-3 py-1.5 text-[12px] text-slate-500 transition-colors hover:bg-slate-50 hover:text-text-primary aequan-interactive"
+                  title={specialty.name}
+                >
+                  {specialty.name}
+                </Link>
+              ))}
+            </div>
+          ) : null}
+        </div>
       </div>
 
-      <div className="mt-auto space-y-2 border-t border-border-subtle px-4 pb-5 pt-4 text-xs text-slate-500">
+      <div className="mt-auto shrink-0 space-y-2 border-t border-border-subtle px-4 pb-12 pt-4 text-xs text-slate-500">
         <p className="truncate px-1 text-[11px] text-slate-400" title={userLabel}>
           {userLabel}
         </p>

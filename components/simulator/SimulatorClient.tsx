@@ -958,27 +958,20 @@ export function SimulatorClient({
       <div
         className={
           embedded
-            ? "bg-transparent text-[#2F4156] flex items-stretch justify-center"
-            : "min-h-screen bg-slate-50 text-[#2F4156] flex items-stretch justify-center px-4 pt-16 pb-10"
+            ? "flex w-full min-w-0 flex-col bg-transparent text-text-primary"
+            : "flex min-h-screen w-full items-stretch justify-center bg-ui-bg px-4 pb-10 pt-16 text-text-primary"
         }
       >
         {!embedded ? (
           <SimulatorNavBar backHref={backHref} backLabel="Torna alla Prassi" />
         ) : null}
-        <div className="w-full max-w-6xl flex flex-col gap-6">
-          {embedded ? (
-            <SimulatorNavBar
-              embedded
-              backHref={backHref}
-              backLabel="Torna alla Prassi"
-            />
-          ) : null}
-          <Card className="rounded-2xl border border-slate-100 bg-white shadow-sm">
+        <div className="flex w-full min-w-0 flex-col gap-6 pb-12">
+          <Card className="w-full rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
             <CardHeader>
               <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Report di performance
               </p>
-              <CardTitle className="text-base font-semibold text-slate-900">Report finale</CardTitle>
+              <CardTitle className="text-base font-semibold text-brand-primary">Report finale</CardTitle>
               <CardDescription>
                 Naviga tra le sezioni del report per rivedere anamnesi, diagnostica e terapia.
               </CardDescription>
@@ -1117,8 +1110,8 @@ export function SimulatorClient({
     <div
       className={
         embedded
-          ? "bg-transparent text-[#2F4156] flex items-stretch justify-center"
-          : "min-h-screen bg-[#F8FAFC] text-[#2F4156] flex items-stretch justify-center px-4 pt-16 pb-10"
+          ? "flex w-full min-w-0 flex-col bg-transparent text-text-primary"
+          : "flex min-h-screen w-full items-stretch justify-center bg-ui-bg px-4 pb-10 pt-16 text-text-primary"
       }
     >
       {!embedded ? (
@@ -1132,18 +1125,21 @@ export function SimulatorClient({
           }
         />
       ) : null}
-      <div className="flex w-full max-w-7xl flex-col gap-5 font-[family-name:var(--font-inter)]">
-        {embedded ? (
-          <SimulatorNavBar
-            embedded
-            backHref={backHref}
-            backLabel="Torna alla libreria"
-            dismissCase={
-              persistReports && disclaimerAccepted
-                ? { loading: dismissLoading, onClick: handleDismissCase }
-                : undefined
-            }
-          />
+      <div className="flex w-full min-w-0 flex-col gap-4 font-[family-name:var(--font-inter)]">
+        {embedded && persistReports && disclaimerAccepted ? (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-xl border-rose-200/80 text-xs text-rose-800 hover:bg-rose-50"
+              disabled={dismissLoading}
+              onClick={handleDismissCase}
+              title="Dismiss case — all scores recorded as 0"
+            >
+              {dismissLoading ? "Uscita…" : "Abbandona caso"}
+            </Button>
+          </div>
         ) : null}
 
         <VitalSignsBoard
@@ -1152,20 +1148,20 @@ export function SimulatorClient({
           age={patient.age}
           sex={patient.sex}
           stress={patientStress}
-          className="rounded-xl border border-slate-900/60 shadow-md"
+          className="w-full rounded-xl border border-slate-900/60 shadow-md"
         />
 
-        <header className="flex items-center justify-between gap-4 px-1 md:px-2">
-          <div className="space-y-1">
+        <header className="flex w-full items-center justify-between gap-4 px-0.5">
+          <div className="min-w-0 space-y-1">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
               Simulazione attiva
             </p>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-display text-lg font-semibold tracking-tight text-[#1E324E]">
+              <h1 className="font-display text-lg font-semibold tracking-tight text-brand-primary">
                 {initialCaseData.title}
               </h1>
               {isVariant ? (
-                <Badge className="inline-flex items-center gap-1 border-[#345884]/30 bg-[#345884]/10 text-[10px] text-[#345884]">
+                <Badge className="inline-flex items-center gap-1 border-brand-secondary/30 bg-brand-secondary/10 text-[10px] text-brand-secondary">
                   <Sparkles className="h-3 w-3" />
                   Variante IA
                 </Badge>
@@ -1179,16 +1175,16 @@ export function SimulatorClient({
                 : "Obiettivo: gestire il percorso diagnostico-terapeutico ottimizzando rischio clinico, responsabilità medico-legale e risorse."}
             </p>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-xl border border-slate-100 bg-white px-3 py-1.5 text-xs text-slate-600 shadow-sm transition-colors hover:border-[#345884]/20">
-            <Activity className="h-3.5 w-3.5 text-[#345884]" />
+          <div className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-border bg-panel-bg px-3 py-1.5 text-xs text-slate-600 shadow-sm">
+            <Activity className="h-3.5 w-3.5 text-brand-secondary" />
             <span>Sessione in corso</span>
           </div>
         </header>
 
-        <div className="grid grid-cols-1 gap-6 p-4 md:p-6 lg:grid-cols-12 lg:items-start">
-          {/* Left — Anamnesi / Chat / Esami */}
-          <div id="aequan-sim-chat" className="flex flex-col gap-4 lg:col-span-7 xl:col-span-8">
-            <Card className="overflow-hidden rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
+        <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-12 lg:items-start lg:gap-5">
+          {/* Left — EHR */}
+          <div id="aequan-sim-chat" className="flex min-w-0 flex-col gap-4 lg:col-span-7 xl:col-span-8">
+            <Card className="w-full overflow-hidden rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
               <CardHeader className="flex flex-col gap-3 border-b border-border-subtle bg-ui-bg/80 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <CardTitle className="font-display text-sm font-bold tracking-tight text-brand-primary">
@@ -1279,8 +1275,11 @@ export function SimulatorClient({
           </div>
 
           {/* Right — Cartella Clinica & Decisioni */}
-          <div id="aequan-sim-exams" className="flex flex-col gap-4 lg:col-span-5 xl:col-span-4">
-            <div className="flex min-h-[500px] flex-col justify-between rounded-xl border border-border bg-panel-bg p-5 shadow-aequan-panel transition-shadow duration-300 hover:shadow-md">
+          <div
+            id="aequan-sim-exams"
+            className="flex min-w-0 flex-col gap-4 pb-12 lg:col-span-5 xl:col-span-4"
+          >
+            <div className="flex min-h-[500px] flex-col justify-between rounded-xl border border-border bg-panel-bg p-5 shadow-aequan-panel">
               <div>
                 <div className="flex items-start gap-2.5">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#1E324E]/5 text-[#345884]">
@@ -1796,24 +1795,26 @@ export function SimulatorClient({
       </Dialog>
 
       <Dialog open={!disclaimerAccepted}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Disclaimer medico-legale</DialogTitle>
             <DialogDescription>
-              Questa piattaforma è destinata esclusivamente a scopi formativi e di simulazione.
-              Le decisioni proposte dall&apos;app, dai modelli di intelligenza artificiale o dai
-              contenuti dei casi non sostituiscono in alcun modo il giudizio clinico,
-              l&apos;esperienza professionale o le linee guida ufficiali in vigore.
-              <br />
-              <br />
-              Non utilizzare IterMed per prendere decisioni reali su pazienti o situazioni cliniche.
-              Qualsiasi uso improprio ricade interamente sotto la responsabilità dell&apos;utente.
+              <p>
+                Questa piattaforma è destinata esclusivamente a scopi formativi e di simulazione.
+                Le decisioni proposte dall&apos;app, dai modelli di intelligenza artificiale o dai
+                contenuti dei casi non sostituiscono in alcun modo il giudizio clinico,
+                l&apos;esperienza professionale o le linee guida ufficiali in vigore.
+              </p>
+              <p className="mt-3">
+                Non utilizzare Aequan per prendere decisioni reali su pazienti o situazioni cliniche.
+                Qualsiasi uso improprio ricade interamente sotto la responsabilità dell&apos;utente.
+              </p>
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-end">
+          <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
             <Link
               href="/dashboard"
-              className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+              className="inline-flex h-9 items-center justify-center rounded-xl border border-border bg-panel-bg px-3.5 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:bg-ui-bg"
             >
               Torna al dashboard
             </Link>
@@ -1821,7 +1822,7 @@ export function SimulatorClient({
               type="button"
               size="sm"
               variant="secondary"
-              className="text-xs"
+              className="rounded-xl text-xs"
               onClick={() => setDisclaimerAccepted(true)}
             >
               Accetto e desidero procedere
