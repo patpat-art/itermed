@@ -7,7 +7,6 @@ import { useChat } from "ai/react";
 import {
   Activity,
   ArrowLeft,
-  ClipboardList,
   FlaskConical,
   Clock,
   EuroIcon,
@@ -1105,7 +1104,7 @@ export function SimulatorClient({
     <div
       className={
         embedded
-          ? "flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden overflow-x-hidden bg-transparent text-text-primary"
+          ? "flex w-full min-w-0 flex-col bg-transparent text-text-primary"
           : "flex min-h-screen w-full items-stretch justify-center overflow-x-hidden bg-ui-bg px-4 pb-10 pt-16 text-text-primary"
       }
     >
@@ -1123,7 +1122,7 @@ export function SimulatorClient({
       <div
         className={
           embedded
-            ? "flex h-full min-h-0 w-full min-w-0 flex-col gap-3 overflow-hidden overflow-x-hidden font-[family-name:var(--font-inter)]"
+            ? "flex w-full min-w-0 flex-col gap-3 font-[family-name:var(--font-inter)]"
             : "flex w-full min-w-0 flex-col gap-3 overflow-x-hidden font-[family-name:var(--font-inter)]"
         }
       >
@@ -1180,96 +1179,61 @@ export function SimulatorClient({
           </>
         ) : null}
 
-        {/* Embedded: middle EHR 6–7 | right monitor 3. Standalone: 8|4. */}
+        {/* Embedded: main EHR 8 | diagnostic 4. Standalone: same. */}
         <div
           className={
             embedded
-              ? "grid min-h-0 w-full min-w-0 flex-1 grid-cols-1 gap-6 overflow-hidden overflow-x-hidden lg:grid-cols-9 xl:grid-cols-10"
+              ? "grid w-full min-w-0 grid-cols-1 gap-4 lg:grid-cols-12 lg:items-start"
               : "grid w-full min-w-0 grid-cols-1 gap-6 overflow-x-hidden lg:grid-cols-12 lg:items-start"
           }
         >
-          {/* Middle — Cartella Clinica Attiva + EHR tabs / chat */}
+          {/* Main focus — header + EHR tabs + chat */}
           <div
             id="aequan-sim-chat"
             className={
               embedded
-                ? "col-span-1 flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-y-auto overflow-x-hidden px-4 lg:col-span-6 xl:col-span-7"
+                ? "col-span-1 flex min-w-0 flex-col gap-4 p-6 lg:col-span-8"
                 : "flex min-w-0 flex-col gap-4 overflow-x-hidden lg:col-span-8"
             }
           >
-            <div className="w-full min-w-0 overflow-x-hidden rounded-xl border border-border bg-panel-bg p-4 shadow-aequan-panel">
-              <div className="flex items-start gap-2.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#1E324E]/5 text-[#345884]">
-                  <ClipboardList className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-display text-sm font-bold tracking-tight text-[#1E324E]">
-                    Cartella Clinica Attiva
-                  </h3>
-                  <p className="mt-0.5 truncate text-xs text-slate-500">
-                    {patientDisplayName(
-                      initialCaseData.id,
-                      initialCaseData.title,
-                      patient.sex,
-                    )}
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-slate-400">
-                    ID {patient.id} · {patient.age} anni ·{" "}
-                    {patient.sex === "M" ? "Maschio" : "Femmina"}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPatientChartTab("base");
-                    setIsPatientChartOpen(true);
-                  }}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg text-[11px] font-medium text-[#345884] transition-colors hover:text-[#1E324E] hover:underline"
-                >
-                  <FolderOpen className="h-3.5 w-3.5" />
-                  Cartella completa
-                </button>
-              </div>
-              <div className="mt-3 grid w-full min-w-0 gap-3 sm:grid-cols-2">
-                <div className="min-w-0 space-y-1.5 overflow-x-hidden">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    Anamnesi / motivo di accesso
-                  </p>
-                  <p className="w-full rounded-xl border border-slate-100 bg-slate-50/80 p-3 text-xs leading-relaxed text-slate-700">
-                    {patient.mainComplaint ||
-                      "Motivo di accesso da approfondire con il paziente."}
-                  </p>
-                  <p className="text-[11px] text-slate-500">Contesto: {patient.context}</p>
-                </div>
-                <div className="min-w-0 space-y-1.5 overflow-x-hidden">
-                  <div className="flex items-center gap-2">
-                    <Stethoscope className="h-3.5 w-3.5 text-[#345884]" />
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                      Esame obiettivo (recente)
-                    </p>
-                  </div>
-                  {objectiveFindingsRecentFirst.length === 0 ? (
-                    <p className="text-xs text-slate-500">Nessun reperto ancora registrato.</p>
-                  ) : (
-                    <ul className="max-h-28 space-y-1.5 overflow-y-auto overflow-x-hidden pr-1 text-xs">
-                      {objectiveFindingsRecentFirst.slice(0, 4).map((exam) => (
-                        <li
-                          key={exam.id}
-                          className="rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-1.5"
-                        >
-                          <p className="font-medium text-slate-800">{exam.label}</p>
-                          <p className="mt-0.5 truncate text-slate-600">{exam.finding}</p>
-                        </li>
-                      ))}
-                    </ul>
+            {/* Compact patient banner (no duplicate Cartella Clinica Attiva card) */}
+            <div className="flex w-full min-w-0 shrink-0 items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                  Sessione clinica
+                </p>
+                <p className="mt-0.5 truncate font-display text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {patientDisplayName(
+                    initialCaseData.id,
+                    initialCaseData.title,
+                    patient.sex,
                   )}
-                </div>
+                  <span className="font-sans font-normal text-slate-500">
+                    {" "}
+                    · {patient.age} anni · {patient.sex === "M" ? "M" : "F"}
+                  </span>
+                </p>
+                <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-600">
+                  {patient.mainComplaint ||
+                    "Motivo di accesso da approfondire con il paziente."}
+                </p>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setPatientChartTab("base");
+                  setIsPatientChartOpen(true);
+                }}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                <FolderOpen className="h-3.5 w-3.5" />
+                Cartella
+              </button>
             </div>
 
-            <Card className="w-full min-w-0 overflow-hidden overflow-x-hidden rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
+            <Card className="w-full min-w-0 overflow-hidden rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
               <CardHeader className="flex w-full min-w-0 flex-col gap-3 border-b border-border-subtle bg-ui-bg/80 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0 space-y-1">
+                <div className="min-w-0 space-y-0.5">
                   <CardTitle className="font-display text-sm font-bold tracking-tight text-brand-primary">
                     Cartella clinica elettronica
                   </CardTitle>
@@ -1308,7 +1272,7 @@ export function SimulatorClient({
                   </TabsTrigger>
                 </TabsList>
               </CardHeader>
-              <CardContent className="min-w-0 w-full overflow-x-hidden pt-0">
+              <CardContent className="min-w-0 w-full pt-0">
                 <Tabs
                   value={activeTab}
                   onValueChange={(value) => setActiveTab(value as typeof activeTab)}
@@ -1358,12 +1322,12 @@ export function SimulatorClient({
             </Card>
           </div>
 
-          {/* Right — Clinical monitor, budget, stilazione referto */}
+          {/* Right diagnostic panel — monitor, exams, referto */}
           <div
             id="aequan-sim-exams"
             className={
               embedded
-                ? "col-span-1 flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-y-auto overflow-x-hidden pl-2 pb-4 lg:col-span-3 xl:col-span-3"
+                ? "col-span-1 flex min-w-0 flex-col gap-4 lg:col-span-4"
                 : "flex min-w-0 flex-col gap-4 overflow-x-hidden pb-8 lg:col-span-4"
             }
           >
@@ -1374,11 +1338,11 @@ export function SimulatorClient({
                 age={patient.age}
                 sex={patient.sex}
                 stress={patientStress}
-                className="w-full shrink-0 overflow-x-hidden rounded-xl border border-slate-900/60 shadow-md"
+                className="w-full shrink-0"
               />
             ) : null}
 
-            <div className="flex w-full min-w-0 flex-col gap-4 overflow-x-hidden rounded-xl border border-border bg-panel-bg p-4 shadow-aequan-panel">
+            <div className="flex w-full min-w-0 flex-col gap-4 rounded-xl border border-border bg-panel-bg p-4 shadow-aequan-panel">
               <section className="space-y-2">
                 <div className="flex items-center gap-2">
                   <FlaskConical className="h-3.5 w-3.5 text-[#345884]" />
@@ -1387,7 +1351,7 @@ export function SimulatorClient({
                   </p>
                 </div>
                 {selectedExams.length > 0 ? (
-                  <ul className="max-h-28 space-y-1.5 overflow-y-auto overflow-x-hidden pr-1 text-xs">
+                  <ul className="space-y-1.5 text-xs">
                     {selectedExamsRecentFirst.map((exam) => (
                       <li
                         key={exam.id}

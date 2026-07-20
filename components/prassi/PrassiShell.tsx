@@ -150,17 +150,11 @@ export function PrassiShell({ cases, specialties = [], children }: PrassiShellPr
     </>
   );
 
+  /* Active simulation: hide Libreria Casi — full workspace to the session */
   if (isPlaying) {
     return (
-      <div className="flex h-[calc(100vh-5rem)] min-h-0 w-full flex-col overflow-hidden bg-slate-50 dark:bg-slate-950">
-        <div className="grid h-full min-h-0 grid-cols-12 gap-4 overflow-hidden">
-          <aside className="col-span-12 flex h-full min-h-0 min-w-0 flex-col overflow-hidden border-r border-slate-200 pr-1 dark:border-slate-800 md:col-span-4 lg:col-span-3">
-            {caseList}
-          </aside>
-          <section className="col-span-12 flex h-full min-h-0 min-w-0 flex-col overflow-hidden md:col-span-8 lg:col-span-9">
-            <div className="h-full min-h-0 overflow-x-hidden overflow-y-auto">{children}</div>
-          </section>
-        </div>
+      <div className="h-[calc(100vh-5rem)] min-h-0 w-full overflow-y-auto overflow-x-hidden bg-slate-50 p-3 dark:bg-slate-950 sm:p-4">
+        {children}
       </div>
     );
   }

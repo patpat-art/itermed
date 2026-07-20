@@ -23,7 +23,7 @@ type LiveAequanClinicalWorkspaceProps = {
 };
 
 /**
- * Clinical host for active simulation — chrome + full-height child grid (no width inflation).
+ * Clinical host for active simulation — full-bleed session chrome (library hidden by PrassiShell).
  */
 export function LiveAequanClinicalWorkspace({
   caseMeta,
@@ -49,34 +49,40 @@ export function LiveAequanClinicalWorkspace({
   };
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden overflow-x-hidden bg-transparent text-text-primary">
-      <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2 overflow-x-hidden">
+    <div className="flex w-full min-w-0 flex-col bg-transparent text-text-primary">
+      <div className="mb-3 flex shrink-0 flex-wrap items-center gap-3 border-b border-slate-200/80 pb-3 dark:border-slate-800">
         <Link
           href={backHref}
-          className="aequan-interactive inline-flex items-center gap-1.5 rounded-xl border border-border bg-ui-bg px-2.5 py-1.5 text-[11px] font-medium text-text-secondary hover:text-brand-primary"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
         >
           <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
-          Libreria casi
+          Torna alla Libreria
         </Link>
-        <Badge className="rounded-xl border-brand-primary/30 bg-brand-primary/10 text-[10px] text-brand-primary">
+        <Badge className="rounded-md border-emerald-200 bg-emerald-50 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
           Live
         </Badge>
-        <span className="min-w-0 truncate text-[11px] text-slate-500" title={caseMeta.title}>
-          {caseMeta.specialty?.trim() || "Specialità N/D"} ·{" "}
-          {caseMeta.caseId.slice(0, 8).toUpperCase()}
-        </span>
-        <div className="w-full sm:ml-auto sm:w-auto">
-          <AiTransparencyBadge variant="workspace" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+            {caseMeta.title}
+          </p>
+          <p className="truncate text-[11px] text-slate-500">
+            {caseMeta.specialty?.trim() || "Specialità N/D"}
+            {caseMeta.patientAge != null ? ` · ${caseMeta.patientAge} anni` : ""}
+            {caseMeta.patientSex === "M"
+              ? " · M"
+              : caseMeta.patientSex === "F"
+                ? " · F"
+                : ""}
+          </p>
         </div>
+        <AiTransparencyBadge variant="workspace" />
       </div>
 
-      <div className="shrink-0 overflow-x-hidden">
+      <div className="shrink-0">
         <ClinicalActionBar onAction={handleAction} />
       </div>
 
-      <div className="mt-3 min-h-0 min-w-0 flex-1 overflow-hidden overflow-x-hidden">
-        {children}
-      </div>
+      <div className="mt-3 min-w-0 w-full">{children}</div>
     </div>
   );
 }
