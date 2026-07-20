@@ -55,7 +55,7 @@ const primaryNavItems: NavItem[] = [
 ];
 
 const adminNavItems: NavItem[] = [
-  { href: "/admin/knowledge", label: "Guidelines", icon: Database },
+  { href: "/admin/knowledge", label: "Linee Guida", icon: Database },
   { href: "/admin/users", label: "Utenti", icon: Users },
   { href: "/admin/exams", label: "Valori esami", icon: TestTubeDiagonal },
 ];

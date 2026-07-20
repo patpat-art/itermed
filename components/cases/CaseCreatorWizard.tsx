@@ -210,12 +210,13 @@ export function CaseCreatorWizard({ canPublishGlobal = false }: CaseCreatorWizar
     return null;
   };
 
+  const goToStep = (target: number) => {
+    setError(null);
+    setStep(Math.min(4, Math.max(1, target)));
+  };
+
   const goNext = () => {
-    const err = validateStep(step);
-    if (err) {
-      setError(err);
-      return;
-    }
+    // Tabs are freely navigable; field validation runs only on final submit.
     setError(null);
     setStep((s) => Math.min(4, s + 1));
   };
@@ -314,7 +315,7 @@ export function CaseCreatorWizard({ canPublishGlobal = false }: CaseCreatorWizar
             className="rounded-xl border-slate-200/80 bg-white/90 text-sm"
           />
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-[11px] text-slate-500">Modello: gpt-4o-mini · solo docenti / admin</p>
+            <p className="text-[11px] text-slate-500">Modello: gpt-4o-mini · disponibile per tutti gli utenti</p>
             <Button
               type="button"
               onClick={() => void handleGenerateCaseFields()}
@@ -350,27 +351,34 @@ export function CaseCreatorWizard({ canPublishGlobal = false }: CaseCreatorWizar
         </CardContent>
       </Card>
 
-      <nav className="flex flex-wrap gap-2">
+      <nav className="flex flex-wrap gap-2" aria-label="Sezioni wizard caso">
         {STEPS.map(({ id, label, icon: Icon }) => {
           const active = step === id;
-          const done = step > id;
+          const visited = step > id;
           return (
-            <div
+            <button
               key={id}
+              type="button"
+              onClick={() => goToStep(id)}
+              aria-current={active ? "step" : undefined}
               className={cn(
                 "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
                 active
                   ? "border-[#345884]/30 bg-[#345884]/10 text-[#1E324E]"
-                  : done
-                    ? "border-slate-200 bg-slate-50 text-[#345884]"
-                    : "border-zinc-200 bg-white text-zinc-500",
+                  : visited
+                    ? "border-slate-200 bg-slate-50 text-[#345884] hover:border-[#345884]/25"
+                    : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300 hover:text-zinc-700",
               )}
             >
-              {done ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
+              {visited && !active ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : (
+                <Icon className="h-3.5 w-3.5" />
+              )}
               <span>
                 {id}. {label}
               </span>
-            </div>
+            </button>
           );
         })}
       </nav>
@@ -468,7 +476,7 @@ export function CaseCreatorWizard({ canPublishGlobal = false }: CaseCreatorWizar
             {canPublishGlobal ? (
               <label className="flex items-center gap-2 md:col-span-2 text-xs text-zinc-600">
                 <input type="checkbox" checked={isGlobal} onChange={(e) => setIsGlobal(e.target.checked)} className="h-3.5 w-3.5" />
-                Pubblica come caso globale IterMed
+                Pubblica come caso globale Aequan
               </label>
             ) : null}
           </CardContent>

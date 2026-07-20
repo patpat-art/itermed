@@ -2,7 +2,7 @@ import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { getSessionUserId } from "@/lib/api-session";
-import { requireTeacherApi } from "@/lib/cases/require-teacher-api";
+import { requireAuthApi } from "@/lib/cases/require-teacher-api";
 import { createLogger } from "@/lib/logger";
 import { sanitizeForExternalAI } from "@/lib/security/sanitize-for-ai";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
@@ -43,7 +43,7 @@ type RequestBody = {
 };
 
 export async function POST(req: Request) {
-  const authError = await requireTeacherApi();
+  const authError = await requireAuthApi();
   if (authError) return authError;
 
   const userId = await getSessionUserId();
@@ -94,7 +94,7 @@ Regole:
 - abnormalExamsSummary: elenco sintetico delle alterazioni attese (es. "Troponina ↑, ECG: ST elevazione V2-V4, glicemia borderline").
 - Non inventare dettagli assurdi rispetto al brief.
 - Non includere markdown o testo fuori dallo schema.`,
-      prompt: `Riassunto clinico fornito dal docente:
+      prompt: `Riassunto clinico fornito dall'utente:
 
 """
 ${brief}

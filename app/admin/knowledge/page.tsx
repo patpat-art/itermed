@@ -127,7 +127,7 @@ export default async function KnowledgeAdminPage() {
     <div className="flex flex-col gap-6">
       <header className="flex items-end justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight text-[#2F4156]">Guidelines</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-[#2F4156]">Linee Guida</h1>
           <p className="text-sm text-slate-500">
             Archivio linee guida caricate nel motore RAG. Puoi attivarle/disattivarle o eliminarle.
           </p>

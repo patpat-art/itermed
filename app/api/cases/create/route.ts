@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/api-session";
 import { AdvancedCaseCreateSchema } from "@/lib/cases/case-creator-schemas";
-import { requireTeacherApi } from "@/lib/cases/require-teacher-api";
+import { requireAuthApi } from "@/lib/cases/require-teacher-api";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -28,7 +28,7 @@ function buildPatientPrompt(input: {
 }
 
 export async function POST(request: Request) {
-  const denied = await requireTeacherApi();
+  const denied = await requireAuthApi();
   if (denied) return denied;
 
   const userId = await getSessionUserId();
