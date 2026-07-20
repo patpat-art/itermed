@@ -4,7 +4,10 @@ export type VitalStatus = "stable" | "borderline" | "critical";
 
 export type ClassifiedVital = {
   id: string;
+  /** Short clinical acronym shown on the monitor (PA, FC, …). */
   label: string;
+  /** Full Italian clinical name for tooltips / accessibility. */
+  fullLabel: string;
   value: string;
   unit: string;
   status: VitalStatus;
@@ -72,6 +75,7 @@ export function classifyVitals(vitals: DemoVitalsLike): ClassifiedVital[] {
     {
       id: "bp",
       label: "PA",
+      fullLabel: "Pressione Arteriosa",
       value: vitals.bp,
       unit: "mmHg",
       status: bpStatus(vitals.bp),
@@ -79,6 +83,7 @@ export function classifyVitals(vitals: DemoVitalsLike): ClassifiedVital[] {
     {
       id: "hr",
       label: "FC",
+      fullLabel: "Frequenza Cardiaca",
       value: String(vitals.hr),
       unit: "bpm",
       status: hrStatus(vitals.hr),
@@ -86,6 +91,7 @@ export function classifyVitals(vitals: DemoVitalsLike): ClassifiedVital[] {
     {
       id: "spo2",
       label: "SpO₂",
+      fullLabel: "Saturazione Ossigeno",
       value: String(vitals.spo2),
       unit: "%",
       status: spo2Status(vitals.spo2),
@@ -93,6 +99,7 @@ export function classifyVitals(vitals: DemoVitalsLike): ClassifiedVital[] {
     {
       id: "temp",
       label: "T",
+      fullLabel: "Temperatura",
       value: String(vitals.temp),
       unit: "°C",
       status: Number.isFinite(tempNum) ? tempStatus(tempNum) : "borderline",
@@ -100,6 +107,7 @@ export function classifyVitals(vitals: DemoVitalsLike): ClassifiedVital[] {
     {
       id: "rr",
       label: "FR",
+      fullLabel: "Frequenza Respiratoria",
       value: String(vitals.rr),
       unit: "/min",
       status: rrStatus(vitals.rr),
@@ -107,13 +115,14 @@ export function classifyVitals(vitals: DemoVitalsLike): ClassifiedVital[] {
   ];
 }
 
+/** Clinical status labels for the multiparameter monitor. */
 export function vitalStatusLabel(status: VitalStatus): string {
   switch (status) {
     case "critical":
       return "Critico";
     case "borderline":
-      return "Limite";
+      return "Alterato";
     default:
-      return "Stabile";
+      return "Normale";
   }
 }

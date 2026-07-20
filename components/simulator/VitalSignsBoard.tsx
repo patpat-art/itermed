@@ -22,14 +22,25 @@ type VitalSignsBoardProps = {
   className?: string;
 };
 
-function statusBadgeClass(status: VitalStatus) {
+function statusDotClass(status: VitalStatus) {
   switch (status) {
     case "critical":
-      return "bg-rose-500/90 text-white";
+      return "bg-rose-500";
     case "borderline":
-      return "bg-amber-400/90 text-slate-900";
+      return "bg-amber-400";
     default:
-      return "bg-emerald-500/90 text-slate-900";
+      return "bg-emerald-400";
+  }
+}
+
+function statusTextClass(status: VitalStatus) {
+  switch (status) {
+    case "critical":
+      return "text-rose-400";
+    case "borderline":
+      return "text-amber-300";
+    default:
+      return "text-emerald-400";
   }
 }
 
@@ -77,22 +88,19 @@ export function VitalSignsBoard({
             {name}
             <span className="font-normal text-slate-400">
               {" "}
-              · {resolvedAge}a
+              · {resolvedAge} anni
               {sexLabel ? ` · ${sexLabel}` : ""}
             </span>
           </p>
         </div>
         <span
           className={cn(
-            "shrink-0 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded",
-            statusBadgeClass(overall),
+            "inline-flex shrink-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide",
+            statusTextClass(overall),
           )}
         >
-          {overall === "critical"
-            ? "Critico"
-            : overall === "borderline"
-              ? "Attenzione"
-              : "Stabile"}
+          <span className={cn("h-1.5 w-1.5 rounded-full", statusDotClass(overall))} />
+          {vitalStatusLabel(overall)}
         </span>
       </div>
 
@@ -100,29 +108,33 @@ export function VitalSignsBoard({
         {classified.map((vital) => (
           <div
             key={vital.id}
-            className="flex min-w-0 flex-col gap-1 overflow-hidden rounded-lg bg-slate-950/50 px-2 py-2"
+            className="flex min-w-0 flex-col gap-1 overflow-hidden rounded-lg bg-slate-950/60 px-2 py-2"
+            title={`${vital.fullLabel}: ${vital.value} ${vital.unit}`}
           >
-            <div className="flex min-w-0 items-start justify-between gap-1">
-              <span className="truncate text-xs text-slate-400">{vital.label}</span>
-              <span
-                className={cn(
-                  "shrink-0 text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded",
-                  statusBadgeClass(vital.status),
-                )}
-              >
-                {vitalStatusLabel(vital.status)}
+            <div className="flex min-w-0 items-center justify-between gap-1">
+              <span className="truncate text-xs text-slate-400" title={vital.fullLabel}>
+                {vital.label}
               </span>
+              <span
+                className={cn("h-1.5 w-1.5 shrink-0 rounded-full", statusDotClass(vital.status))}
+                title={vitalStatusLabel(vital.status)}
+                aria-label={vitalStatusLabel(vital.status)}
+              />
             </div>
             <p
               className={cn(
-                "truncate text-base font-bold tabular-nums leading-tight md:text-lg",
+                "truncate text-base font-bold tabular-nums leading-none md:text-lg",
                 statusValueClass(vital.status),
               )}
-              title={`${vital.value} ${vital.unit}`}
             >
               {vital.value}
             </p>
-            <span className="truncate text-[10px] text-slate-500">{vital.unit}</span>
+            <div className="flex min-w-0 items-center justify-between gap-1">
+              <span className="truncate text-[10px] text-slate-500">{vital.unit}</span>
+              <span className={cn("truncate text-[10px] font-medium", statusTextClass(vital.status))}>
+                {vitalStatusLabel(vital.status)}
+              </span>
+            </div>
           </div>
         ))}
       </div>

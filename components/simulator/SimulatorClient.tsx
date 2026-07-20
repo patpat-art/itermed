@@ -47,6 +47,8 @@ import {
 } from "./ClinicalDischargeReportPanel";
 import { MetricBar } from "@/app/case/[id]/results/MetricBar";
 import { ScoreProgressRing } from "@/app/case/[id]/results/ScoreProgressRing";
+import { ClinicalActionBar, type ClinicalAction } from "@/components/aequan/ClinicalActionBar";
+import { AiTransparencyBadge } from "@/components/legal/AiTransparencyBadge";
 import { patientDisplayName } from "@/lib/prassi/demo-vitals";
 import { resolveCaseStressProfile } from "@/lib/simulator/patient-stress-engine";
 import { EXAM_DEFAULT_VALUES, type ExamClinicalMeta } from "../../lib/exam-default-values";
@@ -360,6 +362,8 @@ export function SimulatorClient({
   const patientStressRef = useRef(patientStress);
   /** Minuti clinici trascorsi (timer simulato + interazioni), esclusi i tempi degli esami. */
   const [clockMinutes, setClockMinutes] = useState(0);
+  /** Wall-clock session elapsed seconds for MM:SS display. */
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const effectiveSessionIdRef = useRef(effectiveSessionId);
   const examIdsChargedForStressRef = useRef<Set<string>>(new Set());
   const stressInitializedRef = useRef(false);
@@ -426,6 +430,15 @@ export function SimulatorClient({
     return () => window.clearInterval(id);
   }, [disclaimerAccepted, gameStatus, bumpPatientStress]);
 
+  // Wall-clock MM:SS — increments every real second during active play.
+  useEffect(() => {
+    if (!disclaimerAccepted || gameStatus !== "playing") return;
+    const id = window.setInterval(() => {
+      setElapsedSeconds((s) => s + 1);
+    }, 1_000);
+    return () => window.clearInterval(id);
+  }, [disclaimerAccepted, gameStatus]);
+
   // Pressione temporale aggiuntiva (più lenta).
   useEffect(() => {
     if (!disclaimerAccepted || gameStatus !== "playing") return;
@@ -434,6 +447,19 @@ export function SimulatorClient({
     }, 45_000);
     return () => window.clearInterval(id);
   }, [disclaimerAccepted, gameStatus, bumpPatientStress]);
+
+  const handleClinicalHeaderAction = useCallback((action: ClinicalAction) => {
+    if (action === "prescribe") setActiveTab("labs");
+    if (action === "consult") setActiveTab("history");
+    if (typeof document === "undefined") return;
+    const targetId =
+      action === "prescribe"
+        ? "aequan-sim-exams"
+        : action === "diagnose"
+          ? "aequan-sim-conclusion"
+          : "aequan-sim-chat";
+    document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   const demoChat = initialCaseData.demographics ?? {};
   const patientAgeForChat = demoChat.age ?? 58;
@@ -655,18 +681,6 @@ export function SimulatorClient({
   );
 
   const totalCost = selectedExams.reduce((sum, exam) => sum + exam.cost, 0);
-  const caseExamLatencies = initialCaseData.examLatencies ?? {};
-  const examLatencyMinutes = useMemo(() => {
-    return selectedExamIds.reduce((sum, examId) => {
-      const custom = caseExamLatencies[examId];
-      if (custom != null) return sum + custom;
-      const exam = selectedExams.find((e) => e.id === examId);
-      return sum + (exam?.timeMinutes ?? 5);
-    }, 0);
-  }, [selectedExamIds, caseExamLatencies, selectedExams]);
-
-  /** Tempo clinico visualizzato = timer simulato + latenze esami. */
-  const totalMinutes = clockMinutes + examLatencyMinutes;
 
   const reportGenerationAbortRef = useRef<AbortController | null>(null);
 
@@ -1126,20 +1140,79 @@ export function SimulatorClient({
             : "flex w-full min-w-0 flex-col gap-3 overflow-x-hidden font-[family-name:var(--font-inter)]"
         }
       >
-        {embedded && persistReports && disclaimerAccepted ? (
-          <div className="flex shrink-0 justify-end overflow-x-hidden">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="rounded-xl border-rose-200/80 text-xs text-rose-800 hover:bg-rose-50"
-              disabled={dismissLoading}
-              onClick={handleDismissCase}
-              title="Dismiss case — all scores recorded as 0"
-            >
-              {dismissLoading ? "Uscita…" : "Abbandona caso"}
-            </Button>
-          </div>
+        {embedded ? (
+          <header className="flex w-full min-w-0 flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-4 sm:py-3">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-3">
+              <Link
+                href={backHref}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Libreria
+              </Link>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {initialCaseData.title}
+                </p>
+                <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
+                    {initialCaseData.specialty?.trim() || "Specialità N/D"}
+                  </span>
+                  <AiTransparencyBadge variant="workspace" />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+              <div
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 dark:border-slate-700 dark:bg-slate-950"
+                title="Tempo di sessione"
+              >
+                <Clock className="h-3.5 w-3.5 text-slate-500" />
+                <span className="font-mono text-sm font-semibold tabular-nums text-slate-800 dark:text-slate-100">
+                  {formatElapsedClock(elapsedSeconds)}
+                </span>
+              </div>
+
+              <div className="min-w-[7.5rem] max-w-[10rem] flex-1 sm:flex-none">
+                <div className="mb-0.5 flex items-center justify-between gap-2 text-[10px] text-slate-500">
+                  <span className="inline-flex items-center gap-1 font-semibold uppercase tracking-wide">
+                    <EuroIcon className="h-3 w-3" />
+                    Budget SSN
+                  </span>
+                  <span className="font-mono tabular-nums">€{totalCost.toFixed(0)}</span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#1E324E] to-[#345884] transition-all duration-500"
+                    style={{ width: `${Math.min(100, (totalCost / 250) * 100)}%` }}
+                  />
+                </div>
+              </div>
+
+              {disclaimerAccepted ? (
+                <ClinicalActionBar
+                  variant="header"
+                  onAction={handleClinicalHeaderAction}
+                  disabled={gameStatus !== "playing"}
+                />
+              ) : null}
+
+              {persistReports && disclaimerAccepted ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-lg border-rose-200/80 text-xs text-rose-800 hover:bg-rose-50"
+                  disabled={dismissLoading}
+                  onClick={handleDismissCase}
+                  title="Abbandona caso — punteggi azzerati"
+                >
+                  {dismissLoading ? "Uscita…" : "Abbandona"}
+                </Button>
+              ) : null}
+            </div>
+          </header>
         ) : null}
 
         {!embedded ? (
@@ -1388,10 +1461,11 @@ export function SimulatorClient({
                     style={{ width: `${Math.min(100, (totalCost / 250) * 100)}%` }}
                   />
                 </div>
-                <p className="mt-2 text-[11px] text-slate-500">
-                  Tempo simulato:{" "}
-                  <span className="font-mono font-medium text-slate-700">
-                    {formatElapsedTime(totalMinutes)}
+                <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-slate-500">
+                  <Clock className="h-3.5 w-3.5" />
+                  Tempo sessione:{" "}
+                  <span className="font-mono font-semibold tabular-nums text-slate-700">
+                    {formatElapsedClock(elapsedSeconds)}
                   </span>
                 </p>
               </div>
@@ -1984,12 +2058,11 @@ type ExamSelectionCardProps = {
   className: string;
 };
 
-function formatElapsedTime(totalMinutes: number): string {
-  const safeMinutes = Math.max(0, Math.floor(totalMinutes));
-  const days = Math.floor(safeMinutes / (24 * 60));
-  const hours = Math.floor((safeMinutes % (24 * 60)) / 60);
-  const minutes = safeMinutes % 60;
-  return `${String(days).padStart(2, "0")}:${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+function formatElapsedClock(totalSeconds: number): string {
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 function ExamSelectionCard({
