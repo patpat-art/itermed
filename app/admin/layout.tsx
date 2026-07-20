@@ -1,9 +1,10 @@
+import type { ReactNode } from "react";
 import { DashboardSidebar } from "../../components/dashboard/DashboardSidebar";
 import { fetchMedicalSpecialtyOptions } from "../../lib/dashboard-queries";
 import { buildSsmSpecialtyLinks } from "../../lib/ssm-specialties";
 import { requireAdmin } from "../../lib/require-user";
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: ReactNode }) {
   const user = await requireAdmin();
   const label = user.name || user.email || "Admin";
 
@@ -16,12 +17,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="min-h-screen w-full bg-ui-bg text-text-primary">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1800px] gap-4 px-3 py-4 md:gap-6 md:px-5 md:py-6 lg:gap-8">
-        <div className="sticky top-4 flex h-[calc(100dvh-2rem)] w-72 shrink-0 flex-col self-start">
+    <div className="flex h-screen w-full overflow-hidden bg-ui-bg text-text-primary">
+      <div className="grid h-full w-full grid-cols-12 gap-4 overflow-hidden p-4">
+        <aside className="col-span-2 flex h-full min-h-0 flex-col justify-between overflow-hidden">
           <DashboardSidebar userLabel={label} isAdmin ssmSpecialties={ssmSpecialties} />
-        </div>
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-8 pb-12">{children}</main>
+        </aside>
+        <main className="col-span-10 h-full min-h-0 min-w-0 overflow-x-hidden overflow-y-auto pb-8">
+          {children}
+        </main>
       </div>
     </div>
   );

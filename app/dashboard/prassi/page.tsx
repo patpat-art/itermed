@@ -110,7 +110,7 @@ export default async function PrassiPage({ searchParams }: PrassiPageProps) {
   const selected = selectedId ? cases.find((c) => c.id === selectedId) ?? null : null;
 
   return (
-    <div className="flex h-full min-h-[480px] flex-col">
+    <div className="flex h-full min-h-0 flex-col overflow-x-hidden">
       {hasDatabase && specialties.length > 0 ? (
         <div className="border-b border-slate-100 px-4 py-3">
           <Suspense fallback={<p className="text-xs text-slate-400">Filtri…</p>}>

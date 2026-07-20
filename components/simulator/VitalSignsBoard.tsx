@@ -76,7 +76,7 @@ export function VitalSignsBoard({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border border-slate-800/80 bg-[#0B1624] shadow-lg",
+        "overflow-x-hidden overflow-hidden rounded-xl border border-slate-800/80 bg-[#0B1624] shadow-lg",
         className,
       )}
       role="region"

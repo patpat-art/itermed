@@ -1110,8 +1110,8 @@ export function SimulatorClient({
     <div
       className={
         embedded
-          ? "flex w-full min-w-0 flex-col bg-transparent text-text-primary"
-          : "flex min-h-screen w-full items-stretch justify-center bg-ui-bg px-4 pb-10 pt-16 text-text-primary"
+          ? "flex w-full min-w-0 flex-col overflow-x-hidden bg-transparent text-text-primary"
+          : "flex min-h-screen w-full items-stretch justify-center overflow-x-hidden bg-ui-bg px-4 pb-10 pt-16 text-text-primary"
       }
     >
       {!embedded ? (
@@ -1125,9 +1125,9 @@ export function SimulatorClient({
           }
         />
       ) : null}
-      <div className="flex w-full min-w-0 flex-col gap-4 font-[family-name:var(--font-inter)]">
+      <div className="flex w-full min-w-0 flex-col gap-3 overflow-x-hidden font-[family-name:var(--font-inter)]">
         {embedded && persistReports && disclaimerAccepted ? (
-          <div className="flex justify-end">
+          <div className="flex justify-end overflow-x-hidden">
             <Button
               type="button"
               variant="outline"
@@ -1148,43 +1148,43 @@ export function SimulatorClient({
           age={patient.age}
           sex={patient.sex}
           stress={patientStress}
-          className="w-full rounded-xl border border-slate-900/60 shadow-md"
+          className="w-full overflow-x-hidden rounded-xl border border-slate-900/60 shadow-md"
         />
 
-        <header className="flex w-full items-center justify-between gap-4 px-0.5">
-          <div className="min-w-0 space-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Simulazione attiva
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-display text-lg font-semibold tracking-tight text-brand-primary">
-                {initialCaseData.title}
-              </h1>
-              {isVariant ? (
-                <Badge className="inline-flex items-center gap-1 border-brand-secondary/30 bg-brand-secondary/10 text-[10px] text-brand-secondary">
-                  <Sparkles className="h-3 w-3" />
-                  Variante IA
-                </Badge>
-              ) : (
-                <Badge className="text-[10px]">Caso originale</Badge>
-              )}
+        {!embedded ? (
+          <header className="flex w-full items-center justify-between gap-4 overflow-x-hidden px-0.5">
+            <div className="min-w-0 space-y-1">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Simulazione attiva
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-display text-lg font-semibold tracking-tight text-brand-primary">
+                  {initialCaseData.title}
+                </h1>
+                {isVariant ? (
+                  <Badge className="inline-flex items-center gap-1 border-brand-secondary/30 bg-brand-secondary/10 text-[10px] text-brand-secondary">
+                    <Sparkles className="h-3 w-3" />
+                    Variante IA
+                  </Badge>
+                ) : (
+                  <Badge className="text-[10px]">Caso originale</Badge>
+                )}
+              </div>
             </div>
-            <p className="text-xs leading-relaxed text-slate-500">
-              {initialCaseData.specialty
-                ? `${initialCaseData.specialty} · Obiettivo: ottimizzare rischio clinico, responsabilità medico-legale e risorse.`
-                : "Obiettivo: gestire il percorso diagnostico-terapeutico ottimizzando rischio clinico, responsabilità medico-legale e risorse."}
-            </p>
-          </div>
-          <div className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-border bg-panel-bg px-3 py-1.5 text-xs text-slate-600 shadow-sm">
-            <Activity className="h-3.5 w-3.5 text-brand-secondary" />
-            <span>Sessione in corso</span>
-          </div>
-        </header>
+            <div className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-border bg-panel-bg px-3 py-1.5 text-xs text-slate-600 shadow-sm">
+              <Activity className="h-3.5 w-3.5 text-brand-secondary" />
+              <span>Sessione in corso</span>
+            </div>
+          </header>
+        ) : null}
 
-        <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-12 lg:items-start lg:gap-5">
+        <div className="grid w-full grid-cols-1 gap-4 overflow-x-hidden lg:grid-cols-12 lg:items-start lg:gap-4">
           {/* Left — EHR */}
-          <div id="aequan-sim-chat" className="flex min-w-0 flex-col gap-4 lg:col-span-7 xl:col-span-8">
-            <Card className="w-full overflow-hidden rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
+          <div
+            id="aequan-sim-chat"
+            className="flex min-w-0 flex-col gap-4 overflow-x-hidden lg:col-span-7 xl:col-span-8"
+          >
+            <Card className="w-full overflow-x-hidden overflow-hidden rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
               <CardHeader className="flex flex-col gap-3 border-b border-border-subtle bg-ui-bg/80 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <CardTitle className="font-display text-sm font-bold tracking-tight text-brand-primary">
@@ -1277,9 +1277,9 @@ export function SimulatorClient({
           {/* Right — Cartella Clinica & Decisioni */}
           <div
             id="aequan-sim-exams"
-            className="flex min-w-0 flex-col gap-4 pb-12 lg:col-span-5 xl:col-span-4"
+            className="flex min-w-0 flex-col gap-4 overflow-x-hidden pb-8 lg:col-span-5 xl:col-span-4"
           >
-            <div className="flex min-h-[500px] flex-col justify-between rounded-xl border border-border bg-panel-bg p-5 shadow-aequan-panel">
+            <div className="flex min-h-[420px] flex-col justify-between overflow-x-hidden rounded-xl border border-border bg-panel-bg p-4 shadow-aequan-panel">
               <div>
                 <div className="flex items-start gap-2.5">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#1E324E]/5 text-[#345884]">
@@ -1917,7 +1917,7 @@ function HistoryChat({
   }, [scrollAnchor, isLoading]);
 
   return (
-    <div className="flex h-[460px] flex-col gap-3 overflow-hidden rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+    <div className="flex h-[460px] flex-col gap-3 overflow-x-hidden overflow-hidden rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
       <div
         ref={scrollRef}
         className="flex-1 space-y-3 overflow-y-auto pr-1.5"

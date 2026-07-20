@@ -31,6 +31,7 @@ export function PrassiShell({ cases, children }: PrassiShellProps) {
   const specialtyName = searchParams?.get("specialty") ?? null;
   const difficulty = searchParams?.get("difficulty") ?? null;
   const playMatch = pathname.match(/\/dashboard\/prassi\/play\/([^/]+)/);
+  const isPlaying = Boolean(playMatch);
   const activeCaseId = playMatch?.[1] ?? queryCaseId ?? null;
   const safeCases = Array.isArray(cases) ? cases.filter(Boolean) : [];
 
@@ -54,20 +55,23 @@ export function PrassiShell({ cases, children }: PrassiShellProps) {
     .join("&");
 
   return (
-    <div className="flex min-h-[calc(100vh-6rem)] flex-col gap-5">
-      <header className="space-y-1.5">
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-[#2F4156]">
-          Prassi Clinica
-        </h1>
-        <p className="max-w-3xl text-sm leading-relaxed text-slate-500">
-          Libreria casi ed esercitazioni attive basate su RAG e linee guida ministeriali.
-          Seleziona un caso a sinistra per aprire il briefing clinico e avviare la simulazione.
-        </p>
-      </header>
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+      {!isPlaying ? (
+        <header className="mb-3 shrink-0 space-y-1 overflow-x-hidden">
+          <h1 className="font-display text-xl font-semibold tracking-tight text-brand-primary">
+            Prassi Clinica
+          </h1>
+          <p className="max-w-3xl text-sm leading-relaxed text-slate-500">
+            Libreria casi ed esercitazioni attive. Seleziona un caso a sinistra per aprire il
+            briefing e avviare la simulazione.
+          </p>
+        </header>
+      ) : null}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-5 lg:grid-cols-12">
-        <aside className="flex min-h-[420px] flex-col overflow-hidden rounded-xl border border-slate-200/60 bg-white/95 shadow-sm transition-all duration-300 hover:shadow-md lg:col-span-4 xl:col-span-3">
-          <div className="border-b border-slate-100 px-4 py-3">
+      {/* Within dashboard main (col-span-10): case list 3 + workspace 7 ≈ full-page 2|3|7 */}
+      <div className="grid h-full min-h-0 w-full grid-cols-1 gap-4 overflow-hidden lg:grid-cols-10">
+        <aside className="col-span-1 flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-panel-bg shadow-aequan-panel lg:col-span-3">
+          <div className="shrink-0 border-b border-border-subtle px-4 py-3">
             <p className="font-display text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               Libreria casi
             </p>
@@ -76,71 +80,62 @@ export function PrassiShell({ cases, children }: PrassiShellProps) {
               {visibleCases.length === 1 ? "caso disponibile" : "casi disponibili"}
             </p>
           </div>
-          <div className="flex flex-1 flex-col overflow-hidden">
-            <div className="flex-1 space-y-1.5 overflow-y-auto p-2">
-              {visibleCases.length === 0 ? (
-                <p className="px-3 py-8 text-center text-sm text-slate-400">
-                  Nessun caso disponibile con i filtri attivi.
-                </p>
-              ) : (
-                visibleCases.map((caseRow) => {
-                  const isActive = activeCaseId === caseRow.id;
-                  const specialty = displaySpecialtyName(caseRow);
-                  const difficultyKey = isCaseDifficulty(caseRow.difficulty)
-                    ? caseRow.difficulty
-                    : "MEDIUM";
-                  const difficultyLabel =
-                    DIFFICULTY_LABELS[difficultyKey] ?? String(caseRow.difficulty ?? "Media");
-                  const href = `/dashboard/prassi?caseId=${encodeURIComponent(caseRow.id)}${
-                    filterQuery ? `&${filterQuery}` : ""
-                  }`;
-                  return (
-                    <Link
-                      key={caseRow.id}
-                      href={href}
-                      className={cn(
-                        "block rounded-lg border px-3 py-3 transition-all duration-300",
-                        isActive
-                          ? "border-l-4 border-l-[#1E324E] border-y-slate-100 border-r-slate-100 bg-[#345884]/[0.04] shadow-sm"
-                          : "border-slate-100 hover:border-slate-200 hover:bg-slate-50/80",
-                      )}
-                    >
-                      <div className="mb-2 flex flex-wrap items-center gap-1.5">
-                        <span className="rounded-full border border-[#345884]/15 bg-[#345884]/10 px-2 py-0.5 text-[10px] font-medium text-[#345884]">
-                          {specialty}
-                        </span>
-                        <span
-                          className={cn(
-                            "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                            DIFFICULTY_BADGE[difficultyKey],
-                          )}
-                        >
-                          {difficultyLabel}
-                        </span>
-                      </div>
-                      <p className="font-display line-clamp-2 text-sm font-semibold leading-snug text-[#2F4156]">
-                        {caseRow.title ?? "Caso clinico"}
-                      </p>
-                      <p className="mt-1 text-[11px] text-slate-400">
-                        {caseRow.isGlobal ? "Caso globale" : "Caso individuale"}
-                      </p>
-                    </Link>
-                  );
-                })
-              )}
-            </div>
-            <div className="shrink-0 border-t border-slate-100 bg-gradient-to-t from-[#345884]/[0.04] to-transparent px-3 py-3">
-              <p className="text-[10px] leading-relaxed text-slate-500">
-                Ogni scenario simulato è calibrato sulle ultime raccomandazioni della Legge
-                Gelli-Bianco e sulle linee guida ministeriali per promuovere l&apos;appropriatezza
-                prescrittiva.
+          <div className="h-full min-h-0 space-y-1.5 overflow-x-hidden overflow-y-auto p-2 pr-2 pb-8">
+            {visibleCases.length === 0 ? (
+              <p className="px-3 py-8 text-center text-sm text-slate-400">
+                Nessun caso disponibile con i filtri attivi.
               </p>
-            </div>
+            ) : (
+              visibleCases.map((caseRow) => {
+                const isActive = activeCaseId === caseRow.id;
+                const specialty = displaySpecialtyName(caseRow);
+                const difficultyKey = isCaseDifficulty(caseRow.difficulty)
+                  ? caseRow.difficulty
+                  : "MEDIUM";
+                const difficultyLabel =
+                  DIFFICULTY_LABELS[difficultyKey] ?? String(caseRow.difficulty ?? "Media");
+                const href = `/dashboard/prassi?caseId=${encodeURIComponent(caseRow.id)}${
+                  filterQuery ? `&${filterQuery}` : ""
+                }`;
+                return (
+                  <Link
+                    key={caseRow.id}
+                    href={href}
+                    className={cn(
+                      "block overflow-x-hidden rounded-lg border px-3 py-3 transition-all duration-200",
+                      isActive
+                        ? "border-l-4 border-l-brand-primary border-y-border border-r-border bg-brand-secondary/[0.04] shadow-sm"
+                        : "border-border hover:border-slate-300 hover:bg-ui-bg",
+                    )}
+                  >
+                    <div className="mb-2 flex flex-wrap items-center gap-1.5">
+                      <span className="rounded-full border border-brand-secondary/15 bg-brand-secondary/10 px-2 py-0.5 text-[10px] font-medium text-brand-secondary">
+                        {specialty}
+                      </span>
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                          DIFFICULTY_BADGE[difficultyKey],
+                        )}
+                      >
+                        {difficultyLabel}
+                      </span>
+                    </div>
+                    <p className="font-display line-clamp-2 text-sm font-semibold leading-snug text-text-primary">
+                      {caseRow.title ?? "Caso clinico"}
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      {caseRow.isGlobal ? "Caso globale" : "Caso individuale"}
+                    </p>
+                  </Link>
+                );
+              })
+            )}
           </div>
         </aside>
 
-        <section className="min-h-[420px] min-w-0 overflow-hidden rounded-xl border border-slate-200/60 bg-white/95 shadow-sm transition-all duration-300 hover:shadow-md lg:col-span-8 xl:col-span-9">
-          {children}
+        <section className="col-span-1 h-full min-h-0 min-w-0 overflow-x-hidden overflow-y-auto rounded-xl border border-border bg-panel-bg pr-2 pb-8 shadow-aequan-panel lg:col-span-7">
+          <div className="h-full min-h-0 overflow-x-hidden p-3 sm:p-4">{children}</div>
         </section>
       </div>
     </div>
