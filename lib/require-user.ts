@@ -35,7 +35,7 @@ export async function requireAdmin(): Promise<SessionUser> {
 
   const session = await getServerSession(authOptions);
   const id = session?.user?.id;
-  if (!id) redirect("/login?callbackUrl=/admin/knowledge");
+  if (!id) redirect("/login?callbackUrl=/dashboard/guidelines");
   if (session.user.role !== "ADMIN") redirect("/dashboard");
 
   return {

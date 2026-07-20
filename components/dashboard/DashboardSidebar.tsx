@@ -7,7 +7,6 @@ import {
   Activity,
   BookOpen,
   ChevronDown,
-  Database,
   FilePlus,
   LayoutDashboard,
   Settings,
@@ -54,12 +53,11 @@ const primaryNavItems: NavItem[] = [
     href: "/dashboard/guidelines",
     label: "Linee Guida",
     icon: BookOpen,
-    matchPrefixes: ["/dashboard/guidelines"],
+    matchPrefixes: ["/dashboard/guidelines", "/admin/knowledge"],
   },
 ];
 
 const adminNavItems: NavItem[] = [
-  { href: "/admin/knowledge", label: "Gestione RAG", icon: Database },
   { href: "/admin/users", label: "Utenti", icon: Users },
   { href: "/admin/exams", label: "Valori esami", icon: TestTubeDiagonal },
 ];

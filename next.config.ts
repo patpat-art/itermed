@@ -36,6 +36,13 @@ const nextConfig: NextConfig = {
       { source: "/dashboard/statistics/:path*", destination: "/dashboard/analytics", permanent: false },
       { source: "/dashboard/classifiche", destination: "/dashboard/analytics", permanent: false },
       { source: "/dashboard/classifiche/:path*", destination: "/dashboard/analytics", permanent: false },
+      { source: "/dashboard/rag", destination: "/dashboard/guidelines", permanent: false },
+      { source: "/dashboard/rag/:path*", destination: "/dashboard/guidelines", permanent: false },
+      { source: "/dashboard/admin/rag", destination: "/dashboard/guidelines", permanent: false },
+      { source: "/dashboard/admin/rag/:path*", destination: "/dashboard/guidelines", permanent: false },
+      { source: "/admin/knowledge/new", destination: "/dashboard/guidelines?tab=ingest", permanent: false },
+      { source: "/admin/knowledge", destination: "/dashboard/guidelines", permanent: false },
+      { source: "/admin/knowledge/:path*", destination: "/dashboard/guidelines", permanent: false },
     ];
   },
   async headers() {
