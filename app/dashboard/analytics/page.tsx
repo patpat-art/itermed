@@ -7,6 +7,7 @@ export const revalidate = 0;
 
 export default async function AnalyticsPage() {
   const user = await requireUser();
+  // fetchAnalyticsPageData never throws — empty leaderboard/stats when DB is empty or errors.
   const data = await fetchAnalyticsPageData(user.id);
 
   return (
@@ -21,6 +22,17 @@ export default async function AnalyticsPage() {
           simulazioni cliniche completate.
         </p>
       </header>
+
+      {data.leaderboard.top50.length === 0 && data.statistics.completedCount === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-5 py-4 text-sm text-slate-600">
+          <p className="font-medium text-slate-800">Nessuna simulazione completata ancora</p>
+          <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+            Il registro classifiche e i trend si popolano dopo la prima sessione con report
+            completato. Nel frattempo puoi aggiornare nickname e preferenze di privacy nel pannello
+            profilo qui sotto.
+          </p>
+        </div>
+      ) : null}
 
       <AnalyticsHub initialData={data} />
     </div>

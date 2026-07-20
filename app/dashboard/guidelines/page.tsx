@@ -1,8 +1,11 @@
 import Link from "next/link";
-import { Database } from "lucide-react";
+import { Database, FileUp, ShieldAlert } from "lucide-react";
 import { Badge } from "@/app/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/ui/card";
 import { fetchGuidelineDocuments } from "@/lib/guidelines/queries";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("guidelines-page");
 
 function excerpt(text: string, max = 280): string {
   const trimmed = text.trim();
@@ -11,7 +14,16 @@ function excerpt(text: string, max = 280): string {
 }
 
 export default async function DashboardGuidelinesPage() {
-  const docs = await fetchGuidelineDocuments({ includeText: true });
+  let docs: Awaited<ReturnType<typeof fetchGuidelineDocuments>> = [];
+  let loadError: string | null = null;
+
+  try {
+    docs = await fetchGuidelineDocuments({ includeText: true });
+  } catch (error) {
+    log.error("Failed to load guideline documents", { error });
+    loadError = "Impossibile caricare l'archivio linee guida al momento.";
+  }
+
   const activeCount = docs.filter((doc) => doc.isActive).length;
 
   return (
@@ -39,12 +51,45 @@ export default async function DashboardGuidelinesPage() {
         <CardHeader>
           <CardTitle className="text-sm font-medium text-zinc-950">Documenti caricati</CardTitle>
           <CardDescription>
-            {docs.length} totali · {activeCount} attive nel motore RAG
+            {loadError
+              ? "Archivio temporaneamente non disponibile"
+              : `${docs.length} totali · ${activeCount} attive nel motore RAG`}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
-          {docs.length === 0 ? (
-            <p className="text-zinc-500">Nessuna linea guida caricata.</p>
+          {loadError ? (
+            <div className="flex flex-col items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-5">
+              <div className="flex items-center gap-2 text-rose-800">
+                <ShieldAlert className="h-4 w-4" />
+                <p className="font-medium text-sm">{loadError}</p>
+              </div>
+              <p className="text-xs text-rose-700/90">
+                Riprova tra poco oppure verifica la connessione al database. L&apos;interfaccia
+                resta disponibile per caricare nuovi documenti.
+              </p>
+              <Link
+                href="/admin/knowledge/new"
+                className="inline-flex items-center gap-2 rounded-lg bg-[#1E324E] px-3 py-2 text-xs font-medium text-white hover:bg-[#2A486D]"
+              >
+                <FileUp className="h-3.5 w-3.5" />
+                Carica il primo documento
+              </Link>
+            </div>
+          ) : docs.length === 0 ? (
+            <div className="flex flex-col items-start gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-6">
+              <p className="text-sm font-medium text-slate-800">Nessuna linea guida caricata</p>
+              <p className="text-xs text-slate-500 leading-relaxed max-w-md">
+                L&apos;archivio è vuoto. Carica PDF o testo medico-legale per alimentare il RAG
+                nelle simulazioni e nelle valutazioni.
+              </p>
+              <Link
+                href="/admin/knowledge/new"
+                className="inline-flex items-center gap-2 rounded-lg bg-[#1E324E] px-3 py-2 text-xs font-medium text-white hover:bg-[#2A486D]"
+              >
+                <FileUp className="h-3.5 w-3.5" />
+                Carica documento
+              </Link>
+            </div>
           ) : (
             docs.map((doc) => (
               <article

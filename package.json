@@ -12,7 +12,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:status": "prisma migrate status",
     "db:generate": "prisma generate",
-    "db:seed:stemi": "npx tsx prisma/seed-stemi.ts"
+    "db:seed:stemi": "npx tsx prisma/seed-stemi.ts",
+    "db:promote-admins": "npx tsx scripts/promote-admins.ts"
   },
   "prisma": {
     "seed": "node --import tsx/esm prisma/seed-aequan-cases.ts"

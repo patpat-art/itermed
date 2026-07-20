@@ -32,7 +32,7 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: string }).role;
@@ -40,6 +40,23 @@ export const authOptions: NextAuthOptions = {
       if (!token.id && token.sub) {
         token.id = token.sub;
       }
+
+      // Re-read role from DB so promotions (e.g. STUDENT → ADMIN) apply without re-login.
+      const userId = typeof token.id === "string" ? token.id : null;
+      if (userId) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true },
+          });
+          if (dbUser?.role) {
+            token.role = dbUser.role;
+          }
+        } catch {
+          // Keep token.role if DB is temporarily unavailable.
+        }
+      }
+
       return token;
     },
     session({ session, token }) {

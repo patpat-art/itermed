@@ -27,9 +27,10 @@ const nextConfig: NextConfig = {
     return [
       { source: "/dashboard/decks", destination: "/dashboard/prassi", permanent: true },
       { source: "/dashboard/decks/:path*", destination: "/dashboard/prassi", permanent: true },
-      { source: "/dashboard/cases", destination: "/dashboard/prassi", permanent: false },
+      // Do NOT redirect /dashboard/cases or /dashboard/cases/* here — /cases/create must stay reachable.
+      // Legacy list UI redirects itself in app/dashboard/cases/page.tsx.
       { source: "/dashboard/simulator", destination: "/dashboard/prassi", permanent: false },
-      // Single create-case entry point (legacy NewCaseFormClient flow)
+      { source: "/dashboard/simulator/:path*", destination: "/dashboard/prassi", permanent: false },
       { source: "/dashboard/cases/new", destination: "/dashboard/cases/create", permanent: false },
     ];
   },
