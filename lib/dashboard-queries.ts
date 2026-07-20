@@ -44,7 +44,7 @@ export async function fetchFilteredClinicalCases(
   filters?: CaseFilterParams,
   take = 50,
 ) {
-  return prisma.clinicalCase.findMany({
+  const rows = await prisma.clinicalCase.findMany({
     where: filteredCasesWhere(userId, filters),
     orderBy: { updatedAt: "desc" },
     select: {
@@ -54,6 +54,7 @@ export async function fetchFilteredClinicalCases(
       specialty: true,
       isGlobal: true,
       createdById: true,
+      baselineExamFindings: true,
       medicalSpecialty: {
         select: {
           id: true,
@@ -62,6 +63,16 @@ export async function fetchFilteredClinicalCases(
       },
     },
     take,
+  });
+
+  return rows.map((row) => {
+    const baseline = row.baselineExamFindings as
+      | { demographics?: { sex?: string | null } }
+      | null
+      | undefined;
+    const sex = baseline?.demographics?.sex ?? null;
+    const { baselineExamFindings: _omit, ...rest } = row;
+    return { ...rest, sex };
   });
 }
 

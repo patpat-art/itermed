@@ -153,6 +153,8 @@ export async function generateCaseMetadataAndObjective(
 Regole:
 - Tutti i campi sono stringhe in italiano, sintetici ma clinici.
 - Coerenza interna tra parametri vitali, torace, addome, neuro e il quadro descritto.
+- COERENZA NOME–SESSO (TASSATIVA): se sex="M" (Sesso: Maschile) ogni nome proprio nel title/description/context/pastHistory deve essere maschile; se sex="F" (Sesso: Femminile) solo nomi femminili. Mai nomi maschili con sex F (es. vietato "Luca Rossi" + F) e viceversa.
+- Title: "Uomo …" solo con sex M; "Donna …" solo con sex F.
 - NON inventare dettagli assurdi rispetto al contesto.`;
 
   const userContent = `Contesto disponibile:

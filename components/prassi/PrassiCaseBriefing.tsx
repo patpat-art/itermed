@@ -16,7 +16,7 @@ export function PrassiCaseBriefing({ caseRow }: PrassiCaseBriefingProps) {
   const specialty = displaySpecialtyName(caseRow);
   const difficulty = DIFFICULTY_LABELS[caseRow.difficulty] ?? caseRow.difficulty;
   const vitals = deriveDemoVitals(caseRow.id);
-  const name = patientDisplayName(caseRow.id, caseRow.title);
+  const name = patientDisplayName(caseRow.id, caseRow.title, caseRow.sex);
 
   const handleSessionStart = (caseId: string, sessionId: string) => {
     router.push(`/dashboard/prassi/play/${caseId}?sessionId=${sessionId}`);

@@ -27,6 +27,7 @@ const DEMO_CASES = (userId: string): ClinicalCaseRow[] => [
     difficulty: "MEDIUM",
     createdById: "seed",
     isGlobal: true,
+    sex: "M",
   },
   {
     id: "cs_002",
@@ -35,6 +36,7 @@ const DEMO_CASES = (userId: string): ClinicalCaseRow[] => [
     difficulty: "EASY",
     createdById: userId,
     isGlobal: false,
+    sex: "F",
   },
   {
     id: "cs_003",
@@ -43,6 +45,7 @@ const DEMO_CASES = (userId: string): ClinicalCaseRow[] => [
     difficulty: "HARD",
     createdById: "seed",
     isGlobal: true,
+    sex: "M",
   },
 ];
 

@@ -238,7 +238,7 @@ const CASES: SeedCase[] = [
     specialtyName: "Medicina Interna",
     difficulty: "EASY",
     patientPrompt:
-      "Sei Anna, 72 anni. Ti senti debole e confusa. Hai freddo e tossisci. Rispondi in modo semplice, a volte ripeti le stesse cose.",
+      "Sei Lucia Rossi, 72 anni. Ti senti debole e confusa. Hai freddo e tossisci. Rispondi in modo semplice, a volte ripeti le stesse cose.",
     pastMedicalHistory: "Diabete tipo 2. Ipertensione. Nessuna allergia nota.",
     correctSolution:
       "Sospetta polmonite / sepsi: vitals, emocromo, PCR/PCT, emocolture se indicato, RX torace, antibiotico empirico dopo culture quando possibile.",
@@ -286,7 +286,7 @@ const CASES: SeedCase[] = [
     specialtyName: "Neurologia",
     difficulty: "HARD",
     patientPrompt:
-      "Sei Luca, 33 anni. Hai un dolore alla testa fortissimo e nausea. Sei sonnolento. Se il medico ritarda la TC, aumenti ansia e confusione.",
+      "Sei Marco Rossi, 33 anni. Hai un dolore alla testa fortissimo e nausea. Sei sonnolento. Se il medico ritarda la TC, aumenti ansia e confusione.",
     pastMedicalHistory: "Idrocefalo con shunt ventricolo-peritoneale. Nessuna allergia nota.",
     correctSolution:
       "Sospetta disfunzione di shunt / ipertensione endocranica: ABC, neurostatus, TC encefalo urgente, consulto neurochirurgico. Evitare ritardi.",

@@ -38,18 +38,114 @@ export function deriveDemoVitals(caseId: string, stress = 0): DemoVitals {
   };
 }
 
-const MALE_NAMES = ["Marco Bianchi", "Luca Rossi", "Andrea Conti", "Paolo Ricci", "Davide Greco"];
-const FEMALE_NAMES = ["Giulia Romano", "Sara Esposito", "Elena Marino", "Chiara Costa", "Francesca Gallo"];
+/** Italian male given names — pick only when patient sex is M. */
+export const MALE_FIRST_NAMES = [
+  "Marco",
+  "Luca",
+  "Andrea",
+  "Paolo",
+  "Davide",
+  "Giovanni",
+  "Alessandro",
+  "Matteo",
+] as const;
 
-export function patientDisplayName(caseId: string, title?: string | null): string {
-  const seed = hashSeed(caseId || "demo");
+/** Italian female given names — pick only when patient sex is F. */
+export const FEMALE_FIRST_NAMES = [
+  "Giulia",
+  "Sara",
+  "Elena",
+  "Chiara",
+  "Francesca",
+  "Lucia",
+  "Laura",
+  "Anna",
+] as const;
+
+const LAST_NAMES = [
+  "Bianchi",
+  "Rossi",
+  "Conti",
+  "Ricci",
+  "Greco",
+  "Romano",
+  "Esposito",
+  "Marino",
+  "Costa",
+  "Gallo",
+] as const;
+
+export type PatientSexHint = "M" | "F" | string | null | undefined;
+
+/** Normalize demographics sex / sex labels to M | F | null. */
+export function normalizePatientSex(sex?: PatientSexHint): "M" | "F" | null {
+  if (sex == null) return null;
+  const s = String(sex).trim().toUpperCase();
+  if (
+    s === "M" ||
+    s === "MALE" ||
+    s === "MASCHIO" ||
+    s === "MASCHILE" ||
+    s === "UOMO" ||
+    s.startsWith("SESSO: M")
+  ) {
+    return "M";
+  }
+  if (
+    s === "F" ||
+    s === "FEMALE" ||
+    s === "FEMMINA" ||
+    s === "FEMMINILE" ||
+    s === "DONNA" ||
+    s.startsWith("SESSO: F")
+  ) {
+    return "F";
+  }
+  return null;
+}
+
+/**
+ * Infer sex from title/description only when demographics sex is missing.
+ * Never overrides an explicit patient.sex / patient.gender value.
+ */
+function inferSexFromTitle(title?: string | null): "M" | "F" | null {
   const titleLower = (title ?? "").toLowerCase();
-  const femaleHint =
+  if (
     titleLower.includes("donna") ||
     titleLower.includes("paziente f") ||
-    titleLower.includes(" gravid");
-  const pool = femaleHint ? FEMALE_NAMES : MALE_NAMES;
-  return pool[seed % pool.length];
+    titleLower.includes(" gravid") ||
+    titleLower.includes("femmina") ||
+    titleLower.includes("femminile")
+  ) {
+    return "F";
+  }
+  if (
+    titleLower.includes("uomo") ||
+    titleLower.includes("paziente m") ||
+    titleLower.includes("maschio") ||
+    titleLower.includes("maschile")
+  ) {
+    return "M";
+  }
+  return null;
+}
+
+/**
+ * Deterministic display name for UI cards / vitals strip.
+ * First name is ALWAYS chosen from the gender-matching pool based on
+ * `patient.gender` / `patient.sex` (falls back to title hints, then M).
+ */
+export function patientDisplayName(
+  caseId: string,
+  title?: string | null,
+  sex?: PatientSexHint,
+): string {
+  const seed = hashSeed(caseId || "demo");
+  const resolvedSex = normalizePatientSex(sex) ?? inferSexFromTitle(title) ?? "M";
+  const firstPool = resolvedSex === "F" ? FEMALE_FIRST_NAMES : MALE_FIRST_NAMES;
+  const first = firstPool[seed % firstPool.length];
+  const last = LAST_NAMES[(seed >>> 8) % LAST_NAMES.length];
+  return `${first} ${last}`;
 }
 
 export function estimateAgeFromTitle(title?: string | null, fallback = 58): number {

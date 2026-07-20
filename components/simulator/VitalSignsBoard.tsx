@@ -70,7 +70,7 @@ export function VitalSignsBoard({
   const overall = maxVitalStatus(classified.map((v) => v.status));
   const overallCfg = statusClasses(overall);
   const resolvedAge = typeof age === "number" ? age : estimateAgeFromTitle(title, Number(age) || 58);
-  const name = patientDisplayName(caseId, title);
+  const name = patientDisplayName(caseId, title, sex);
   const sexLabel = sex === "F" ? "F" : sex === "M" ? "M" : null;
 
   return (

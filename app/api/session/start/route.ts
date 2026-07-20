@@ -82,6 +82,7 @@ export async function POST(req: Request) {
   const systemPrompt = `
 Modifica questo caso clinico cambiando età, sesso o aggiungendo/togliendo una comorbilità o farmaco.
 Mantieni la presentazione coerente e realistica, ma sufficientemente diversa per costituire una nuova variante formativa.
+COERENZA NOME–SESSO (TASSATIVA): se cambi il sesso del paziente, aggiorna anche il nome proprio nel newPatientPrompt affinché corrisponda (Sesso: Maschile → solo nomi maschili italiani; Sesso: Femminile → solo nomi femminili). Mai "Luca"/"Marco"/"Paolo" per una paziente donna, né "Lucia"/"Laura"/"Giulia" per un paziente uomo.
 Restituisci un JSON con i campi:
 - "newPatientPrompt": descrizione testuale del nuovo contesto/paziente (in seconda persona al modello, ma usata come prompt al paziente virtuale).
 - "newCorrectSolution": breve descrizione della gestione clinico-medico-legale corretta per questa variante.

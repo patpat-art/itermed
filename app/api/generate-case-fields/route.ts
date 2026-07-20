@@ -89,6 +89,8 @@ Regole:
 - Tutti i campi sono stringhe (tranne difficulty e sex che seguono lo schema).
 - difficulty: EASY / MEDIUM / HARD in base a complessità clinica e medico-legale.
 - sex: solo "M" o "F".
+- COERENZA NOME–SESSO (TASSATIVA): se sex="M" (Sesso: Maschile) qualsiasi nome proprio nel title/description/context/pastMedicalHistory deve essere maschile italiano (es. Marco, Luca, Paolo). Se sex="F" (Sesso: Femminile) solo nomi femminili (es. Lucia, Laura, Giulia, Anna). Vietato associare nomi maschili a pazienti F e viceversa (es. mai "Luca Rossi" con sex F).
+- Nel title usa "Uomo …" con sex M e "Donna …" con sex F, coerenti con i nomi.
 - Parametri vitali coerenti con il quadro (es. STEMI → FC e PA realistiche, SpO2 plausibile).
 - correctSolution: diagnosi attesa + cenni di gestione / linee guida essenziali (per l'autore del caso, non per il paziente).
 - abnormalExamsSummary: elenco sintetico delle alterazioni attese (es. "Troponina ↑, ECG: ST elevazione V2-V4, glicemia borderline").

@@ -1290,7 +1290,11 @@ export function SimulatorClient({
                       Cartella Clinica Attiva
                     </h3>
                     <p className="mt-0.5 truncate text-xs text-slate-500">
-                      {patientDisplayName(initialCaseData.id, initialCaseData.title)}
+                      {patientDisplayName(
+                        initialCaseData.id,
+                        initialCaseData.title,
+                        patient.sex,
+                      )}
                     </p>
                     <p className="mt-0.5 text-[11px] text-slate-400">
                       ID {patient.id} · {patient.age} anni ·{" "}
@@ -1390,8 +1394,13 @@ export function SimulatorClient({
                       <div className="mt-3 space-y-2 border-l-2 border-[#1E324E]/20 pl-3 text-[11px] leading-relaxed text-slate-600">
                         <p>
                           <span className="font-semibold text-[#1E324E]">Paziente:</span>{" "}
-                          {patientDisplayName(initialCaseData.id, initialCaseData.title)},{" "}
-                          {patient.age} anni · {patient.sex === "M" ? "Maschio" : "Femmina"}
+                          {patientDisplayName(
+                            initialCaseData.id,
+                            initialCaseData.title,
+                            patient.sex,
+                          )}
+                          , {patient.age} anni ·{" "}
+                          {patient.sex === "M" ? "Maschio" : "Femmina"}
                         </p>
                         <p>
                           <span className="font-semibold text-[#1E324E]">ID cartella:</span>{" "}
