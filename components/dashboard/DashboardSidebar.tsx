@@ -124,7 +124,7 @@ function NavLink({ item }: { item: NavItem }) {
         />
       ) : null}
       <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-brand-primary" : "text-slate-500")} />
-      <span className="font-display">{item.label}</span>
+      <span className="font-display min-w-0 truncate">{item.label}</span>
     </Link>
   );
 }
@@ -135,16 +135,16 @@ export function DashboardSidebar({ userLabel, isAdmin, ssmSpecialties }: Dashboa
   const isCreateActive = isCaseCreationPath(pathname);
 
   return (
-    <aside className="flex h-full min-h-0 w-full flex-col justify-between overflow-x-hidden overflow-y-auto rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
+    <aside className="flex h-full w-full min-w-0 flex-col justify-between overflow-hidden bg-panel-bg">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <header className="flex shrink-0 flex-col items-center px-4 pb-4 pt-6 text-center">
+        <header className="flex shrink-0 flex-col items-center px-3 pb-3 pt-5 text-center">
           <Link
             href="/dashboard"
-            className="aequan-interactive inline-flex items-center justify-center hover:opacity-90"
+            className="aequan-interactive inline-flex max-w-full items-center justify-center hover:opacity-90"
           >
-            <AequanLogo height={48} />
+            <AequanLogo height={40} />
           </Link>
-          <p className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          <p className="mt-1.5 truncate text-[10px] font-semibold uppercase tracking-wider text-slate-400">
             Medical-Legal Training
           </p>
         </header>
@@ -152,18 +152,19 @@ export function DashboardSidebar({ userLabel, isAdmin, ssmSpecialties }: Dashboa
         <Link
           href={CREATE_CASE_HREF}
           className={cn(
-            "relative mx-4 mb-4 flex shrink-0 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium shadow-sm transition-colors aequan-interactive",
+            "relative mx-3 mb-3 flex shrink-0 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium shadow-sm transition-colors aequan-interactive",
             isCreateActive
               ? "bg-brand-primary text-white ring-2 ring-brand-secondary/40"
               : "aequan-btn-primary",
           )}
           aria-current={isCreateActive ? "page" : undefined}
         >
-          <FilePlus className="h-4 w-4" />
-          Crea Caso
+          <FilePlus className="h-4 w-4 shrink-0" />
+          <span className="truncate">Crea Caso</span>
         </Link>
 
-        <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 pb-3">
+        {/* Single scroll region — no nested scrollbars */}
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-2">
           <nav className="space-y-0.5 text-sm" aria-label="Navigazione principale">
             {primaryNavItems.map((item) => (
               <NavLink key={item.href} item={item} />
@@ -181,20 +182,23 @@ export function DashboardSidebar({ userLabel, isAdmin, ssmSpecialties }: Dashboa
             ) : null}
           </nav>
 
-          <div className="mt-5 border-t border-border-subtle pt-4">
+          <div className="mt-4 border-t border-border-subtle pt-3">
             <button
               type="button"
               onClick={() => setSsmOpen((open) => !open)}
               className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 transition-colors hover:bg-slate-50 hover:text-text-primary aequan-interactive"
               aria-expanded={ssmOpen}
             >
-              <span>Specialità (SSM)</span>
+              <span className="truncate">Specialità (SSM)</span>
               <ChevronDown
-                className={cn("h-4 w-4 transition-transform", ssmOpen ? "rotate-180" : "rotate-0")}
+                className={cn(
+                  "h-4 w-4 shrink-0 transition-transform",
+                  ssmOpen ? "rotate-180" : "rotate-0",
+                )}
               />
             </button>
             {ssmOpen ? (
-              <div className="mt-2 max-h-32 space-y-0.5 overflow-y-auto pr-1">
+              <div className="mt-1 space-y-0.5 pr-0.5">
                 {ssmSpecialties.map((specialty) => (
                   <Link
                     key={specialty.name}
@@ -218,20 +222,23 @@ export function DashboardSidebar({ userLabel, isAdmin, ssmSpecialties }: Dashboa
         <div className="flex items-center justify-between gap-2">
           <Link
             href="/dashboard/profile"
-            className="inline-flex items-center gap-2 rounded-xl px-2.5 py-1.5 transition-colors hover:bg-slate-50 aequan-interactive"
+            className="inline-flex min-w-0 items-center gap-2 rounded-xl px-2.5 py-1.5 transition-colors hover:bg-slate-50 aequan-interactive"
           >
-            <UserCircle2 className="h-4 w-4" />
-            <span>Profilo</span>
+            <UserCircle2 className="h-4 w-4 shrink-0" />
+            <span className="truncate">Profilo</span>
           </Link>
           <Link
             href="/dashboard/settings"
-            className="inline-flex items-center justify-center rounded-xl p-1.5 transition-colors hover:bg-slate-50 aequan-interactive"
+            className="inline-flex shrink-0 items-center justify-center rounded-xl p-1.5 transition-colors hover:bg-slate-50 aequan-interactive"
             aria-label="Impostazioni"
           >
             <Settings className="h-4 w-4" />
           </Link>
         </div>
-        <nav className="flex flex-wrap gap-x-3 gap-y-1 px-1 text-[10px] text-slate-400" aria-label="Documenti legali">
+        <nav
+          className="flex flex-wrap gap-x-3 gap-y-1 px-1 text-[10px] text-slate-400"
+          aria-label="Documenti legali"
+        >
           <Link href="/terms" className="hover:text-brand-primary hover:underline">
             Termini
           </Link>

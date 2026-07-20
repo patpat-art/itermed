@@ -21,19 +21,17 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-ui-bg text-text-primary">
-      <div className="grid h-full w-full grid-cols-12 gap-4 overflow-hidden p-4">
-        <aside className="col-span-2 flex h-full min-h-0 flex-col justify-between overflow-hidden">
-          <DashboardSidebar
-            userLabel={label}
-            isAdmin={user.role === "ADMIN"}
-            ssmSpecialties={ssmSpecialties}
-          />
-        </aside>
-        <main className="col-span-10 h-full min-h-0 min-w-0 overflow-x-hidden overflow-y-auto">
-          {children}
-        </main>
-      </div>
+    <div className="flex h-screen w-full overflow-hidden overflow-x-hidden bg-slate-50 text-text-primary dark:bg-slate-950">
+      <aside className="flex h-full w-64 min-w-[16rem] shrink-0 flex-col justify-between overflow-hidden border-r border-slate-200 dark:border-slate-800">
+        <DashboardSidebar
+          userLabel={label}
+          isAdmin={user.role === "ADMIN"}
+          ssmSpecialties={ssmSpecialties}
+        />
+      </aside>
+      <main className="h-full min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4">
+        {children}
+      </main>
     </div>
   );
 }

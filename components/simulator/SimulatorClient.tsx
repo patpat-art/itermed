@@ -1110,7 +1110,7 @@ export function SimulatorClient({
     <div
       className={
         embedded
-          ? "flex w-full min-w-0 flex-col overflow-x-hidden bg-transparent text-text-primary"
+          ? "flex h-full min-h-0 w-full min-w-0 flex-col overflow-x-hidden overflow-hidden bg-transparent text-text-primary"
           : "flex min-h-screen w-full items-stretch justify-center overflow-x-hidden bg-ui-bg px-4 pb-10 pt-16 text-text-primary"
       }
     >
@@ -1125,9 +1125,15 @@ export function SimulatorClient({
           }
         />
       ) : null}
-      <div className="flex w-full min-w-0 flex-col gap-3 overflow-x-hidden font-[family-name:var(--font-inter)]">
+      <div
+        className={
+          embedded
+            ? "flex h-full min-h-0 w-full min-w-0 flex-col gap-3 overflow-x-hidden overflow-hidden font-[family-name:var(--font-inter)]"
+            : "flex w-full min-w-0 flex-col gap-3 overflow-x-hidden font-[family-name:var(--font-inter)]"
+        }
+      >
         {embedded && persistReports && disclaimerAccepted ? (
-          <div className="flex justify-end overflow-x-hidden">
+          <div className="flex shrink-0 justify-end overflow-x-hidden">
             <Button
               type="button"
               variant="outline"
@@ -1148,7 +1154,7 @@ export function SimulatorClient({
           age={patient.age}
           sex={patient.sex}
           stress={patientStress}
-          className="w-full overflow-x-hidden rounded-xl border border-slate-900/60 shadow-md"
+          className="w-full shrink-0 overflow-x-hidden rounded-xl border border-slate-900/60 shadow-md"
         />
 
         {!embedded ? (
@@ -1178,15 +1184,26 @@ export function SimulatorClient({
           </header>
         ) : null}
 
-        <div className="grid w-full grid-cols-1 gap-4 overflow-x-hidden lg:grid-cols-12 lg:items-start lg:gap-4">
-          {/* Left — EHR */}
+        {/* Embedded: 9-col host → chat 6 + patient 3 (= overall Prassi 3|6|3). Standalone: 12-col 8|4. */}
+        <div
+          className={
+            embedded
+              ? "grid min-h-0 w-full min-w-0 flex-1 grid-cols-1 gap-4 overflow-hidden overflow-x-hidden lg:grid-cols-9"
+              : "grid w-full min-w-0 grid-cols-1 gap-4 overflow-x-hidden lg:grid-cols-12 lg:items-start"
+          }
+        >
+          {/* Col 2 — Central simulation & chat */}
           <div
             id="aequan-sim-chat"
-            className="flex min-w-0 flex-col gap-4 overflow-x-hidden lg:col-span-7 xl:col-span-8"
+            className={
+              embedded
+                ? "col-span-1 flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-y-auto overflow-x-hidden px-2 lg:col-span-6"
+                : "flex min-w-0 flex-col gap-4 overflow-x-hidden lg:col-span-8"
+            }
           >
-            <Card className="w-full overflow-x-hidden overflow-hidden rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
+            <Card className="w-full min-w-0 overflow-x-hidden overflow-hidden rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
               <CardHeader className="flex flex-col gap-3 border-b border-border-subtle bg-ui-bg/80 sm:flex-row sm:items-center sm:justify-between">
-                <div>
+                <div className="min-w-0">
                   <CardTitle className="font-display text-sm font-bold tracking-tight text-brand-primary">
                     Cartella clinica elettronica
                   </CardTitle>
@@ -1225,7 +1242,7 @@ export function SimulatorClient({
                   </TabsTrigger>
                 </TabsList>
               </CardHeader>
-              <CardContent className="pt-0">
+              <CardContent className="min-w-0 overflow-x-hidden pt-0">
                 <Tabs
                   value={activeTab}
                   onValueChange={(value) => setActiveTab(value as typeof activeTab)}
@@ -1237,6 +1254,7 @@ export function SimulatorClient({
                       onInputChange={handleInputChange}
                       onSubmit={handleSubmit}
                       isLoading={isChatLoading}
+                      compact={embedded}
                     />
                   </TabsContent>
                   <TabsContent value="exam" currentValue={activeTab} className="mt-3">
@@ -1274,12 +1292,16 @@ export function SimulatorClient({
             </Card>
           </div>
 
-          {/* Right — Cartella Clinica & Decisioni */}
+          {/* Col 3 — Patient details, cost, referto */}
           <div
             id="aequan-sim-exams"
-            className="flex min-w-0 flex-col gap-4 overflow-x-hidden pb-8 lg:col-span-5 xl:col-span-4"
+            className={
+              embedded
+                ? "col-span-1 flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-y-auto overflow-x-hidden pl-1 pb-4 lg:col-span-3"
+                : "flex min-w-0 flex-col gap-4 overflow-x-hidden pb-8 lg:col-span-4"
+            }
           >
-            <div className="flex min-h-[420px] flex-col justify-between overflow-x-hidden rounded-xl border border-border bg-panel-bg p-4 shadow-aequan-panel">
+            <div className="flex min-h-0 min-w-0 flex-col justify-between overflow-x-hidden rounded-xl border border-border bg-panel-bg p-4 shadow-aequan-panel">
               <div>
                 <div className="flex items-start gap-2.5">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#1E324E]/5 text-[#345884]">
@@ -1876,6 +1898,8 @@ type HistoryChatProps = {
   onInputChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   isLoading: boolean;
+  /** Bound height for embedded Prassi grid — avoids fixed 460px blowing layout. */
+  compact?: boolean;
 };
 
 function HistoryChat({
@@ -1884,6 +1908,7 @@ function HistoryChat({
   onInputChange,
   onSubmit,
   isLoading,
+  compact = false,
 }: HistoryChatProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -1926,10 +1951,16 @@ function HistoryChat({
   }, [scrollAnchor, isLoading]);
 
   return (
-    <div className="flex h-[460px] flex-col gap-3 overflow-x-hidden overflow-hidden rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+    <div
+      className={
+        compact
+          ? "flex h-[min(420px,52vh)] min-h-[280px] min-w-0 flex-col gap-3 overflow-x-hidden overflow-hidden rounded-xl border border-slate-100 bg-white p-4 shadow-sm"
+          : "flex h-[460px] min-w-0 flex-col gap-3 overflow-x-hidden overflow-hidden rounded-xl border border-slate-100 bg-white p-4 shadow-sm"
+      }
+    >
       <div
         ref={scrollRef}
-        className="flex-1 space-y-3 overflow-y-auto pr-1.5"
+        className="flex-1 space-y-3 overflow-y-auto overflow-x-hidden pr-1.5"
         onWheel={(event) => {
           // Some mouse wheels on Arc do not scroll nested containers reliably.
           if (!scrollRef.current) return;
