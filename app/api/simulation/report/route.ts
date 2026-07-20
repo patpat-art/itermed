@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { z } from "zod";
-import { userCanPlayCase } from "@/lib/access";
+import { userCanPlayCase, verifyLiveSessionOwner } from "@/lib/access";
 import { getSessionUserId } from "@/lib/api-session";
 import { assertCanStartSimulation, gateToResponse } from "@/lib/billing/access-gate";
 import { getUserBillingProfile } from "@/lib/billing/user-billing";
@@ -24,6 +24,8 @@ export const maxDuration = 120;
 
 const SimulationReportBodySchema = z.object({
   caseId: z.string().min(1, "caseId is required"),
+  /** Live CaseSession id — used to load SimulationMilestone rows for evaluation. */
+  sessionId: z.string().min(1).optional(),
   chatHistory: z
     .array(
       z.object({
@@ -71,7 +73,8 @@ export async function POST(req: Request) {
       throw new ValidationError(message);
     }
 
-    const { caseId, chatHistory, exams, reportText, caseContext, finalDiagnosis } = parsed.data;
+    const { caseId, sessionId: liveSessionId, chatHistory, exams, reportText, caseContext, finalDiagnosis } =
+      parsed.data;
     const log = routeLogger.child({ caseId });
 
     const userId = await getSessionUserId();
@@ -101,6 +104,13 @@ export async function POST(req: Request) {
       return jsonResponse({ error: "Forbidden", code: "FORBIDDEN" }, 403);
     }
 
+    if (liveSessionId) {
+      const owns = await verifyLiveSessionOwner(liveSessionId, userId);
+      if (!owns) {
+        return jsonResponse({ error: "Forbidden", code: "FORBIDDEN" }, 403);
+      }
+    }
+
     const normalizedReportText = normalizeReportText(
       sanitizeForExternalAI(reportText),
     );
@@ -112,6 +122,7 @@ export async function POST(req: Request) {
       reportId: "" as string,
       userId,
       caseId,
+      liveSessionId,
       evaluationChatHistory,
       exams,
       normalizedReportText,
@@ -138,6 +149,7 @@ export async function POST(req: Request) {
           normalizedReportText,
           caseContext: sanitizedCaseContext,
           finalDiagnosis: sanitizedFinalDiagnosis,
+          liveSessionId,
         }),
       },
       select: { id: true },

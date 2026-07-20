@@ -12,11 +12,14 @@ import {
   type ClinicalCaseSnapshot,
 } from "@/lib/services/simulation-report-data";
 import type { ChatMessage, ExamPayload } from "@/lib/services/evaluation-service";
+import { fetchSessionMilestones } from "@/lib/simulator/milestone-tracker";
 
 export type SimulationReportJobInput = {
   reportId: string;
   userId: string;
   caseId: string;
+  /** Live CaseSession id for milestone-aware evaluation. */
+  liveSessionId?: string;
   evaluationChatHistory: ChatMessage[];
   exams: ExamPayload[];
   normalizedReportText: string;
@@ -111,6 +114,10 @@ export async function processSimulationReportJob(input: SimulationReportJobInput
     });
 
     const evaluationStartedAt = Date.now();
+    const sessionMilestones = input.liveSessionId
+      ? await fetchSessionMilestones(input.liveSessionId)
+      : [];
+
     const evaluation = await evaluationService.evaluateSimulation({
       chatHistory: input.evaluationChatHistory,
       exams: input.exams,
@@ -126,6 +133,7 @@ export async function processSimulationReportJob(input: SimulationReportJobInput
       goldStandardPath: Array.isArray(clinicalCase?.goldStandardPath)
         ? (clinicalCase.goldStandardPath as string[])
         : undefined,
+      sessionMilestones,
     });
     const evaluationDurationMs = Date.now() - evaluationStartedAt;
 

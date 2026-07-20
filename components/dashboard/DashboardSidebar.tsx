@@ -6,10 +6,12 @@ import { useState } from "react";
 import {
   Activity,
   BarChart3,
+  BookOpen,
   ChevronDown,
   FilePlus,
   LayoutDashboard,
   Settings,
+  Trophy,
   UserCircle2,
   Database,
   Users,
@@ -42,6 +44,13 @@ const primaryNavItems: NavItem[] = [
     icon: Activity,
     matchPrefixes: ["/dashboard/prassi", "/dashboard/cases", "/dashboard/simulator"],
   },
+  {
+    href: "/dashboard/analytics",
+    label: "Analytics & Classifiche",
+    icon: Trophy,
+    matchPrefixes: ["/dashboard/analytics", "/dashboard/classifiche"],
+  },
+  { href: "/dashboard/guidelines", label: "Linee Guida", icon: BookOpen },
   { href: "/dashboard/statistics", label: "Statistiche", icon: BarChart3 },
 ];
 

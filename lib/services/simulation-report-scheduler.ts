@@ -13,6 +13,7 @@ type JobQueuePayload = {
   normalizedReportText: string;
   caseContext?: string;
   finalDiagnosis?: string;
+  liveSessionId?: string;
 };
 
 const globalForScheduler = globalThis as unknown as {
@@ -101,6 +102,7 @@ export async function ensureSimulationReportProcessing(
     reportId: report.id,
     userId: report.userId,
     caseId: report.caseId,
+    liveSessionId: queue.liveSessionId,
     evaluationChatHistory: queue.evaluationChatHistory,
     exams: queue.exams,
     normalizedReportText: queue.normalizedReportText,

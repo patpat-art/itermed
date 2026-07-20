@@ -29,6 +29,8 @@ const nextConfig: NextConfig = {
       { source: "/dashboard/decks/:path*", destination: "/dashboard/prassi", permanent: true },
       { source: "/dashboard/cases", destination: "/dashboard/prassi", permanent: false },
       { source: "/dashboard/simulator", destination: "/dashboard/prassi", permanent: false },
+      // Single create-case entry point (legacy NewCaseFormClient flow)
+      { source: "/dashboard/cases/new", destination: "/dashboard/cases/create", permanent: false },
     ];
   },
   async headers() {

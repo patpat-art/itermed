@@ -37,6 +37,13 @@ import { Badge } from "../../app/ui/badge";
 import { PhysicalExamTab } from "./PhysicalExamTab";
 import { PatientStressBar } from "./PatientStressBar";
 import { VitalSignsBoard } from "./VitalSignsBoard";
+import {
+  ClinicalDischargeReportPanel,
+  composeClinicalReport,
+  extractFinalDiagnosisFromReport,
+  isClinicalReportComplete,
+  type ClinicalReportSections,
+} from "./ClinicalDischargeReportPanel";
 import { MetricBar } from "@/app/case/[id]/results/MetricBar";
 import { ScoreProgressRing } from "@/app/case/[id]/results/ScoreProgressRing";
 import { patientDisplayName, deriveDemoVitals } from "@/lib/prassi/demo-vitals";
@@ -328,6 +335,11 @@ export function SimulatorClient({
   const [enableAiSurprises, setEnableAiSurprises] = useState(false);
   const [forceAiSurprise, setForceAiSurprise] = useState(false);
   const [finalDiagnosis, setFinalDiagnosis] = useState("");
+  const [reportSections, setReportSections] = useState<ClinicalReportSections>({
+    anamnesisObjective: "",
+    diagnosticFindings: "",
+    diagnosisTreatment: "",
+  });
   const [expectedConditionText, setExpectedConditionText] = useState<string | null>(null);
   const [debugTargetCondition, setDebugTargetCondition] = useState<string | null>(null);
   const [activeReportTab, setActiveReportTab] = useState<
@@ -662,11 +674,44 @@ export function SimulatorClient({
     setReportProgressMessage("Inizializzazione report...");
 
     try {
+      const liveSessionId = await ensureSessionId();
+      const diagnosisForEval =
+        extractFinalDiagnosisFromReport(reportSections).trim() || finalDiagnosis.trim();
+      const composedReport = composeClinicalReport(reportSections);
+
+      if (liveSessionId) {
+        setReportProgressMessage("Sincronizzazione milestone clinici...");
+        const examLabels: Record<string, string> = {};
+        for (const exam of selectedExams) {
+          examLabels[exam.id] = exam.name;
+        }
+        const lastUserMessage = [...messages]
+          .reverse()
+          .find((m) => m.role === "user");
+        await fetch("/api/session/sync-milestones", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: liveSessionId,
+            caseId: initialCaseData.id,
+            requestedExamIds: selectedExamIdsRef.current,
+            examLabels,
+            prescribedExams: selectedExams.map((e) => ({ id: e.id, name: e.name })),
+            lastUserMessage: lastUserMessage
+              ? getChatMessageText(lastUserMessage)
+              : undefined,
+          }),
+          signal: abortController.signal,
+        });
+      }
+
+      setReportProgressMessage("Inizializzazione report...");
       const res = await fetch("/api/evaluate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           caseId: initialCaseData.id,
+          sessionId: liveSessionId ?? undefined,
           chatHistory: messages
             .filter((m) => m.role === "user" || m.role === "assistant")
             .map((m) => ({
@@ -674,9 +719,9 @@ export function SimulatorClient({
               content: getChatMessageText(m),
             })),
           exams: selectedExams,
-          reportText: "",
+          reportText: composedReport,
           caseContext: initialCaseData.patientPrompt,
-          finalDiagnosis,
+          finalDiagnosis: diagnosisForEval,
         }),
         signal: abortController.signal,
       });
@@ -732,7 +777,15 @@ export function SimulatorClient({
         reportGenerationAbortRef.current = null;
       }
     }
-  }, [finalDiagnosis, initialCaseData.id, initialCaseData.patientPrompt, messages, router, selectedExams]);
+  }, [
+    finalDiagnosis,
+    initialCaseData.id,
+    initialCaseData.patientPrompt,
+    messages,
+    reportSections,
+    router,
+    selectedExams,
+  ]);
 
   const demo = initialCaseData.demographics ?? {};
   const ageValue = demo.age ?? 58;
@@ -780,23 +833,46 @@ export function SimulatorClient({
         bumpPatientStress(2);
         advanceClock(1);
       }
-      return [...current, examId];
+      const next = [...current, examId];
+      void (async () => {
+        const sid = effectiveSessionIdRef.current ?? (await ensureSessionId());
+        if (!sid) return;
+        const labelFor = (id: string) =>
+          availableExams.find((e) => e.id === id)?.name ?? id;
+        await fetch("/api/session/sync-milestones", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: sid,
+            caseId: initialCaseData.id,
+            requestedExamIds: next,
+            examLabels: Object.fromEntries(next.map((id) => [id, labelFor(id)])),
+            prescribedExams: next.map((id) => ({ id, name: labelFor(id) })),
+          }),
+        }).catch(() => {
+          /* non-blocking: evaluation will re-sync */
+        });
+      })();
+      return next;
     });
   };
 
   const confirmDiagnosis = () => {
-    if (!finalDiagnosis.trim()) return;
+    const diagnosisText = extractFinalDiagnosisFromReport(reportSections).trim();
+    if (!isClinicalReportComplete(reportSections) || !diagnosisText) return;
+    setFinalDiagnosis(diagnosisText);
     setGameStatus("checking_diagnosis");
 
     window.setTimeout(async () => {
       try {
+        const sid = effectiveSessionIdRef.current ?? (await ensureSessionId());
         const res = await fetch("/api/session/check-diagnosis", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             caseId: initialCaseData.id,
-            sessionId: effectiveSessionId,
-            diagnosisText: finalDiagnosis,
+            sessionId: sid,
+            diagnosisText,
           }),
         });
 
@@ -824,36 +900,36 @@ export function SimulatorClient({
 
           setGameStatus("success");
 
-          if (effectiveSessionId) {
+          if (sid) {
             await fetch("/api/session/outcome", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                sessionId: effectiveSessionId,
+                sessionId: sid,
                 caseId: initialCaseData.id,
                 basePatientPrompt: initialCaseData.patientPrompt,
                 outcome: "success",
               }),
             });
-            router.replace(`/case/${initialCaseData.id}?sessionId=${effectiveSessionId}`);
+            router.replace(`/case/${initialCaseData.id}?sessionId=${sid}`);
           }
           return;
         }
 
         setGameStatus("wrong_diagnosis");
         bumpPatientStress(20);
-        if (effectiveSessionId) {
+        if (sid) {
           await fetch("/api/session/outcome", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              sessionId: effectiveSessionId,
+              sessionId: sid,
               caseId: initialCaseData.id,
               basePatientPrompt: initialCaseData.patientPrompt,
               outcome: "wrong_diagnosis",
             }),
           });
-          router.replace(`/case/${initialCaseData.id}?sessionId=${effectiveSessionId}`);
+          router.replace(`/case/${initialCaseData.id}?sessionId=${sid}`);
         }
       } catch {
         // fallback safe: don't block the flow; treat as success but without surprise
@@ -1357,10 +1433,10 @@ export function SimulatorClient({
             <Card className="rounded-2xl border border-slate-100 bg-white shadow-md">
               <CardHeader>
                 <CardTitle className="font-display text-sm font-bold tracking-tight text-[#1E324E]">
-                  Conclusione caso
+                  Referto di dimissione
                 </CardTitle>
                 <CardDescription className="text-xs text-slate-500">
-                  Emetti diagnosi e trattamento, gestisci eventuali imprevisti e consulta il report
+                  Compila il referto clinico strutturato, conferma la diagnosi e genera il report
                   finale.
                 </CardDescription>
               </CardHeader>
@@ -1373,82 +1449,62 @@ export function SimulatorClient({
                         {debugTargetCondition}
                       </div>
                     )}
-                    <div className="space-y-2">
-                      <label className="text-[11px] font-medium text-slate-700">
-                        Diagnosi finale
-                      </label>
-                      <Textarea
-                        className="min-h-24 rounded-xl border-slate-200 text-xs transition-shadow focus:border-[#345884] focus:ring-2 focus:ring-[#345884]/20"
-                        placeholder="Scrivi la diagnosi finale (es. NSTEMI, polmonite lobare, ecc.)..."
-                        value={finalDiagnosis}
-                        onChange={(e) => setFinalDiagnosis(e.target.value)}
-                        onKeyDown={(event) =>
-                          handleTextareaEnterSubmit(event, {
-                            getValue: () => finalDiagnosis,
-                            isDisabled: !finalDiagnosis.trim(),
-                            onSubmit: confirmDiagnosis,
-                          })
-                        }
-                      />
-                    </div>
 
-                    {isAdmin && (
-                      <>
-                        <div className="rounded-2xl border border-zinc-200/80 bg-white px-3 py-2.5">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="space-y-0.5">
-                              <p className="text-[11px] font-medium text-zinc-800">
-                                Abilita Imprevisti AI (20% probabilità)
-                              </p>
-                              <p className="text-[11px] text-zinc-500">
-                                Se attivo, può comparire una complicazione improvvisa.
-                              </p>
+                    <ClinicalDischargeReportPanel
+                      sections={reportSections}
+                      onChange={setReportSections}
+                      onConfirm={confirmDiagnosis}
+                      confirmDisabled={!isClinicalReportComplete(reportSections)}
+                      isAdminExtras={
+                        isAdmin ? (
+                          <>
+                            <div className="rounded-2xl border border-zinc-200/80 bg-white px-3 py-2.5">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="space-y-0.5">
+                                  <p className="text-[11px] font-medium text-zinc-800">
+                                    Abilita Imprevisti AI (20% probabilità)
+                                  </p>
+                                  <p className="text-[11px] text-zinc-500">
+                                    Se attivo, può comparire una complicazione improvvisa.
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  disabled
+                                  className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors ${
+                                    enableAiSurprises
+                                      ? "border-[#345884] bg-[#345884]"
+                                      : "cursor-not-allowed border-slate-200 bg-slate-100 opacity-60"
+                                  }`}
+                                  aria-pressed={enableAiSurprises}
+                                >
+                                  <span
+                                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
+                                      enableAiSurprises ? "translate-x-5" : "translate-x-1"
+                                    }`}
+                                  />
+                                </button>
+                              </div>
                             </div>
-                            <button
-                              type="button"
-                              disabled
-                              className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors ${
-                                enableAiSurprises
-                                  ? "border-[#345884] bg-[#345884]"
-                                  : "cursor-not-allowed border-slate-200 bg-slate-100 opacity-60"
-                              }`}
-                              aria-pressed={enableAiSurprises}
-                            >
-                              <span
-                                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
-                                  enableAiSurprises ? "translate-x-5" : "translate-x-1"
+
+                            <div className="flex items-center justify-end">
+                              <button
+                                type="button"
+                                onClick={() => setForceAiSurprise((v) => !v)}
+                                className={`rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors ${
+                                  forceAiSurprise
+                                    ? "border-amber-200 bg-amber-50 text-amber-900"
+                                    : "border-zinc-200/80 bg-white text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950"
                                 }`}
-                              />
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-end">
-                          <button
-                            type="button"
-                            onClick={() => setForceAiSurprise((v) => !v)}
-                            className={`rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors ${
-                              forceAiSurprise
-                                ? "border-amber-200 bg-amber-50 text-amber-900"
-                                : "border-zinc-200/80 bg-white text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950"
-                            }`}
-                            title="Solo test: forza sempre l'imprevisto quando la diagnosi è corretta"
-                          >
-                            {forceAiSurprise ? "Forza imprevisto: ON" : "Forza imprevisto: OFF"}
-                          </button>
-                        </div>
-                      </>
-                    )}
-
-                    <Button
-                      type="button"
-                      size="lg"
-                      className="w-full justify-center rounded-xl bg-gradient-to-r from-[#1E324E] to-[#345884] text-sm text-white shadow-sm transition-all duration-300 hover:opacity-95 hover:shadow-md"
-                      onClick={confirmDiagnosis}
-                      disabled={!finalDiagnosis.trim()}
-                    >
-                      Conferma Diagnosi
-                    </Button>
+                                title="Solo test: forza sempre l'imprevisto quando la diagnosi è corretta"
+                              >
+                                {forceAiSurprise ? "Forza imprevisto: ON" : "Forza imprevisto: OFF"}
+                              </button>
+                            </div>
+                          </>
+                        ) : undefined
+                      }
+                    />
                   </div>
                 )}
 
@@ -1540,6 +1596,11 @@ export function SimulatorClient({
 
                               setDebugTargetCondition("Anafilassi / reazione allergica grave");
                               setFinalDiagnosis("");
+                              setReportSections({
+                                anamnesisObjective: "",
+                                diagnosticFindings: "",
+                                diagnosisTreatment: "",
+                              });
                               setGameStatus("playing");
                               // NON navighiamo/ricarichiamo: vogliamo mantenere chat e reperti già raccolti.
                               // Le prossime richieste a /api/chat e /api/examine useranno sessionId e quindi

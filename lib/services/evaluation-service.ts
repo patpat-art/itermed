@@ -6,6 +6,11 @@ import { AIServiceError } from "@/lib/errors";
 import { createLogger, type Logger } from "@/lib/logger";
 import type { ExamClinicalMeta } from "@/lib/exam-default-values";
 import type { RelevantGuidelines } from "@/lib/services/rag-service";
+import { guardEvaluationAgainstFalseOmissions } from "@/lib/services/evaluation-exam-guard";
+import {
+  milestonesToEvaluationJson,
+  type SessionMilestoneSnapshot,
+} from "@/lib/simulator/milestone-tracker";
 import {
   ClinicalDeltaRowSchema,
   CoachingFeedbackSchema,
@@ -129,6 +134,8 @@ export type EvaluateSimulationInput = {
   baselineExamFindings?: unknown;
   examCatalog?: Record<string, ExamClinicalMeta>;
   goldStandardPath?: string[];
+  /** Deterministic session milestones (exams, gold steps, empathy/legal cues). */
+  sessionMilestones?: SessionMilestoneSnapshot[];
 };
 
 export type GenerateObjectFn = typeof generateObject;
@@ -315,6 +322,7 @@ function buildUserPrompt(params: {
   examBudgetEuro: number;
   totalExamCostEuro: number;
   goldStandardPath?: string[];
+  sessionMilestones?: SessionMilestoneSnapshot[];
 }): string {
   const {
     guidelines,
@@ -328,7 +336,10 @@ function buildUserPrompt(params: {
     examBudgetEuro,
     totalExamCostEuro,
     goldStandardPath,
+    sessionMilestones,
   } = params;
+
+  const milestoneBlock = milestonesToEvaluationJson(sessionMilestones ?? []);
 
   return `
 QUERY RAG: """${guidelines.query}"""
@@ -339,6 +350,9 @@ CONTESTO: """${caseContext ?? "N/D"}"""
 
 GOLD STANDARD ATTESO:
 ${goldStandardPath?.map((s, i) => `${i + 1}. ${s}`).join("\n") || "Non definito nel caso."}
+
+REGISTRO MILESTONE DETERMINISTICO (fonte di verità per esami prescritti e step clinici — NON contraddire):
+${milestoneBlock}
 
 TRASCRIZIONE CHAT (analizza ogni scelta clinica):
 ${chatHistory.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n") || "Nessun messaggio."}
@@ -352,6 +366,7 @@ REFERTO SCRITTO:
 
 Compila clinicalDeltaTable confrontando RIGIDAMENTE userAction vs Gold Standard e protocolli RAG.
 Quantifica economicAnalysis con i costi sopra. legalProtectionStatus deve citare il corpus legale.
+Se un esame compare nel registro milestone o nella lista ESAMI RICHIESTI, NON segnalarlo come omesso.
 `.trim();
 }
 
@@ -407,19 +422,24 @@ export class EvaluationService {
           examBudgetEuro,
           totalExamCostEuro: totalCostEuro,
           goldStandardPath: input.goldStandardPath,
+          sessionMilestones: input.sessionMilestones,
         }),
       });
 
-      const analyticalWithEconomics = {
-        ...analytical,
-        economicAnalysis: {
-          ...analytical.economicAnalysis,
-          targetBudget: examBudgetEuro,
-          actualSpent: totalCostEuro,
+      const guardedAnalytical = guardEvaluationAgainstFalseOmissions(
+        {
+          ...analytical,
+          economicAnalysis: {
+            ...analytical.economicAnalysis,
+            targetBudget: examBudgetEuro,
+            actualSpent: totalCostEuro,
+          },
         },
-      };
+        input.exams,
+        input.sessionMilestones ?? [],
+      );
 
-      const deterministic = buildDeterministicEvaluation(analyticalWithEconomics, {
+      const deterministic = buildDeterministicEvaluation(guardedAnalytical, {
         exams: input.exams,
         examBudgetEuro,
         examCatalog: input.examCatalog,
@@ -429,10 +449,11 @@ export class EvaluationService {
         scores: deterministic.scores,
         totalExamCostEuro: deterministic.totalExamCostEuro,
         examBudgetEuro,
+        milestoneCount: input.sessionMilestones?.length ?? 0,
         durationMs: Date.now() - evalStartedAt,
       });
 
-      return { ...analyticalWithEconomics, ...deterministic };
+      return { ...guardedAnalytical, ...deterministic };
     } catch (error) {
       this.deps.logger.error("Simulation evaluation failed", { error });
       throw AIServiceError.fromUnknown(error);
