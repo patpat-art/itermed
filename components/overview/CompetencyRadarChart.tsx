@@ -31,16 +31,16 @@ function RadarTooltip({
   return (
     <div className="rounded-xl border border-zinc-200/80 bg-white/95 px-3 py-2 text-xs shadow-lg backdrop-blur-sm">
       <p className="font-medium text-zinc-900">{point.metric}</p>
-      <p className="text-zinc-600 mt-0.5">Media: {point.score}/100</p>
+      <p className="mt-0.5 text-zinc-600">Media: {point.score}/100</p>
     </div>
   );
 }
 
 export function CompetencyRadarChart({ data }: CompetencyRadarChartProps) {
   return (
-    <div className="h-full w-full flex items-center justify-center">
-      <ResponsiveContainer width="92%" height="92%">
-        <RadarChart data={data} outerRadius="78%" cx="50%" cy="54%">
+    <div className="relative h-full w-full overflow-hidden">
+      <ResponsiveContainer width="100%" height="100%">
+        <RadarChart data={data} outerRadius="70%" cx="50%" cy="52%">
           <defs>
             <linearGradient id="itermedRadarFill" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stopColor="#345884" stopOpacity={0.4} />

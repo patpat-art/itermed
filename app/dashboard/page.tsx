@@ -24,60 +24,70 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const overview = await fetchUserOverviewData(user.id);
 
   return (
-    <div className="flex h-full flex-col gap-1">
-      <OverviewHero
-        userName={user.name}
-        completedCount={overview.completedCount}
-        casesThisWeek={overview.casesThisWeek}
-        focusLabel={overview.focusLabel}
-        iterMedScore={overview.iterMedScore}
-        focusShort={overview.focusShort}
-        streakDays={overview.streakDays}
-      />
+    <div className="mx-auto w-full max-w-7xl space-y-6 overflow-y-auto overflow-x-hidden p-6">
+      <div className="mb-6">
+        <OverviewHero
+          userName={user.name}
+          completedCount={overview.completedCount}
+          casesThisWeek={overview.casesThisWeek}
+          focusLabel={overview.focusLabel}
+          iterMedScore={overview.iterMedScore}
+          focusShort={overview.focusShort}
+          streakDays={overview.streakDays}
+        />
+      </div>
 
-      <section className="grid flex-1 min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-3">
-        <Card className="bg-white/80 border-zinc-200/80 h-80">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-zinc-950">Profilo competenze</CardTitle>
-            <CardDescription>
-              Media reale sulle 5 dimensioni IterMed dai report completati (0–100).
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-5 pt-1 pb-4 h-48 md:h-56 flex items-center justify-center">
-            {overview.completedCount > 0 ? (
-              <CompetencyRadarChart data={overview.radarData} />
-            ) : (
-              <p className="text-sm text-zinc-500 text-center px-4">
-                Nessun report completato. Avvia una simulazione per generare il tuo profilo.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+      <section className="grid grid-cols-12 items-start gap-6">
+        {/* Left — radar + recent cases stacked */}
+        <div className="col-span-12 flex flex-col gap-6 lg:col-span-7">
+          <Card className="overflow-hidden border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-zinc-950 dark:text-slate-100">
+                Profilo competenze
+              </CardTitle>
+              <CardDescription>
+                Media reale sulle 5 dimensioni IterMed dai report completati (0–100).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="overflow-hidden pb-5 pt-1">
+              {overview.completedCount > 0 ? (
+                <div className="relative flex h-[280px] w-full items-center justify-center overflow-hidden">
+                  <CompetencyRadarChart data={overview.radarData} />
+                </div>
+              ) : (
+                <div className="flex h-[280px] w-full items-center justify-center px-4">
+                  <p className="text-center text-sm text-zinc-500">
+                    Nessun report completato. Avvia una simulazione per generare il tuo profilo.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-        <div className="space-y-6">
+          <Card className="overflow-hidden border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <div>
+                <CardTitle className="text-sm font-medium text-zinc-950 dark:text-slate-100">
+                  Ultimi casi affrontati
+                </CardTitle>
+                <CardDescription>
+                  Storico reale degli ultimi report completati dal database.
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="max-h-72 overflow-y-auto overflow-x-hidden">
+              <RecentSessionsTimeline sessions={overview.recentSessions} />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right — simulator / focus / week */}
+        <div className="col-span-12 flex flex-col gap-6 lg:col-span-5">
           <OverviewQuickActions
             focusShort={overview.focusShort}
             casesThisWeek={overview.casesThisWeek}
           />
         </div>
-      </section>
-
-      <section className="-mt-6 shrink-0">
-        <Card className="bg-white/80 border-zinc-200/80">
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <div>
-              <CardTitle className="text-sm font-medium text-zinc-950">
-                Ultimi casi affrontati
-              </CardTitle>
-              <CardDescription>
-                Storico reale degli ultimi report completati dal database.
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="max-h-64 md:max-h-72 overflow-y-auto">
-            <RecentSessionsTimeline sessions={overview.recentSessions} />
-          </CardContent>
-        </Card>
       </section>
     </div>
   );
