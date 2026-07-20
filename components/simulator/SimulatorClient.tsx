@@ -48,10 +48,8 @@ import {
 } from "./ClinicalDischargeReportPanel";
 import { MetricBar } from "@/app/case/[id]/results/MetricBar";
 import { ScoreProgressRing } from "@/app/case/[id]/results/ScoreProgressRing";
-import { patientDisplayName, deriveDemoVitals } from "@/lib/prassi/demo-vitals";
+import { patientDisplayName } from "@/lib/prassi/demo-vitals";
 import { resolveCaseStressProfile } from "@/lib/simulator/patient-stress-engine";
-import { AequanLogo } from "@/components/AequanLogo";
-import { AiTransparencyBadge } from "@/components/legal/AiTransparencyBadge";
 import { EXAM_DEFAULT_VALUES, type ExamClinicalMeta } from "../../lib/exam-default-values";
 import { EXAM_CATALOG_STRUCTURE } from "@/lib/exam-catalog-structure";
 import {
@@ -816,10 +814,6 @@ export function SimulatorClient({
     id: `CASE-${String(initialCaseData.id ?? "").slice(0, 6).toUpperCase() || "DEMO"}`,
   };
 
-  const ingressVitals = deriveDemoVitals(initialCaseData.id, patientStress);
-  const chartIsEmpty =
-    selectedExams.length === 0 && Object.keys(examFindings).length === 0;
-
   const handleExamFinding = (payload: {
     id: string;
     label: string;
@@ -1111,7 +1105,7 @@ export function SimulatorClient({
     <div
       className={
         embedded
-          ? "flex h-full min-h-0 w-full min-w-0 flex-col overflow-x-hidden overflow-hidden bg-transparent text-text-primary"
+          ? "flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden overflow-x-hidden bg-transparent text-text-primary"
           : "flex min-h-screen w-full items-stretch justify-center overflow-x-hidden bg-ui-bg px-4 pb-10 pt-16 text-text-primary"
       }
     >
@@ -1129,7 +1123,7 @@ export function SimulatorClient({
       <div
         className={
           embedded
-            ? "flex h-full min-h-0 w-full min-w-0 flex-col gap-3 overflow-x-hidden overflow-hidden font-[family-name:var(--font-inter)]"
+            ? "flex h-full min-h-0 w-full min-w-0 flex-col gap-3 overflow-hidden overflow-x-hidden font-[family-name:var(--font-inter)]"
             : "flex w-full min-w-0 flex-col gap-3 overflow-x-hidden font-[family-name:var(--font-inter)]"
         }
       >
@@ -1149,63 +1143,133 @@ export function SimulatorClient({
           </div>
         ) : null}
 
-        <VitalSignsBoard
-          caseId={initialCaseData.id}
-          title={initialCaseData.title}
-          age={patient.age}
-          sex={patient.sex}
-          stress={patientStress}
-          className="w-full shrink-0 overflow-x-hidden rounded-xl border border-slate-900/60 shadow-md"
-        />
-
         {!embedded ? (
-          <header className="flex w-full items-center justify-between gap-4 overflow-x-hidden px-0.5">
-            <div className="min-w-0 space-y-1">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Simulazione attiva
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="font-display text-lg font-semibold tracking-tight text-brand-primary">
-                  {initialCaseData.title}
-                </h1>
-                {isVariant ? (
-                  <Badge className="inline-flex items-center gap-1 border-brand-secondary/30 bg-brand-secondary/10 text-[10px] text-brand-secondary">
-                    <Sparkles className="h-3 w-3" />
-                    Variante IA
-                  </Badge>
-                ) : (
-                  <Badge className="text-[10px]">Caso originale</Badge>
-                )}
+          <>
+            <VitalSignsBoard
+              caseId={initialCaseData.id}
+              title={initialCaseData.title}
+              age={patient.age}
+              sex={patient.sex}
+              stress={patientStress}
+              className="w-full shrink-0 overflow-x-hidden rounded-xl border border-slate-900/60 shadow-md"
+            />
+            <header className="flex w-full items-center justify-between gap-4 overflow-x-hidden px-0.5">
+              <div className="min-w-0 space-y-1">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Simulazione attiva
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="font-display text-lg font-semibold tracking-tight text-brand-primary">
+                    {initialCaseData.title}
+                  </h1>
+                  {isVariant ? (
+                    <Badge className="inline-flex items-center gap-1 border-brand-secondary/30 bg-brand-secondary/10 text-[10px] text-brand-secondary">
+                      <Sparkles className="h-3 w-3" />
+                      Variante IA
+                    </Badge>
+                  ) : (
+                    <Badge className="text-[10px]">Caso originale</Badge>
+                  )}
+                </div>
               </div>
-            </div>
-            <div className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-border bg-panel-bg px-3 py-1.5 text-xs text-slate-600 shadow-sm">
-              <Activity className="h-3.5 w-3.5 text-brand-secondary" />
-              <span>Sessione in corso</span>
-            </div>
-          </header>
+              <div className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-border bg-panel-bg px-3 py-1.5 text-xs text-slate-600 shadow-sm">
+                <Activity className="h-3.5 w-3.5 text-brand-secondary" />
+                <span>Sessione in corso</span>
+              </div>
+            </header>
+          </>
         ) : null}
 
-        {/* Embedded: 9-col host → chat 6 + patient 3 (= overall Prassi 3|6|3). Standalone: 12-col 8|4. */}
+        {/* Embedded: middle EHR 6–7 | right monitor 3. Standalone: 8|4. */}
         <div
           className={
             embedded
-              ? "grid min-h-0 w-full min-w-0 flex-1 grid-cols-1 gap-4 overflow-hidden overflow-x-hidden lg:grid-cols-9"
-              : "grid w-full min-w-0 grid-cols-1 gap-4 overflow-x-hidden lg:grid-cols-12 lg:items-start"
+              ? "grid min-h-0 w-full min-w-0 flex-1 grid-cols-1 gap-6 overflow-hidden overflow-x-hidden lg:grid-cols-9 xl:grid-cols-10"
+              : "grid w-full min-w-0 grid-cols-1 gap-6 overflow-x-hidden lg:grid-cols-12 lg:items-start"
           }
         >
-          {/* Col 2 — Central simulation & chat */}
+          {/* Middle — Cartella Clinica Attiva + EHR tabs / chat */}
           <div
             id="aequan-sim-chat"
             className={
               embedded
-                ? "col-span-1 flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-y-auto overflow-x-hidden px-2 lg:col-span-6"
+                ? "col-span-1 flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-y-auto overflow-x-hidden px-4 lg:col-span-6 xl:col-span-7"
                 : "flex min-w-0 flex-col gap-4 overflow-x-hidden lg:col-span-8"
             }
           >
-            <Card className="w-full min-w-0 overflow-x-hidden overflow-hidden rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
-              <CardHeader className="flex flex-col gap-3 border-b border-border-subtle bg-ui-bg/80 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0 space-y-2">
-                  <AiTransparencyBadge variant="workspace" />
+            <div className="w-full min-w-0 overflow-x-hidden rounded-xl border border-border bg-panel-bg p-4 shadow-aequan-panel">
+              <div className="flex items-start gap-2.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#1E324E]/5 text-[#345884]">
+                  <ClipboardList className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-display text-sm font-bold tracking-tight text-[#1E324E]">
+                    Cartella Clinica Attiva
+                  </h3>
+                  <p className="mt-0.5 truncate text-xs text-slate-500">
+                    {patientDisplayName(
+                      initialCaseData.id,
+                      initialCaseData.title,
+                      patient.sex,
+                    )}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-slate-400">
+                    ID {patient.id} · {patient.age} anni ·{" "}
+                    {patient.sex === "M" ? "Maschio" : "Femmina"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPatientChartTab("base");
+                    setIsPatientChartOpen(true);
+                  }}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg text-[11px] font-medium text-[#345884] transition-colors hover:text-[#1E324E] hover:underline"
+                >
+                  <FolderOpen className="h-3.5 w-3.5" />
+                  Cartella completa
+                </button>
+              </div>
+              <div className="mt-3 grid w-full min-w-0 gap-3 sm:grid-cols-2">
+                <div className="min-w-0 space-y-1.5 overflow-x-hidden">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Anamnesi / motivo di accesso
+                  </p>
+                  <p className="w-full rounded-xl border border-slate-100 bg-slate-50/80 p-3 text-xs leading-relaxed text-slate-700">
+                    {patient.mainComplaint ||
+                      "Motivo di accesso da approfondire con il paziente."}
+                  </p>
+                  <p className="text-[11px] text-slate-500">Contesto: {patient.context}</p>
+                </div>
+                <div className="min-w-0 space-y-1.5 overflow-x-hidden">
+                  <div className="flex items-center gap-2">
+                    <Stethoscope className="h-3.5 w-3.5 text-[#345884]" />
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Esame obiettivo (recente)
+                    </p>
+                  </div>
+                  {objectiveFindingsRecentFirst.length === 0 ? (
+                    <p className="text-xs text-slate-500">Nessun reperto ancora registrato.</p>
+                  ) : (
+                    <ul className="max-h-28 space-y-1.5 overflow-y-auto overflow-x-hidden pr-1 text-xs">
+                      {objectiveFindingsRecentFirst.slice(0, 4).map((exam) => (
+                        <li
+                          key={exam.id}
+                          className="rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-1.5"
+                        >
+                          <p className="font-medium text-slate-800">{exam.label}</p>
+                          <p className="mt-0.5 truncate text-slate-600">{exam.finding}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <Card className="w-full min-w-0 overflow-hidden overflow-x-hidden rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
+              <CardHeader className="flex w-full min-w-0 flex-col gap-3 border-b border-border-subtle bg-ui-bg/80 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 space-y-1">
                   <CardTitle className="font-display text-sm font-bold tracking-tight text-brand-primary">
                     Cartella clinica elettronica
                   </CardTitle>
@@ -1213,7 +1277,7 @@ export function SimulatorClient({
                     Anamnesi, esame obiettivo, laboratorio e imaging.
                   </CardDescription>
                 </div>
-                <TabsList className="flex flex-wrap">
+                <TabsList className="flex w-full min-w-0 flex-wrap sm:w-auto">
                   <TabsTrigger
                     value="history"
                     currentValue={activeTab}
@@ -1244,12 +1308,12 @@ export function SimulatorClient({
                   </TabsTrigger>
                 </TabsList>
               </CardHeader>
-              <CardContent className="min-w-0 overflow-x-hidden pt-0">
+              <CardContent className="min-w-0 w-full overflow-x-hidden pt-0">
                 <Tabs
                   value={activeTab}
                   onValueChange={(value) => setActiveTab(value as typeof activeTab)}
                 >
-                  <TabsContent value="history" currentValue={activeTab} className="mt-3">
+                  <TabsContent value="history" currentValue={activeTab} className="mt-3 w-full min-w-0">
                     <HistoryChat
                       messages={messages}
                       input={input}
@@ -1259,7 +1323,7 @@ export function SimulatorClient({
                       compact={embedded}
                     />
                   </TabsContent>
-                  <TabsContent value="exam" currentValue={activeTab} className="mt-3">
+                  <TabsContent value="exam" currentValue={activeTab} className="mt-3 w-full min-w-0">
                     <PhysicalExamTab
                       sessionId={effectiveSessionId}
                       patientPrompt={initialCaseData.patientPrompt}
@@ -1267,7 +1331,7 @@ export function SimulatorClient({
                       onExamResult={handleExamFinding}
                     />
                   </TabsContent>
-                  <TabsContent value="labs" currentValue={activeTab} className="mt-3">
+                  <TabsContent value="labs" currentValue={activeTab} className="mt-3 w-full min-w-0">
                     <ExamsPanel
                       selectedExamIds={selectedExamIds}
                       onToggleExam={toggleExam}
@@ -1278,7 +1342,7 @@ export function SimulatorClient({
                       macroFilter={["lab"]}
                     />
                   </TabsContent>
-                  <TabsContent value="imaging" currentValue={activeTab} className="mt-3">
+                  <TabsContent value="imaging" currentValue={activeTab} className="mt-3 w-full min-w-0">
                     <ExamsPanel
                       selectedExamIds={selectedExamIds}
                       onToggleExam={toggleExam}
@@ -1294,212 +1358,95 @@ export function SimulatorClient({
             </Card>
           </div>
 
-          {/* Col 3 — Patient details, cost, referto */}
+          {/* Right — Clinical monitor, budget, stilazione referto */}
           <div
             id="aequan-sim-exams"
             className={
               embedded
-                ? "col-span-1 flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-y-auto overflow-x-hidden pl-1 pb-4 lg:col-span-3"
+                ? "col-span-1 flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-y-auto overflow-x-hidden pl-2 pb-4 lg:col-span-3 xl:col-span-3"
                 : "flex min-w-0 flex-col gap-4 overflow-x-hidden pb-8 lg:col-span-4"
             }
           >
-            <div className="flex min-h-0 min-w-0 flex-col justify-between overflow-x-hidden rounded-xl border border-border bg-panel-bg p-4 shadow-aequan-panel">
-              <div>
-                <div className="flex items-start gap-2.5">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#1E324E]/5 text-[#345884]">
-                    <ClipboardList className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="font-display text-sm font-bold tracking-tight text-[#1E324E]">
-                      Cartella Clinica Attiva
-                    </h3>
-                    <p className="mt-0.5 truncate text-xs text-slate-500">
-                      {patientDisplayName(
-                        initialCaseData.id,
-                        initialCaseData.title,
-                        patient.sex,
-                      )}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-slate-400">
-                      ID {patient.id} · {patient.age} anni ·{" "}
-                      {patient.sex === "M" ? "Maschio" : "Femmina"}
-                    </p>
-                  </div>
-                </div>
-                <hr className="my-3 border-slate-100" />
+            {embedded ? (
+              <VitalSignsBoard
+                caseId={initialCaseData.id}
+                title={initialCaseData.title}
+                age={patient.age}
+                sex={patient.sex}
+                stress={patientStress}
+                className="w-full shrink-0 overflow-x-hidden rounded-xl border border-slate-900/60 shadow-md"
+              />
+            ) : null}
 
-                <section className="space-y-2">
+            <div className="flex w-full min-w-0 flex-col gap-4 overflow-x-hidden rounded-xl border border-border bg-panel-bg p-4 shadow-aequan-panel">
+              <section className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <FlaskConical className="h-3.5 w-3.5 text-[#345884]" />
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    Anamnesi
+                    Esami richiesti
                   </p>
-                  <p className="rounded-xl border border-slate-100 bg-slate-50/80 p-3 text-xs leading-relaxed text-slate-700">
-                    {patient.mainComplaint ||
-                      "Motivo di accesso da approfondire con il paziente."}
-                  </p>
-                  <p className="text-[11px] text-slate-500">Contesto: {patient.context}</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPatientChartTab("base");
-                      setIsPatientChartOpen(true);
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-lg text-[11px] font-medium text-[#345884] transition-colors hover:text-[#1E324E] hover:underline"
-                  >
-                    <FolderOpen className="h-3.5 w-3.5" />
-                    Apri cartella completa
-                  </button>
-                </section>
-
-                <section className="mt-5 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Stethoscope className="h-3.5 w-3.5 text-[#345884]" />
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                      Esame obiettivo
-                    </p>
-                  </div>
-                  {objectiveFindingsRecentFirst.length === 0 ? (
-                    <p className="text-xs text-slate-500">
-                      Nessun reperto obiettivo ancora registrato.
-                    </p>
-                  ) : (
-                    <ul className="max-h-28 space-y-1.5 overflow-y-auto pr-1 text-xs">
-                      {objectiveFindingsRecentFirst.map((exam) => (
-                        <li
-                          key={exam.id}
-                          className="rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-1.5"
-                        >
-                          <p className="font-medium text-slate-800">{exam.label}</p>
-                          <p className="mt-0.5 text-slate-600">
-                            {exam.finding}
-                            {typeof exam.numericValue === "number" ? (
-                              <span className="ml-1 font-mono text-slate-500">
-                                ({exam.numericValue})
-                              </span>
-                            ) : null}
-                          </p>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-
-                <section className="mt-5 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <FlaskConical className="h-3.5 w-3.5 text-[#345884]" />
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                      Esami richiesti
-                    </p>
-                  </div>
-                  {selectedExams.length > 0 ? (
-                    <ul className="max-h-28 space-y-1.5 overflow-y-auto pr-1 text-xs">
-                      {selectedExamsRecentFirst.map((exam) => (
-                        <li
-                          key={exam.id}
-                          className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-1.5"
-                        >
-                          <span className="truncate text-slate-800">{exam.name}</span>
-                          <span className="ml-3 shrink-0 font-mono text-[11px] tabular-nums text-slate-500">
-                            €{exam.cost.toFixed(0)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : chartIsEmpty ? (
-                    <div className="relative overflow-hidden rounded-2xl border border-[#345884]/15 bg-gradient-to-br from-slate-50 via-white to-[#345884]/[0.06] p-4 shadow-sm">
-                      <div
-                        className="pointer-events-none absolute -right-2 top-2 opacity-[0.07]"
-                        aria-hidden
+                </div>
+                {selectedExams.length > 0 ? (
+                  <ul className="max-h-28 space-y-1.5 overflow-y-auto overflow-x-hidden pr-1 text-xs">
+                    {selectedExamsRecentFirst.map((exam) => (
+                      <li
+                        key={exam.id}
+                        className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-1.5"
                       >
-                        <AequanLogo height={56} />
-                      </div>
-                      <p className="font-display text-[10px] font-bold uppercase tracking-[0.16em] text-[#345884]">
-                        Triage d&apos;Ingresso Ospedaliero
-                      </p>
-                      <div className="mt-3 space-y-2 border-l-2 border-[#1E324E]/20 pl-3 text-[11px] leading-relaxed text-slate-600">
-                        <p>
-                          <span className="font-semibold text-[#1E324E]">Paziente:</span>{" "}
-                          {patientDisplayName(
-                            initialCaseData.id,
-                            initialCaseData.title,
-                            patient.sex,
-                          )}
-                          , {patient.age} anni ·{" "}
-                          {patient.sex === "M" ? "Maschio" : "Femmina"}
-                        </p>
-                        <p>
-                          <span className="font-semibold text-[#1E324E]">ID cartella:</span>{" "}
-                          <span className="font-mono">{patient.id}</span>
-                        </p>
-                        <p>
-                          <span className="font-semibold text-[#1E324E]">
-                            Motivo di accesso:
-                          </span>{" "}
-                          {patient.mainComplaint || "Da approfondire in anamnesi"}
-                        </p>
-                        <div className="rounded-xl border border-slate-200/60 bg-white/80 px-3 py-2 font-mono text-[10px] text-slate-700">
-                          <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                            Parametri vitali all&apos;ingresso
-                          </p>
-                          <p>
-                            PA {ingressVitals.bp} · FC {ingressVitals.hr} bpm · SpO₂{" "}
-                            {ingressVitals.spo2}% · T {ingressVitals.temp}°C · FR{" "}
-                            {ingressVitals.rr}/min
-                          </p>
-                        </div>
-                      </div>
-                      <p className="mt-3 rounded-xl border border-amber-200/60 bg-amber-50/70 px-3 py-2 text-[10px] leading-relaxed text-amber-950/90">
-                        In attesa di esami diagnostici. Conduci l&apos;anamnesi via chat o esegui
-                        l&apos;esame obiettivo per popolare la cartella.
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-xs leading-relaxed text-slate-500">
-                      Nessun esame diagnostico richiesto. Reperti di esame obiettivo già
-                      registrati in cartella.
-                    </p>
-                  )}
-                </section>
+                        <span className="min-w-0 truncate text-slate-800">{exam.name}</span>
+                        <span className="shrink-0 font-mono text-[11px] tabular-nums text-slate-500">
+                          €{exam.cost.toFixed(0)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs leading-relaxed text-slate-500">
+                    Nessun esame diagnostico richiesto.
+                  </p>
+                )}
+              </section>
+
+              <div className="rounded-xl border border-[#345884]/10 bg-[#345884]/5 p-3.5">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#345884]">
+                    <EuroIcon className="h-3.5 w-3.5" />
+                    Costo SSN
+                  </span>
+                  <span className="text-[10px] text-slate-500">Budget rif. €250</span>
+                </div>
+                <p className="font-mono text-base font-semibold tracking-tight text-[#1E324E]">
+                  Costo Appropriato: €{totalCost.toFixed(2)}
+                </p>
+                <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-white/80 shadow-inner">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#1E324E] to-[#345884] transition-all duration-500"
+                    style={{ width: `${Math.min(100, (totalCost / 250) * 100)}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-[11px] text-slate-500">
+                  Tempo simulato:{" "}
+                  <span className="font-mono font-medium text-slate-700">
+                    {formatElapsedTime(totalMinutes)}
+                  </span>
+                </p>
               </div>
 
-              <div className="mt-5 space-y-4">
-                <div className="rounded-xl border border-[#345884]/10 bg-[#345884]/5 p-3.5">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#345884]">
-                      <EuroIcon className="h-3.5 w-3.5" />
-                      Costo SSN
-                    </span>
-                    <span className="text-[10px] text-slate-500">Budget rif. €250</span>
-                  </div>
-                  <p className="font-mono text-base font-semibold tracking-tight text-[#1E324E]">
-                    Costo Appropriato: €{totalCost.toFixed(2)}
-                  </p>
-                  <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-white/80 shadow-inner">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-[#1E324E] to-[#345884] transition-all duration-500"
-                      style={{ width: `${Math.min(100, (totalCost / 250) * 100)}%` }}
-                    />
-                  </div>
-                  <p className="mt-2 text-[11px] text-slate-500">
-                    Tempo simulato:{" "}
-                    <span className="font-mono font-medium text-slate-700">
-                      {formatElapsedTime(totalMinutes)}
-                    </span>
-                  </p>
-                </div>
-
-                <div>
-                  <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    Stress paziente
-                  </p>
-                  <PatientStressBar value={patientStress} />
-                </div>
+              <div>
+                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  Stress paziente
+                </p>
+                <PatientStressBar value={patientStress} />
               </div>
             </div>
 
-            <Card id="aequan-sim-conclusion" className="rounded-2xl border border-slate-100 bg-white shadow-md">
+            <Card
+              id="aequan-sim-conclusion"
+              className="w-full min-w-0 overflow-x-hidden rounded-2xl border border-slate-100 bg-white shadow-md"
+            >
               <CardHeader>
                 <CardTitle className="font-display text-sm font-bold tracking-tight text-[#1E324E]">
-                  Referto di dimissione
+                  Stilazione referto
                 </CardTitle>
                 <CardDescription className="text-xs text-slate-500">
                   Compila il referto clinico strutturato, conferma la diagnosi e genera il report
@@ -1603,12 +1550,14 @@ export function SimulatorClient({
                     )}
                     {gameStatus === "success" && (
                       <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[#2F4156]">
-                        Diagnosi Corretta! Il paziente è stato trattato con successo ed è in via di dimissione.
+                        Diagnosi Corretta! Il paziente è stato trattato con successo ed è in via di
+                        dimissione.
                       </div>
                     )}
                     {gameStatus === "complication" && (
                       <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-900">
-                        Diagnosi Corretta, MA il paziente ha sviluppato una reazione allergica grave e improvvisa!
+                        Diagnosi Corretta, MA il paziente ha sviluppato una reazione allergica grave
+                        e improvvisa!
                       </div>
                     )}
 
@@ -1622,7 +1571,7 @@ export function SimulatorClient({
                         </div>
                       ) : null}
                       {reportError ? (
-                        <div className="w-full rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 space-y-2">
+                        <div className="w-full space-y-2 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
                           <p>{reportError}</p>
                           <Button
                             type="button"
@@ -1637,60 +1586,57 @@ export function SimulatorClient({
                         </div>
                       ) : null}
                       <div className="flex items-center justify-end gap-2">
-                      {gameStatus === "complication" ? (
-                        <Button
-                          type="button"
-                          size="md"
-                          className="rounded-xl bg-gradient-to-r from-[#1E324E] to-[#345884] px-4 text-xs text-white shadow-sm transition-all duration-300 hover:opacity-95 hover:shadow-md"
-                          onClick={async () => {
-                            if (isStartingEmergency) return;
-                            setIsStartingEmergency(true);
-                            try {
-                              const sid = await ensureSessionId();
-                              if (!sid) return;
+                        {gameStatus === "complication" ? (
+                          <Button
+                            type="button"
+                            size="md"
+                            className="rounded-xl bg-gradient-to-r from-[#1E324E] to-[#345884] px-4 text-xs text-white shadow-sm transition-all duration-300 hover:opacity-95 hover:shadow-md"
+                            onClick={async () => {
+                              if (isStartingEmergency) return;
+                              setIsStartingEmergency(true);
+                              try {
+                                const sid = await ensureSessionId();
+                                if (!sid) return;
 
-                              await fetch("/api/session/complication", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                  sessionId: sid,
-                                  caseId: initialCaseData.id,
-                                  basePatientPrompt: initialCaseData.patientPrompt,
-                                  complication: "anaphylaxis",
-                                }),
-                              });
+                                await fetch("/api/session/complication", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    sessionId: sid,
+                                    caseId: initialCaseData.id,
+                                    basePatientPrompt: initialCaseData.patientPrompt,
+                                    complication: "anaphylaxis",
+                                  }),
+                                });
 
-                              setDebugTargetCondition("Anafilassi / reazione allergica grave");
-                              setFinalDiagnosis("");
-                              setReportSections({
-                                anamnesisObjective: "",
-                                diagnosticFindings: "",
-                                diagnosisTreatment: "",
-                              });
-                              setGameStatus("playing");
-                              // NON navighiamo/ricarichiamo: vogliamo mantenere chat e reperti già raccolti.
-                              // Le prossime richieste a /api/chat e /api/examine useranno sessionId e quindi
-                              // il prompt/overrides aggiornati in questa sessione.
-                            } finally {
-                              setIsStartingEmergency(false);
-                            }
-                          }}
-                          disabled={isStartingEmergency}
-                        >
-                          {isStartingEmergency ? "Avvio emergenza..." : "Gestisci emergenza"}
-                        </Button>
-                      ) : (
-                        <Button
-                          type="button"
-                          size="md"
-                          className="rounded-xl bg-gradient-to-r from-[#1E324E] to-[#345884] px-4 text-xs text-white shadow-sm transition-all duration-300 hover:opacity-95 hover:shadow-md"
-                          onClick={() => void generateReportAndNavigate()}
-                          disabled={reportLoading}
-                        >
-                          {reportLoading ? "Generazione report..." : "Vai al Report"}
-                        </Button>
-                      )}
-                    </div>
+                                setDebugTargetCondition("Anafilassi / reazione allergica grave");
+                                setFinalDiagnosis("");
+                                setReportSections({
+                                  anamnesisObjective: "",
+                                  diagnosticFindings: "",
+                                  diagnosisTreatment: "",
+                                });
+                                setGameStatus("playing");
+                              } finally {
+                                setIsStartingEmergency(false);
+                              }
+                            }}
+                            disabled={isStartingEmergency}
+                          >
+                            {isStartingEmergency ? "Avvio emergenza..." : "Gestisci emergenza"}
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="md"
+                            className="rounded-xl bg-gradient-to-r from-[#1E324E] to-[#345884] px-4 text-xs text-white shadow-sm transition-all duration-300 hover:opacity-95 hover:shadow-md"
+                            onClick={() => void generateReportAndNavigate()}
+                            disabled={reportLoading}
+                          >
+                            {reportLoading ? "Generazione report..." : "Vai al Report"}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

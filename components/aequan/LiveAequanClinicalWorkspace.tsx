@@ -23,7 +23,7 @@ type LiveAequanClinicalWorkspaceProps = {
 };
 
 /**
- * Compact clinical host — fills remaining Prassi grid columns without expanding width.
+ * Clinical host for active simulation — chrome + full-height child grid (no width inflation).
  */
 export function LiveAequanClinicalWorkspace({
   caseMeta,
@@ -49,8 +49,8 @@ export function LiveAequanClinicalWorkspace({
   };
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-x-hidden overflow-hidden bg-transparent text-text-primary">
-      <div className="mb-2 flex shrink-0 flex-wrap items-center gap-2 overflow-x-hidden">
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden overflow-x-hidden bg-transparent text-text-primary">
+      <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2 overflow-x-hidden">
         <Link
           href={backHref}
           className="aequan-interactive inline-flex items-center gap-1.5 rounded-xl border border-border bg-ui-bg px-2.5 py-1.5 text-[11px] font-medium text-text-secondary hover:text-brand-primary"
@@ -65,17 +65,16 @@ export function LiveAequanClinicalWorkspace({
           {caseMeta.specialty?.trim() || "Specialità N/D"} ·{" "}
           {caseMeta.caseId.slice(0, 8).toUpperCase()}
         </span>
+        <div className="w-full sm:ml-auto sm:w-auto">
+          <AiTransparencyBadge variant="workspace" />
+        </div>
       </div>
 
       <div className="shrink-0 overflow-x-hidden">
         <ClinicalActionBar onAction={handleAction} />
       </div>
 
-      <div className="mt-2 shrink-0 overflow-x-hidden">
-        <AiTransparencyBadge variant="workspace" />
-      </div>
-
-      <div className="mt-2 min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
+      <div className="mt-3 min-h-0 min-w-0 flex-1 overflow-hidden overflow-x-hidden">
         {children}
       </div>
     </div>
