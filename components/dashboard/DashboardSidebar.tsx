@@ -26,6 +26,8 @@ type NavItem = {
   label: string;
   icon: LucideIcon;
   matchPrefixes?: string[];
+  /** Paths that must NOT activate this item (e.g. case creation under /cases). */
+  excludePathPrefixes?: string[];
 };
 
 type DashboardSidebarProps = {
@@ -33,6 +35,20 @@ type DashboardSidebarProps = {
   isAdmin: boolean;
   ssmSpecialties: SsmSpecialtyLink[];
 };
+
+const CREATE_CASE_HREF = "/dashboard/cases/create";
+
+/** Case-creation routes — highlight Crea Caso, not Prassi Clinica. */
+function isCaseCreationPath(pathname: string): boolean {
+  return (
+    pathname === CREATE_CASE_HREF ||
+    pathname.startsWith(`${CREATE_CASE_HREF}/`) ||
+    pathname === "/dashboard/cases/new" ||
+    pathname.startsWith("/dashboard/cases/new/") ||
+    pathname === "/dashboard/prassi/create" ||
+    pathname.startsWith("/dashboard/prassi/create/")
+  );
+}
 
 /** Primary nav — consolidated HealthTech IA. */
 const primaryNavItems: NavItem[] = [
@@ -42,6 +58,11 @@ const primaryNavItems: NavItem[] = [
     label: "Prassi Clinica",
     icon: Activity,
     matchPrefixes: ["/dashboard/prassi", "/dashboard/cases", "/dashboard/simulator"],
+    excludePathPrefixes: [
+      "/dashboard/cases/create",
+      "/dashboard/cases/new",
+      "/dashboard/prassi/create",
+    ],
   },
   {
     href: "/dashboard/analytics",
@@ -62,16 +83,27 @@ const adminNavItems: NavItem[] = [
   { href: "/admin/exams", label: "Valori esami", icon: TestTubeDiagonal },
 ];
 
+function isNavItemActive(item: NavItem, pathname: string): boolean {
+  if (item.href === "/dashboard") {
+    return pathname === "/dashboard";
+  }
+
+  const excluded = item.excludePathPrefixes?.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+  if (excluded || (item.href === "/dashboard/prassi" && isCaseCreationPath(pathname))) {
+    return false;
+  }
+
+  const prefixes = item.matchPrefixes ?? [item.href];
+  return prefixes.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 function NavLink({ item }: { item: NavItem }) {
   const pathname = usePathname();
-  const prefixes = item.matchPrefixes ?? [item.href];
-  const isActive =
-    item.href === "/dashboard"
-      ? pathname === "/dashboard"
-      : prefixes.some(
-          (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-        );
-
+  const isActive = isNavItemActive(item, pathname);
   const Icon = item.icon;
 
   return (
@@ -83,6 +115,7 @@ function NavLink({ item }: { item: NavItem }) {
           ? "bg-brand-primary/[0.06] text-brand-primary"
           : "text-slate-600 hover:bg-slate-50 hover:text-brand-primary-hover",
       )}
+      aria-current={isActive ? "page" : undefined}
     >
       {isActive ? (
         <span
@@ -97,7 +130,9 @@ function NavLink({ item }: { item: NavItem }) {
 }
 
 export function DashboardSidebar({ userLabel, isAdmin, ssmSpecialties }: DashboardSidebarProps) {
+  const pathname = usePathname();
   const [ssmOpen, setSsmOpen] = useState(true);
+  const isCreateActive = isCaseCreationPath(pathname);
 
   return (
     <aside className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
@@ -114,8 +149,14 @@ export function DashboardSidebar({ userLabel, isAdmin, ssmSpecialties }: Dashboa
       </header>
 
       <Link
-        href="/dashboard/cases/create"
-        className="aequan-btn-primary mx-6 mb-5 flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium shadow-sm"
+        href={CREATE_CASE_HREF}
+        className={cn(
+          "relative mx-6 mb-5 flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium shadow-sm transition-colors aequan-interactive",
+          isCreateActive
+            ? "bg-brand-primary text-white ring-2 ring-brand-secondary/40"
+            : "aequan-btn-primary",
+        )}
+        aria-current={isCreateActive ? "page" : undefined}
       >
         <FilePlus className="h-4 w-4" />
         Crea Caso
