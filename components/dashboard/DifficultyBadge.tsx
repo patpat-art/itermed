@@ -1,6 +1,9 @@
-import type { CaseDifficulty } from "@prisma/client";
 import { Badge } from "@/app/ui/badge";
-import { DIFFICULTY_LABELS } from "@/lib/dashboard-queries";
+import {
+  type CaseDifficulty,
+  DIFFICULTY_LABELS,
+  isCaseDifficulty,
+} from "@/lib/dashboard-case-utils";
 
 const DIFFICULTY_STYLES: Record<
   CaseDifficulty,
@@ -20,9 +23,9 @@ type DifficultyBadgeProps = {
 };
 
 export function DifficultyBadge({ difficulty, className }: DifficultyBadgeProps) {
-  const key = difficulty as CaseDifficulty;
-  const style = DIFFICULTY_STYLES[key] ?? { variant: "default" as const };
-  const label = DIFFICULTY_LABELS[key] ?? difficulty;
+  const key = isCaseDifficulty(difficulty) ? difficulty : null;
+  const style = key ? DIFFICULTY_STYLES[key] : { variant: "default" as const };
+  const label = key ? DIFFICULTY_LABELS[key] : difficulty || "N/D";
 
   return (
     <Badge variant={style.variant} className={[style.className, className].filter(Boolean).join(" ")}>

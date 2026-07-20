@@ -1,13 +1,17 @@
-import type { CaseDifficulty, Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { unstable_cache } from "next/cache";
 import { visibleCasesWhere } from "@/lib/access-queries";
 import { prisma } from "@/lib/prisma";
+import {
+  type CaseDifficulty,
+  type CaseFilterParams,
+  DIFFICULTY_LABELS,
+  displaySpecialtyName,
+  parseCaseDifficulty,
+} from "@/lib/dashboard-case-utils";
 
-export type CaseFilterParams = {
-  specialtyId?: string;
-  specialtyName?: string;
-  difficulty?: CaseDifficulty;
-};
+export type { CaseDifficulty, CaseFilterParams };
+export { DIFFICULTY_LABELS, displaySpecialtyName, parseCaseDifficulty };
 
 export function filteredCasesWhere(
   userId: string,
@@ -34,12 +38,6 @@ export function filteredCasesWhere(
   };
 }
 
-export const DIFFICULTY_LABELS: Record<CaseDifficulty, string> = {
-  EASY: "Facile",
-  MEDIUM: "Media",
-  HARD: "Difficile",
-};
-
 /** Loads visible clinical cases with MedicalSpecialty relation for dashboard views. */
 export async function fetchFilteredClinicalCases(
   userId: string,
@@ -55,6 +53,7 @@ export async function fetchFilteredClinicalCases(
       difficulty: true,
       specialty: true,
       isGlobal: true,
+      createdById: true,
       medicalSpecialty: {
         select: {
           id: true,
@@ -83,17 +82,3 @@ export const fetchMedicalSpecialtyOptionsCached = unstable_cache(
   ["medical-specialty-options-v1"],
   { revalidate: 300, tags: ["medical-specialties"] },
 );
-
-export function parseCaseDifficulty(value: string | undefined): CaseDifficulty | undefined {
-  if (value === "EASY" || value === "MEDIUM" || value === "HARD") {
-    return value;
-  }
-  return undefined;
-}
-
-export function displaySpecialtyName(caseRow: {
-  specialty: string | null;
-  medicalSpecialty?: { name: string } | null;
-}): string {
-  return caseRow.medicalSpecialty?.name ?? caseRow.specialty ?? "Specialità N/D";
-}

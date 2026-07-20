@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Activity, HeartPulse, Thermometer } from "lucide-react";
 import { StartCaseButtons } from "@/components/cases/StartCaseButtons";
 import type { ClinicalCaseRow } from "@/components/dashboard/ClinicalCaseCard";
-import { DIFFICULTY_LABELS, displaySpecialtyName } from "@/lib/dashboard-queries";
+import { DIFFICULTY_LABELS, displaySpecialtyName } from "@/lib/dashboard-case-utils";
 import { deriveDemoVitals, patientDisplayName } from "@/lib/prassi/demo-vitals";
 
 type PrassiCaseBriefingProps = {

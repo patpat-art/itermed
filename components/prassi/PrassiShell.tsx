@@ -3,8 +3,12 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
-import type { CaseDifficulty } from "@prisma/client";
-import { DIFFICULTY_LABELS, displaySpecialtyName } from "@/lib/dashboard-queries";
+import {
+  type CaseDifficulty,
+  DIFFICULTY_LABELS,
+  displaySpecialtyName,
+  isCaseDifficulty,
+} from "@/lib/dashboard-case-utils";
 import { cn } from "@/app/utils/cn";
 import type { ClinicalCaseRow } from "@/components/dashboard/ClinicalCaseCard";
 
@@ -20,16 +24,18 @@ const DIFFICULTY_BADGE: Record<CaseDifficulty, string> = {
 };
 
 export function PrassiShell({ cases, children }: PrassiShellProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
-  const queryCaseId = searchParams.get("caseId");
-  const specialtyId = searchParams.get("specialtyId");
-  const specialtyName = searchParams.get("specialty");
-  const difficulty = searchParams.get("difficulty");
+  const queryCaseId = searchParams?.get("caseId") ?? null;
+  const specialtyId = searchParams?.get("specialtyId") ?? null;
+  const specialtyName = searchParams?.get("specialty") ?? null;
+  const difficulty = searchParams?.get("difficulty") ?? null;
   const playMatch = pathname.match(/\/dashboard\/prassi\/play\/([^/]+)/);
   const activeCaseId = playMatch?.[1] ?? queryCaseId ?? null;
+  const safeCases = Array.isArray(cases) ? cases.filter(Boolean) : [];
 
-  const visibleCases = cases.filter((c) => {
+  const visibleCases = safeCases.filter((c) => {
+    if (!c?.id) return false;
     if (difficulty && c.difficulty !== difficulty) return false;
     if (specialtyName || specialtyId) {
       const label = (c.medicalSpecialty?.name ?? c.specialty ?? "").toLowerCase();
@@ -80,8 +86,11 @@ export function PrassiShell({ cases, children }: PrassiShellProps) {
                 visibleCases.map((caseRow) => {
                   const isActive = activeCaseId === caseRow.id;
                   const specialty = displaySpecialtyName(caseRow);
+                  const difficultyKey = isCaseDifficulty(caseRow.difficulty)
+                    ? caseRow.difficulty
+                    : "MEDIUM";
                   const difficultyLabel =
-                    DIFFICULTY_LABELS[caseRow.difficulty] ?? caseRow.difficulty;
+                    DIFFICULTY_LABELS[difficultyKey] ?? String(caseRow.difficulty ?? "Media");
                   const href = `/dashboard/prassi?caseId=${encodeURIComponent(caseRow.id)}${
                     filterQuery ? `&${filterQuery}` : ""
                   }`;
@@ -103,14 +112,14 @@ export function PrassiShell({ cases, children }: PrassiShellProps) {
                         <span
                           className={cn(
                             "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                            DIFFICULTY_BADGE[caseRow.difficulty],
+                            DIFFICULTY_BADGE[difficultyKey],
                           )}
                         >
                           {difficultyLabel}
                         </span>
                       </div>
                       <p className="font-display line-clamp-2 text-sm font-semibold leading-snug text-[#2F4156]">
-                        {caseRow.title}
+                        {caseRow.title ?? "Caso clinico"}
                       </p>
                       <p className="mt-1 text-[11px] text-slate-400">
                         {caseRow.isGlobal ? "Caso globale" : "Caso individuale"}

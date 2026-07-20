@@ -1,6 +1,6 @@
 import type { CaseDifficulty } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { displaySpecialtyName } from "@/lib/dashboard-queries";
+import { displaySpecialtyName } from "@/lib/dashboard-case-utils";
 
 export const OVERVIEW_RADAR_METRICS = [
   { metric: "Accuratezza Clinica", key: "clinicalAccuracy" as const },

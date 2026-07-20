@@ -2,9 +2,11 @@
 
 import { useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { CaseDifficulty } from "@prisma/client";
 import { Badge } from "@/app/ui/badge";
-import { DIFFICULTY_LABELS } from "@/lib/dashboard-queries";
+import {
+  type CaseDifficulty,
+  DIFFICULTY_LABELS,
+} from "@/lib/dashboard-case-utils";
 import { Filter } from "lucide-react";
 
 type MedicalSpecialtyOption = {
@@ -21,15 +23,16 @@ const DIFFICULTY_OPTIONS: CaseDifficulty[] = ["EASY", "MEDIUM", "HARD"];
 
 export function CaseFilters({ specialties, resultCount }: CaseFiltersProps) {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/dashboard/prassi";
   const searchParams = useSearchParams();
 
-  const activeSpecialtyId = searchParams.get("specialtyId") ?? "";
-  const activeDifficulty = searchParams.get("difficulty") ?? "";
+  const activeSpecialtyId = searchParams?.get("specialtyId") ?? "";
+  const activeDifficulty = searchParams?.get("difficulty") ?? "";
+  const safeSpecialties = Array.isArray(specialties) ? specialties.filter((s) => s?.id && s?.name) : [];
 
   const setFilter = useCallback(
     (key: "specialtyId" | "difficulty", value: string) => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
       const current = params.get(key) ?? "";
       if (!value || current === value) {
         params.delete(key);
@@ -75,7 +78,7 @@ export function CaseFilters({ specialties, resultCount }: CaseFiltersProps) {
               Tutte
             </Badge>
           </button>
-          {specialties.map((specialty) => (
+          {safeSpecialties.map((specialty) => (
             <button
               key={specialty.id}
               type="button"

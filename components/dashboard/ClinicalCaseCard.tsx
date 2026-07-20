@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import type { CaseDifficulty } from "@prisma/client";
 import { StartCaseButtons } from "@/components/cases/StartCaseButtons";
-import { DIFFICULTY_LABELS, displaySpecialtyName } from "@/lib/dashboard-queries";
+import {
+  type CaseDifficulty,
+  DIFFICULTY_LABELS,
+  displaySpecialtyName,
+  isCaseDifficulty,
+} from "@/lib/dashboard-case-utils";
 
 export type ClinicalCaseRow = {
   id: string;
@@ -33,9 +37,10 @@ export function ClinicalCaseCard({
   onSessionStart,
 }: ClinicalCaseCardProps) {
   const specialtyLabel = displaySpecialtyName(caseRow);
-  const difficultyLabel = DIFFICULTY_LABELS[caseRow.difficulty] ?? caseRow.difficulty;
+  const difficultyKey = isCaseDifficulty(caseRow.difficulty) ? caseRow.difficulty : "MEDIUM";
+  const difficultyLabel = DIFFICULTY_LABELS[difficultyKey] ?? String(caseRow.difficulty ?? "Media");
   const difficultyStyle =
-    DIFFICULTY_BADGE_STYLES[caseRow.difficulty] ?? "bg-slate-100 text-slate-600";
+    DIFFICULTY_BADGE_STYLES[difficultyKey] ?? "bg-slate-100 text-slate-600";
 
   const cardClassName =
     "rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md";
