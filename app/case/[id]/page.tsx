@@ -4,6 +4,7 @@ import { config } from "../../../lib/config";
 import { userCanPlayCase } from "../../../lib/access";
 import { requireUser, isDevAuthBypass } from "../../../lib/require-user";
 import { SimulatorClient } from "../../../components/simulator/SimulatorClient";
+import { LiveAequanClinicalWorkspace } from "@/components/aequan/LiveAequanClinicalWorkspace";
 import { getExamValuesCatalog, getCaseExamOverrides } from "../../../lib/exam-values-service";
 import { EXAM_DEFAULT_VALUES } from "../../../lib/exam-default-values";
 
@@ -163,15 +164,28 @@ export default async function CasePage(props: CasePageProps) {
       };
 
       return (
-        <SimulatorClient
-          initialCaseData={initialCaseData}
-          isVariant={isVariant}
-          sessionId={session?.id ?? sessionId}
-          isAdmin={user.role === "ADMIN"}
-          persistReports
-          examCatalog={examCatalog}
-          caseExamOverrides={caseExamOverrides}
-        />
+        <LiveAequanClinicalWorkspace
+          caseMeta={{
+            title: caseData.title,
+            specialty: caseData.specialty,
+            patientAge: demographics.age ?? null,
+            patientSex: demographics.sex ?? null,
+            caseId: caseData.id,
+          }}
+          backHref="/dashboard/prassi"
+        >
+          <SimulatorClient
+            initialCaseData={initialCaseData}
+            isVariant={isVariant}
+            sessionId={session?.id ?? sessionId}
+            isAdmin={user.role === "ADMIN"}
+            persistReports
+            examCatalog={examCatalog}
+            caseExamOverrides={caseExamOverrides}
+            embedded
+            backHref="/dashboard/prassi"
+          />
+        </LiveAequanClinicalWorkspace>
       );
     }
   } catch {

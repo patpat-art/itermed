@@ -4,6 +4,7 @@ import { config } from "@/lib/config";
 import { userCanPlayCase } from "@/lib/access";
 import { requireUser, isDevAuthBypass } from "@/lib/require-user";
 import { SimulatorClient } from "@/components/simulator/SimulatorClient";
+import { LiveAequanClinicalWorkspace } from "@/components/aequan/LiveAequanClinicalWorkspace";
 import { getExamValuesCatalog, getCaseExamOverrides } from "@/lib/exam-values-service";
 import { EXAM_DEFAULT_VALUES } from "@/lib/exam-default-values";
 
@@ -69,7 +70,14 @@ export default async function PrassiPlayPage(props: PlayPageProps) {
     const fallback = FALLBACK_CASES[idNormalized];
     if (fallback) {
       return (
-        <div className="animate-[fadeIn_300ms_ease-out] p-4 md:p-5">
+        <LiveAequanClinicalWorkspace
+          caseMeta={{
+            title: fallback.title,
+            specialty: fallback.specialty,
+            caseId: fallback.id,
+          }}
+          backHref="/dashboard/prassi"
+        >
           <SimulatorClient
             initialCaseData={fallback}
             sessionId={sessionId}
@@ -79,7 +87,7 @@ export default async function PrassiPlayPage(props: PlayPageProps) {
             embedded
             backHref="/dashboard/prassi"
           />
-        </div>
+        </LiveAequanClinicalWorkspace>
       );
     }
     return notFound();
@@ -158,7 +166,16 @@ export default async function PrassiPlayPage(props: PlayPageProps) {
     };
 
     return (
-      <div className="animate-[fadeIn_300ms_ease-out] p-4 md:p-5">
+      <LiveAequanClinicalWorkspace
+        caseMeta={{
+          title: caseData.title,
+          specialty: caseData.specialty,
+          patientAge: demographics.age ?? null,
+          patientSex: demographics.sex ?? null,
+          caseId: caseData.id,
+        }}
+        backHref="/dashboard/prassi"
+      >
         <SimulatorClient
           initialCaseData={initialCaseData}
           isVariant={isVariant}
@@ -170,7 +187,7 @@ export default async function PrassiPlayPage(props: PlayPageProps) {
           embedded
           backHref="/dashboard/prassi"
         />
-      </div>
+      </LiveAequanClinicalWorkspace>
     );
   } catch {
     // DB non pronto

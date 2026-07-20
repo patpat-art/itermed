@@ -393,6 +393,19 @@ export function SimulatorClient({
     selectedExamIdsRef.current = selectedExamIds;
   }, [selectedExamIds]);
 
+  useEffect(() => {
+    const onClinicalAction = (event: Event) => {
+      const action = (event as CustomEvent<{ action?: string }>).detail?.action;
+      if (action === "prescribe") setActiveTab("tests");
+      if (action === "consult") setActiveTab("history");
+      if (action === "diagnose") {
+        /* scroll handled by workspace shell */
+      }
+    };
+    window.addEventListener("aequan-clinical-action", onClinicalAction);
+    return () => window.removeEventListener("aequan-clinical-action", onClinicalAction);
+  }, []);
+
   const advanceClock = useCallback((deltaMinutes = 1) => {
     if (deltaMinutes <= 0) return;
     setClockMinutes((m) => m + deltaMinutes);
@@ -1172,7 +1185,7 @@ export function SimulatorClient({
 
         <div className="grid grid-cols-1 gap-6 p-4 md:p-6 lg:grid-cols-12 lg:items-start">
           {/* Left — Anamnesi / Chat / Esami */}
-          <div className="flex flex-col gap-4 lg:col-span-7 xl:col-span-8">
+          <div id="aequan-sim-chat" className="flex flex-col gap-4 lg:col-span-7 xl:col-span-8">
             <Card className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-md">
               <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/70">
                 <div>
@@ -1245,7 +1258,7 @@ export function SimulatorClient({
           </div>
 
           {/* Right — Cartella Clinica & Decisioni */}
-          <div className="flex flex-col gap-4 lg:col-span-5 xl:col-span-4">
+          <div id="aequan-sim-exams" className="flex flex-col gap-4 lg:col-span-5 xl:col-span-4">
             <div className="flex min-h-[500px] flex-col justify-between rounded-2xl border border-slate-200/60 bg-white/95 p-5 shadow-sm transition-all duration-300 hover:shadow-md">
               <div>
                 <div className="flex items-start gap-2.5">
@@ -1430,7 +1443,7 @@ export function SimulatorClient({
               </div>
             </div>
 
-            <Card className="rounded-2xl border border-slate-100 bg-white shadow-md">
+            <Card id="aequan-sim-conclusion" className="rounded-2xl border border-slate-100 bg-white shadow-md">
               <CardHeader>
                 <CardTitle className="font-display text-sm font-bold tracking-tight text-[#1E324E]">
                   Referto di dimissione

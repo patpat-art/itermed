@@ -8,10 +8,10 @@ import { cn } from "@/app/utils/cn";
 type NavLink = { href: string; label: string };
 
 const DEFAULT_NAV: NavLink[] = [
-  { href: "/dashboard", label: "Dashboard" },
+  { href: "/dashboard", label: "Overview" },
   { href: "/dashboard/prassi", label: "Prassi Clinica" },
+  { href: "/dashboard/analytics", label: "Analytics" },
   { href: "/demo", label: "Demo UI" },
-  { href: "/demo/report", label: "Report" },
 ];
 
 type AequanNavbarProps = {

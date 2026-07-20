@@ -1,15 +1,6 @@
 "use client";
 
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import {
   Activity,
   AlertTriangle,
   Euro,
@@ -32,9 +23,11 @@ import type {
 import { Badge } from "@/app/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/ui/card";
 import { cn } from "@/app/utils/cn";
+import { SafeLlmText } from "@/components/ui/safe-llm-content";
 import { MetricBar } from "./MetricBar";
 import { ScoreProgressRing } from "./ScoreProgressRing";
-import type { RadarDatum } from "./ResultsRadarClient";
+import { ResultsRadarClient, type RadarDatum } from "./ResultsRadarClient";
+import { EconomicBudgetGauge } from "./EconomicBudgetGauge";
 
 type RadarDatumWithKey = RadarDatum & { key?: string };
 
@@ -175,19 +168,9 @@ export function EliteResultsClient({
     : null;
   const ShieldIcon = shield?.icon ?? Shield;
 
-  const budgetChart = economicAnalysis
-    ? [
-        { name: "Budget", value: economicAnalysis.targetBudget, fill: "#345884" },
-        {
-          name: "Speso",
-          value: economicAnalysis.actualSpent,
-          fill:
-            economicAnalysis.actualSpent > economicAnalysis.targetBudget
-              ? "#C0392B"
-              : "#1E324E",
-        },
-      ]
-    : [];
+  const wastedEuro = economicAnalysis
+    ? economicAnalysis.unnecessaryExpenses.reduce((sum, item) => sum + (item.cost ?? 0), 0)
+    : 0;
 
   const overspend =
     economicAnalysis && economicAnalysis.actualSpent > economicAnalysis.targetBudget
@@ -251,8 +234,10 @@ export function EliteResultsClient({
                   {shield.label}
                 </span>
               </div>
-              <p className="rounded-xl border border-slate-100 border-l-4 border-l-[#1E324E] bg-white/80 p-4 text-sm leading-relaxed text-slate-600 whitespace-pre-line">
-                {legalProtectionStatus.justification}
+              <p className="rounded-xl border border-slate-100 border-l-4 border-l-[#1E324E] bg-white/80 p-4 text-sm leading-relaxed text-slate-600">
+                <SafeLlmText as="span" className="whitespace-pre-line">
+                  {legalProtectionStatus.justification}
+                </SafeLlmText>
               </p>
               {legalProtectionStatus.referenceDocuments.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
@@ -318,6 +303,15 @@ export function EliteResultsClient({
                 />
               ))}
             </div>
+
+            <div className="border-t border-slate-100 pt-5">
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Radar competenze
+              </p>
+              <div className="h-72 w-full rounded-xl border border-slate-100 bg-slate-50/40 p-2">
+                <ResultsRadarClient data={radarData} />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -340,80 +334,24 @@ export function EliteResultsClient({
           <CardContent className="space-y-4">
             {economicAnalysis ? (
               <>
-                <div className="h-40 rounded-xl border border-white/80 bg-white/70 p-2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={budgetChart} barSize={48}>
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="#E2E8F0"
-                        vertical={false}
-                      />
-                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#64748B" }} />
-                      <YAxis tick={{ fontSize: 10, fill: "#94A3B8" }} />
-                      <Tooltip formatter={(v: number) => `€${v.toFixed(2)}`} />
-                      <Bar dataKey="value" radius={[8, 8, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="rounded-xl border border-white/80 bg-white/90 p-4">
+                  <EconomicBudgetGauge
+                    targetBudget={economicAnalysis.targetBudget}
+                    actualSpent={economicAnalysis.actualSpent}
+                    wastedEuro={wastedEuro}
+                  />
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="rounded-xl border border-white bg-white/90 px-3.5 py-3">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                      Budget Assegnato SSN
-                    </p>
-                    <p
-                      className={cn(
-                        "mt-1 font-mono text-lg font-semibold",
-                        budgetRespected ? "text-[#345884]" : "text-[#1E324E]",
-                      )}
-                    >
-                      €{economicAnalysis.targetBudget.toFixed(0)}
-                    </p>
-                    {budgetRespected ? (
-                      <p className="mt-1 text-[10px] font-medium text-emerald-700">
-                        Budget rispettato
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div
-                    className={cn(
-                      "rounded-xl border px-3.5 py-3",
-                      overspend > 0
-                        ? "border-rose-200/80 bg-rose-50/70"
-                        : "border-white bg-white/90",
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                        Spesa Effettuata
-                      </p>
-                      {overspend > 0 ? (
-                        <span className="rounded-full border border-rose-200 bg-rose-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-rose-800">
-                          Sforamento Budget
-                        </span>
-                      ) : null}
-                    </div>
-                    <p
-                      className={cn(
-                        "mt-1 font-mono text-lg font-semibold",
-                        overspend > 0 ? "text-[#C0392B]" : "text-[#1E324E]",
-                      )}
-                    >
-                      €{economicAnalysis.actualSpent.toFixed(0)}
-                    </p>
-                    {overspend > 0 ? (
-                      <p className="mt-1 flex items-center gap-1 text-[10px] text-rose-700">
-                        <AlertTriangle className="h-3 w-3 shrink-0" />
-                        +€{overspend.toFixed(2)} oltre target
-                      </p>
-                    ) : (
-                      <p className="mt-1 text-[10px] font-medium text-slate-500">
-                        Entro soglia di appropriatezza
-                      </p>
-                    )}
-                  </div>
-                </div>
+                {overspend > 0 ? (
+                  <p className="flex items-center gap-1.5 rounded-xl border border-rose-200/80 bg-rose-50/70 px-3 py-2 text-[11px] text-rose-800">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                    Sforamento budget: +€{overspend.toFixed(2)} rispetto al target SSN.
+                  </p>
+                ) : budgetRespected ? (
+                  <p className="rounded-xl border border-emerald-200/80 bg-emerald-50/70 px-3 py-2 text-[11px] font-medium text-emerald-800">
+                    Budget rispettato — spesa entro soglia di appropriatezza.
+                  </p>
+                ) : null}
               </>
             ) : (
               <p className="rounded-xl border border-dashed border-slate-200 bg-white/60 px-4 py-8 text-center text-xs text-slate-500">
@@ -466,7 +404,7 @@ export function EliteResultsClient({
                       </td>
                       <td className="px-4 py-3 align-top">{deltaStatusBadge(row.status)}</td>
                       <td className="px-4 py-3 align-top leading-relaxed text-slate-600">
-                        {row.penaltyOrBonusReason}
+                        <SafeLlmText as="span">{row.penaltyOrBonusReason}</SafeLlmText>
                       </td>
                     </tr>
                   ))}
@@ -567,8 +505,10 @@ export function EliteResultsClient({
                     {label}
                   </span>
                 </div>
-                <p className="text-sm leading-relaxed whitespace-pre-line text-slate-600">
-                  {coachingFeedback[key]}
+                <p className="text-sm leading-relaxed text-slate-600">
+                  <SafeLlmText as="span" className="whitespace-pre-line">
+                    {coachingFeedback[key] ?? ""}
+                  </SafeLlmText>
                 </p>
               </div>
             ))}
@@ -594,7 +534,7 @@ export function EliteResultsClient({
                     key={idx}
                     className="rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-1.5 text-slate-600"
                   >
-                    {item}
+                    <SafeLlmText as="span">{item}</SafeLlmText>
                   </li>
                 ))}
               </ul>
@@ -617,7 +557,7 @@ export function EliteResultsClient({
                     key={idx}
                     className="rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-1.5 text-slate-600"
                   >
-                    {item}
+                    <SafeLlmText as="span">{item}</SafeLlmText>
                   </li>
                 ))}
               </ul>
@@ -634,8 +574,10 @@ export function EliteResultsClient({
               Gestione esperta di riferimento
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-xs leading-relaxed whitespace-pre-line text-slate-600">
-            {correctSolution}
+          <CardContent className="text-xs leading-relaxed text-slate-600">
+            <SafeLlmText as="div" className="whitespace-pre-line">
+              {correctSolution}
+            </SafeLlmText>
           </CardContent>
         </Card>
       ) : null}
