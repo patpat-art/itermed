@@ -1,16 +1,13 @@
-import { Suspense } from "react";
 import { config } from "@/lib/config";
 import { requireUser } from "@/lib/require-user";
 import {
   fetchFilteredClinicalCases,
-  fetchMedicalSpecialtyOptionsCached,
   parseCaseDifficulty,
   type CaseFilterParams,
 } from "@/lib/dashboard-queries";
 import { fetchUserOverviewData } from "@/lib/overview-queries";
 import { PrassiWelcomeDashboard } from "@/components/prassi/PrassiEmptyState";
 import { PrassiCaseBriefing } from "@/components/prassi/PrassiCaseBriefing";
-import { CaseFilters } from "@/components/dashboard/CaseFilters";
 import type { ClinicalCaseRow } from "@/components/dashboard/ClinicalCaseCard";
 
 type PrassiPageProps = {
@@ -74,7 +71,6 @@ export default async function PrassiPage({ searchParams }: PrassiPageProps) {
   };
 
   let cases: ClinicalCaseRow[] = [];
-  let specialties: { id: string; name: string }[] = [];
   let welcomeStats = {
     casesThisWeek: 0,
     averageScore: null as number | null,
@@ -83,13 +79,11 @@ export default async function PrassiPage({ searchParams }: PrassiPageProps) {
 
   if (hasDatabase) {
     try {
-      const [caseRows, specialtyRows, overview] = await Promise.all([
+      const [caseRows, overview] = await Promise.all([
         fetchFilteredClinicalCases(user.id, filters, 60),
-        fetchMedicalSpecialtyOptionsCached(),
         fetchUserOverviewData(user.id).catch(() => null),
       ]);
       cases = caseRows as ClinicalCaseRow[];
-      specialties = specialtyRows;
       if (overview) {
         welcomeStats = {
           casesThisWeek: overview.casesThisWeek,
@@ -112,23 +106,9 @@ export default async function PrassiPage({ searchParams }: PrassiPageProps) {
   const selectedId = resolvedSearch?.caseId?.trim() || null;
   const selected = selectedId ? cases.find((c) => c.id === selectedId) ?? null : null;
 
-  return (
-    <div className="flex h-full min-h-0 flex-col overflow-x-hidden overflow-hidden">
-      {hasDatabase && specialties.length > 0 ? (
-        <div className="border-b border-slate-100 px-4 py-3">
-          <Suspense fallback={<p className="text-xs text-slate-400">Filtri…</p>}>
-            <CaseFilters specialties={specialties} resultCount={cases.length} />
-          </Suspense>
-        </div>
-      ) : null}
-
-      <div className="min-h-0 flex-1">
-        {selected ? (
-          <PrassiCaseBriefing caseRow={selected} />
-        ) : (
-          <PrassiWelcomeDashboard stats={welcomeStats} />
-        )}
-      </div>
-    </div>
+  return selected ? (
+    <PrassiCaseBriefing caseRow={selected} />
+  ) : (
+    <PrassiWelcomeDashboard stats={welcomeStats} />
   );
 }

@@ -11,9 +11,16 @@ import {
 } from "@/lib/dashboard-case-utils";
 import { cn } from "@/app/utils/cn";
 import type { ClinicalCaseRow } from "@/components/dashboard/ClinicalCaseCard";
+import { CaseFilters } from "@/components/dashboard/CaseFilters";
+
+type SpecialtyOption = {
+  id: string;
+  name: string;
+};
 
 type PrassiShellProps = {
   cases: ClinicalCaseRow[];
+  specialties?: SpecialtyOption[];
   children: ReactNode;
 };
 
@@ -23,25 +30,47 @@ const DIFFICULTY_BADGE: Record<CaseDifficulty, string> = {
   HARD: "bg-rose-50/70 text-rose-800 border border-rose-200/50",
 };
 
-export function PrassiShell({ cases, children }: PrassiShellProps) {
+export function PrassiShell({ cases, specialties = [], children }: PrassiShellProps) {
   const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
   const queryCaseId = searchParams?.get("caseId") ?? null;
   const specialtyId = searchParams?.get("specialtyId") ?? null;
   const specialtyName = searchParams?.get("specialty") ?? null;
   const difficulty = searchParams?.get("difficulty") ?? null;
+  const searchQuery = (searchParams?.get("q") ?? "").trim().toLowerCase();
   const playMatch = pathname.match(/\/dashboard\/prassi\/play\/([^/]+)/);
   const isPlaying = Boolean(playMatch);
   const activeCaseId = playMatch?.[1] ?? queryCaseId ?? null;
   const safeCases = Array.isArray(cases) ? cases.filter(Boolean) : [];
+  const safeSpecialties = Array.isArray(specialties)
+    ? specialties.filter((s) => s?.id && s?.name)
+    : [];
+
+  const specialtyNameById = new Map(safeSpecialties.map((s) => [s.id, s.name.toLowerCase()]));
 
   const visibleCases = safeCases.filter((c) => {
     if (!c?.id) return false;
     if (difficulty && c.difficulty !== difficulty) return false;
     if (specialtyName || specialtyId) {
       const label = (c.medicalSpecialty?.name ?? c.specialty ?? "").toLowerCase();
-      const target = (specialtyName ?? "").toLowerCase();
-      if (specialtyName && label !== target) return false;
+      if (specialtyName && label !== specialtyName.toLowerCase()) return false;
+      if (specialtyId) {
+        const targetName = specialtyNameById.get(specialtyId);
+        if (targetName && label !== targetName) return false;
+        if (!targetName) return false;
+      }
+    }
+    if (searchQuery) {
+      const haystack = [
+        c.title,
+        c.specialty,
+        c.medicalSpecialty?.name,
+        displaySpecialtyName(c),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (!haystack.includes(searchQuery)) return false;
     }
     return true;
   });
@@ -50,6 +79,7 @@ export function PrassiShell({ cases, children }: PrassiShellProps) {
     specialtyId ? `specialtyId=${encodeURIComponent(specialtyId)}` : "",
     specialtyName ? `specialty=${encodeURIComponent(specialtyName)}` : "",
     difficulty ? `difficulty=${encodeURIComponent(difficulty)}` : "",
+    searchQuery ? `q=${encodeURIComponent(searchQuery)}` : "",
   ]
     .filter(Boolean)
     .join("&");
@@ -65,7 +95,7 @@ export function PrassiShell({ cases, children }: PrassiShellProps) {
           {visibleCases.length === 1 ? "caso disponibile" : "casi disponibili"}
         </p>
       </div>
-      <div className="h-full min-h-0 space-y-1.5 overflow-y-auto overflow-x-hidden p-2 pr-2 pb-8">
+      <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden p-2 pr-1 pb-8">
         {visibleCases.length === 0 ? (
           <p className="px-3 py-8 text-center text-sm text-slate-400">
             Nessun caso disponibile con i filtri attivi.
@@ -120,43 +150,51 @@ export function PrassiShell({ cases, children }: PrassiShellProps) {
     </>
   );
 
-  return (
-    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden overflow-x-hidden bg-slate-50 dark:bg-slate-950">
-      {!isPlaying ? (
-        <header className="mb-3 shrink-0 space-y-1 overflow-x-hidden px-1">
-          <h1 className="font-display text-xl font-semibold tracking-tight text-brand-primary">
-            Prassi Clinica
-          </h1>
-          <p className="max-w-3xl text-sm leading-relaxed text-slate-500">
-            Libreria casi ed esercitazioni attive. Seleziona un caso a sinistra per aprire il
-            briefing e avviare la simulazione.
-          </p>
-        </header>
-      ) : null}
+  if (isPlaying) {
+    return (
+      <div className="flex h-[calc(100vh-5rem)] min-h-0 w-full flex-col overflow-hidden bg-slate-50 dark:bg-slate-950">
+        <div className="grid h-full min-h-0 grid-cols-12 gap-4 overflow-hidden">
+          <aside className="col-span-12 flex h-full min-h-0 min-w-0 flex-col overflow-hidden border-r border-slate-200 pr-1 dark:border-slate-800 md:col-span-4 lg:col-span-3">
+            {caseList}
+          </aside>
+          <section className="col-span-12 flex h-full min-h-0 min-w-0 flex-col overflow-hidden md:col-span-8 lg:col-span-9">
+            <div className="h-full min-h-0 overflow-x-hidden overflow-y-auto">{children}</div>
+          </section>
+        </div>
+      </div>
+    );
+  }
 
-      {/* Strict 12-col: cases 2–3 | workspace 9–10 (simulator splits middle 6–7 + right 3) */}
-      <div className="grid min-h-0 w-full flex-1 grid-cols-12 gap-6 overflow-hidden overflow-x-hidden">
-        <aside
-          className={cn(
-            "col-span-12 flex h-full min-h-0 min-w-0 flex-col overflow-hidden overflow-x-hidden pr-2",
-            "lg:col-span-3 xl:col-span-2",
-            "border-r border-slate-200 dark:border-slate-800",
-            !isPlaying && "rounded-xl border border-border bg-panel-bg shadow-aequan-panel lg:border-r",
-          )}
-        >
+  return (
+    <div className="flex h-[calc(100vh-5rem)] min-h-0 w-full flex-col gap-4 overflow-hidden p-4">
+      <header className="shrink-0 space-y-1">
+        <h1 className="font-display text-xl font-semibold tracking-tight text-brand-primary">
+          Prassi Clinica
+        </h1>
+        <p className="max-w-3xl text-sm leading-relaxed text-slate-500">
+          Libreria casi ed esercitazioni attive. Seleziona un caso a sinistra per aprire il
+          briefing e avviare la simulazione.
+        </p>
+      </header>
+
+      {safeSpecialties.length > 0 ? (
+        <CaseFilters specialties={safeSpecialties} resultCount={visibleCases.length} />
+      ) : (
+        <div className="flex h-14 shrink-0 items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-sm text-slate-500">Filtri non disponibili</p>
+          <span className="text-xs tabular-nums text-slate-500">
+            {visibleCases.length} {visibleCases.length === 1 ? "risultato" : "risultati"}
+          </span>
+        </div>
+      )}
+
+      <div className="grid min-h-0 flex-1 grid-cols-12 gap-4 overflow-hidden">
+        <aside className="col-span-12 flex h-full min-h-0 min-w-0 flex-col gap-3 overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200 bg-white pr-1 shadow-sm dark:border-slate-800 dark:bg-slate-900 md:col-span-4 lg:col-span-3">
           {caseList}
         </aside>
 
-        <section
-          className={cn(
-            "col-span-12 flex h-full min-h-0 min-w-0 flex-col overflow-hidden overflow-x-hidden",
-            "lg:col-span-9 xl:col-span-10",
-            !isPlaying && "rounded-xl border border-border bg-panel-bg p-3 shadow-aequan-panel sm:p-4",
-          )}
-        >
-          <div className="h-full min-h-0 min-w-0 overflow-x-hidden overflow-y-auto">
-            {children}
-          </div>
+        <section className="col-span-12 h-full min-h-0 min-w-0 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 md:col-span-8 lg:col-span-9">
+          {children}
         </section>
       </div>
     </div>

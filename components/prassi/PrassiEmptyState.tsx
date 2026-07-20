@@ -25,7 +25,7 @@ export function PrassiWelcomeDashboard({ stats }: PrassiWelcomeDashboardProps) {
   const focusShort = stats?.focusShort?.trim() || "Appropriatezza prescrittiva";
 
   return (
-    <div className="flex h-full min-h-[480px] flex-col justify-between bg-slate-50/40 p-8">
+    <div className="flex h-full min-h-0 flex-col justify-between gap-6">
       <div className="space-y-6">
         <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
           <div className="flex items-start gap-4">
@@ -78,7 +78,7 @@ export function PrassiWelcomeDashboard({ stats }: PrassiWelcomeDashboardProps) {
         </blockquote>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2 text-slate-500">
             <ClipboardCheck className="h-4 w-4 text-[#345884]" />

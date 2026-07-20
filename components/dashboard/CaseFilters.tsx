@@ -1,13 +1,12 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Badge } from "@/app/ui/badge";
 import {
   type CaseDifficulty,
   DIFFICULTY_LABELS,
 } from "@/lib/dashboard-case-utils";
-import { Filter } from "lucide-react";
+import { Search } from "lucide-react";
 
 type MedicalSpecialtyOption = {
   id: string;
@@ -25,114 +24,119 @@ export function CaseFilters({ specialties, resultCount }: CaseFiltersProps) {
   const router = useRouter();
   const pathname = usePathname() ?? "/dashboard/prassi";
   const searchParams = useSearchParams();
+  const [, startTransition] = useTransition();
 
   const activeSpecialtyId = searchParams?.get("specialtyId") ?? "";
   const activeDifficulty = searchParams?.get("difficulty") ?? "";
-  const safeSpecialties = Array.isArray(specialties) ? specialties.filter((s) => s?.id && s?.name) : [];
+  const activeQuery = searchParams?.get("q") ?? "";
+  const safeSpecialties = Array.isArray(specialties)
+    ? specialties.filter((s) => s?.id && s?.name)
+    : [];
 
-  const setFilter = useCallback(
-    (key: "specialtyId" | "difficulty", value: string) => {
+  const [searchValue, setSearchValue] = useState(activeQuery);
+
+  useEffect(() => {
+    setSearchValue(activeQuery);
+  }, [activeQuery]);
+
+  const replaceParams = useCallback(
+    (mutate: (params: URLSearchParams) => void) => {
       const params = new URLSearchParams(searchParams?.toString() ?? "");
-      const current = params.get(key) ?? "";
-      if (!value || current === value) {
-        params.delete(key);
-      } else {
-        params.set(key, value);
-      }
+      mutate(params);
       const query = params.toString();
-      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+      startTransition(() => {
+        router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+      });
     },
     [pathname, router, searchParams],
   );
 
-  const clearFilters = useCallback(() => {
-    router.replace(pathname, { scroll: false });
-  }, [pathname, router]);
+  useEffect(() => {
+    const trimmed = searchValue.trim();
+    if (trimmed === activeQuery) return;
+    const handle = window.setTimeout(() => {
+      replaceParams((params) => {
+        if (trimmed) params.set("q", trimmed);
+        else params.delete("q");
+      });
+    }, 250);
+    return () => window.clearTimeout(handle);
+  }, [searchValue, activeQuery, replaceParams]);
 
-  const hasActiveFilters = Boolean(activeSpecialtyId || activeDifficulty);
+  const selectClassName =
+    "h-9 max-w-[11rem] truncate rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-slate-500 dark:focus:ring-slate-800";
 
   return (
-    <div className="rounded-xl border border-slate-100 bg-white px-5 py-5 shadow-sm space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
-          <Filter className="h-3.5 w-3.5" />
-          <span>Filtra i casi clinici</span>
+    <div className="flex h-14 shrink-0 items-center justify-between gap-3 overflow-x-auto overflow-y-hidden rounded-xl border border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="relative w-64 shrink-0 sm:w-72">
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+            aria-hidden
+          />
+          <input
+            type="search"
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            placeholder="Cerca caso…"
+            aria-label="Cerca caso clinico"
+            className="h-9 w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-800"
+          />
         </div>
-        {typeof resultCount === "number" ? (
-          <span className="text-[11px] text-zinc-500">
-            {resultCount} {resultCount === 1 ? "risultato" : "risultati"}
-          </span>
-        ) : null}
-      </div>
 
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400 w-full sm:w-auto">
-            Specialità
-          </span>
-          <button type="button" onClick={() => setFilter("specialtyId", "")} className="focus:outline-none">
-            <Badge
-              variant={!activeSpecialtyId ? "info" : "default"}
-              className={!activeSpecialtyId ? "ring-2 ring-sky-200" : ""}
-            >
-              Tutte
-            </Badge>
-          </button>
-          {safeSpecialties.map((specialty) => (
-            <button
-              key={specialty.id}
-              type="button"
-              onClick={() => setFilter("specialtyId", specialty.id)}
-              className="focus:outline-none"
-            >
-              <Badge
-                variant={activeSpecialtyId === specialty.id ? "info" : "default"}
-                className={activeSpecialtyId === specialty.id ? "ring-2 ring-sky-200" : ""}
-              >
+        <label className="flex shrink-0 items-center gap-2">
+          <span className="sr-only">Specialità</span>
+          <select
+            value={activeSpecialtyId}
+            onChange={(e) => {
+              const value = e.target.value;
+              replaceParams((params) => {
+                params.delete("specialty");
+                if (value) params.set("specialtyId", value);
+                else params.delete("specialtyId");
+              });
+            }}
+            aria-label="Filtra per specialità"
+            className={selectClassName}
+          >
+            <option value="">Tutte le specialità</option>
+            {safeSpecialties.map((specialty) => (
+              <option key={specialty.id} value={specialty.id}>
                 {specialty.name}
-              </Badge>
-            </button>
-          ))}
-        </div>
+              </option>
+            ))}
+          </select>
+        </label>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400 w-full sm:w-auto">
-            Difficoltà
-          </span>
-          <button type="button" onClick={() => setFilter("difficulty", "")} className="focus:outline-none">
-            <Badge
-              variant={!activeDifficulty ? "info" : "default"}
-              className={!activeDifficulty ? "ring-2 ring-sky-200" : ""}
-            >
-              Tutte
-            </Badge>
-          </button>
-          {DIFFICULTY_OPTIONS.map((difficulty) => (
-            <button
-              key={difficulty}
-              type="button"
-              onClick={() => setFilter("difficulty", difficulty)}
-              className="focus:outline-none"
-            >
-              <Badge
-                variant={activeDifficulty === difficulty ? "info" : "default"}
-                className={activeDifficulty === difficulty ? "ring-2 ring-sky-200" : ""}
-              >
+        <label className="flex shrink-0 items-center gap-2">
+          <span className="sr-only">Difficoltà</span>
+          <select
+            value={activeDifficulty}
+            onChange={(e) => {
+              const value = e.target.value;
+              replaceParams((params) => {
+                if (value) params.set("difficulty", value);
+                else params.delete("difficulty");
+              });
+            }}
+            aria-label="Filtra per difficoltà"
+            className={selectClassName}
+          >
+            <option value="">Tutte</option>
+            {DIFFICULTY_OPTIONS.map((difficulty) => (
+              <option key={difficulty} value={difficulty}>
                 {DIFFICULTY_LABELS[difficulty]}
-              </Badge>
-            </button>
-          ))}
-          {hasActiveFilters ? (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="text-xs text-zinc-500 underline underline-offset-2 hover:text-zinc-800 ml-1"
-            >
-              Azzera filtri
-            </button>
-          ) : null}
-        </div>
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
+
+      {typeof resultCount === "number" ? (
+        <span className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">
+          {resultCount} {resultCount === 1 ? "risultato" : "risultati"}
+        </span>
+      ) : null}
     </div>
   );
 }

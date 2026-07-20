@@ -4,6 +4,7 @@ import { config } from "@/lib/config";
 import { requireUser } from "@/lib/require-user";
 import {
   fetchFilteredClinicalCases,
+  fetchMedicalSpecialtyOptionsCached,
   type CaseFilterParams,
 } from "@/lib/dashboard-queries";
 import { PrassiShell } from "@/components/prassi/PrassiShell";
@@ -40,25 +41,40 @@ const DEMO_CASES = (userId: string): ClinicalCaseRow[] => [
   },
 ];
 
-async function loadCases(): Promise<ClinicalCaseRow[]> {
+const DEMO_SPECIALTIES = [
+  { id: "sp_emergenza", name: "Emergenza" },
+  { id: "sp_interna", name: "Medicina interna" },
+  { id: "sp_neuro", name: "Neurologia" },
+];
+
+async function loadCasesAndSpecialties(): Promise<{
+  cases: ClinicalCaseRow[];
+  specialties: { id: string; name: string }[];
+}> {
   const user = await requireUser();
   const hasDatabase = Boolean(config.DATABASE_URL) && !config.DATABASE_URL.includes("itermed_dev");
 
   if (!hasDatabase) {
-    return DEMO_CASES(user.id);
+    return { cases: DEMO_CASES(user.id), specialties: DEMO_SPECIALTIES };
   }
 
   try {
     const filters: CaseFilterParams = {};
-    const rows = await fetchFilteredClinicalCases(user.id, filters, 60);
-    return rows as ClinicalCaseRow[];
+    const [rows, specialtyRows] = await Promise.all([
+      fetchFilteredClinicalCases(user.id, filters, 60),
+      fetchMedicalSpecialtyOptionsCached(),
+    ]);
+    return {
+      cases: rows as ClinicalCaseRow[],
+      specialties: specialtyRows,
+    };
   } catch {
-    return DEMO_CASES(user.id);
+    return { cases: DEMO_CASES(user.id), specialties: DEMO_SPECIALTIES };
   }
 }
 
 export default async function PrassiLayout({ children }: PrassiLayoutProps) {
-  const cases = await loadCases();
+  const { cases, specialties } = await loadCasesAndSpecialties();
 
   return (
     <Suspense
@@ -68,7 +84,9 @@ export default async function PrassiLayout({ children }: PrassiLayoutProps) {
         </div>
       }
     >
-      <PrassiShell cases={cases}>{children}</PrassiShell>
+      <PrassiShell cases={cases} specialties={specialties}>
+        {children}
+      </PrassiShell>
     </Suspense>
   );
 }
