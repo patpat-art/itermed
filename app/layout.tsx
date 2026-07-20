@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { SiteFooter } from "@/components/legal/SiteFooter";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -31,7 +32,12 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${plusJakarta.variable} antialiased bg-ui-bg text-text-primary font-sans`}
       >
-        <Providers>{children}</Providers>
+        <Providers>
+          <div className="flex min-h-screen flex-col">
+            <div className="flex-1">{children}</div>
+            <SiteFooter />
+          </div>
+        </Providers>
       </body>
     </html>
   );

@@ -176,6 +176,14 @@ export function DashboardSidebar({ userLabel, isAdmin, ssmSpecialties }: Dashboa
             <Settings className="h-4 w-4" />
           </Link>
         </div>
+        <nav className="flex flex-wrap gap-x-3 gap-y-1 px-1 text-[10px] text-slate-400" aria-label="Documenti legali">
+          <Link href="/terms" className="hover:text-[#1E324E] hover:underline">
+            Termini
+          </Link>
+          <Link href="/privacy" className="hover:text-[#1E324E] hover:underline">
+            Privacy
+          </Link>
+        </nav>
         <SignOutButton />
       </div>
     </aside>

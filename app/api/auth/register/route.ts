@@ -6,6 +6,11 @@ const bodySchema = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(128),
   name: z.string().min(1).max(120).optional(),
+  acceptedTerms: z.literal(true, {
+    errorMap: () => ({
+      message: "Devi accettare Termini di servizio e Privacy Policy.",
+    }),
+  }),
 });
 
 export async function POST(req: Request) {
@@ -18,7 +23,15 @@ export async function POST(req: Request) {
 
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {
-    return Response.json({ error: "Dati non validi" }, { status: 400 });
+    const termsIssue = parsed.error.issues.find((i) => i.path.includes("acceptedTerms"));
+    return Response.json(
+      {
+        error: termsIssue
+          ? "Devi accettare Termini di servizio e Privacy Policy."
+          : "Dati non validi",
+      },
+      { status: 400 },
+    );
   }
 
   const email = parsed.data.email.toLowerCase().trim();
@@ -27,6 +40,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "Email già registrata" }, { status: 409 });
   }
 
+  const acceptedAt = new Date();
   const passwordHash = await hash(parsed.data.password, 12);
   await prisma.user.create({
     data: {
@@ -34,6 +48,8 @@ export async function POST(req: Request) {
       name: parsed.data.name?.trim() || null,
       passwordHash,
       role: "STUDENT",
+      termsAcceptedAt: acceptedAt,
+      privacyAcceptedAt: acceptedAt,
     },
   });
 

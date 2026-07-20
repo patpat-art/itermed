@@ -11,12 +11,19 @@ export default function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (!acceptedTerms) {
+      setError("Devi accettare Termini di servizio e Privacy Policy per registrarti.");
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch("/api/auth/register", {
@@ -26,6 +33,7 @@ export default function SignupPage() {
           name: name.trim() || undefined,
           email: email.trim().toLowerCase(),
           password,
+          acceptedTerms: true,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -52,7 +60,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-zinc-50 px-4 py-10">
       <Card className="w-full max-w-md bg-white/90 border-zinc-200/80 shadow-lg">
         <CardHeader>
           <CardTitle className="text-lg">Crea account</CardTitle>
@@ -103,7 +111,38 @@ export default function SignupPage() {
                 className="text-sm"
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <label className="flex items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-[11px] leading-relaxed text-slate-600">
+              <input
+                id="acceptedTerms"
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-slate-300"
+                required
+              />
+              <span>
+                Dichiaro di aver letto e accettato i{" "}
+                <Link
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-[#1E324E] underline-offset-2 hover:underline"
+                >
+                  Termini di servizio
+                </Link>{" "}
+                (incluso il disclaimer medico) e la{" "}
+                <Link
+                  href="/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-[#1E324E] underline-offset-2 hover:underline"
+                >
+                  Privacy Policy
+                </Link>
+                . <span className="text-rose-600">*</span>
+              </span>
+            </label>
+            <Button type="submit" className="w-full" disabled={loading || !acceptedTerms}>
               {loading ? "Creazione…" : "Registrati"}
             </Button>
             <p className="text-xs text-zinc-500 text-center">

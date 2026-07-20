@@ -64,6 +64,10 @@ model User {
   leaderboardNameType  LeaderboardNameType  @default(REAL_NAME)
   nickname             String?
 
+  /// GDPR / legal acceptance timestamps (set at registration).
+  termsAcceptedAt   DateTime?
+  privacyAcceptedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
