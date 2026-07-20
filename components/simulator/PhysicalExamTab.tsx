@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, Thermometer, Brain, Stethoscope, Gauge } from "lucide-react";
+import { Activity, Brain, Stethoscope, UserRound } from "lucide-react";
 import { Button } from "../../app/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../app/ui/tabs";
 
@@ -22,12 +22,11 @@ type PhysicalExamTabProps = {
   onExamResult?: (payload: { id: string; label: string; result: ExamResult }) => void;
 };
 
-const vitalExams = [
-  { id: "heart-rate", label: "Frequenza cardiaca (FC)" },
-  { id: "blood-pressure", label: "Pressione arteriosa (PA)" },
-  { id: "spo2", label: "SpO₂" },
-  { id: "temperature", label: "Temperatura corporea" },
-  { id: "resp-rate", label: "Frequenza respiratoria (FR)" },
+/** Systemic findings only — vitals live exclusively on the Multiparameter Monitor. */
+const generalExams = [
+  { id: "general-appearance", label: "Esame obiettivo generale" },
+  { id: "skin-mucosa", label: "Cute e mucose" },
+  { id: "cardiovascular", label: "Apparato cardiovascolare" },
 ];
 
 const thoraxExams = [
@@ -47,11 +46,11 @@ const neuroExams = [
   { id: "neuro-deficits", label: "Deficit focali" },
 ];
 
+type ExamSection = "general" | "thorax" | "abdomen" | "neuro";
+
 export function PhysicalExamTab({ sessionId, patientPrompt, caseId, onExamResult }: PhysicalExamTabProps) {
   const [exams, setExams] = useState<Record<string, ExamState>>({});
-  const [activeSection, setActiveSection] = useState<"vitals" | "thorax" | "abdomen" | "neuro">(
-    "vitals",
-  );
+  const [activeSection, setActiveSection] = useState<ExamSection>("general");
 
   const runExam = async (id: string, label: string) => {
     if (exams[id]?.loading) return;
@@ -124,9 +123,7 @@ export function PhysicalExamTab({ sessionId, patientPrompt, caseId, onExamResult
           <div className="text-[11px] text-zinc-600 bg-zinc-50/80 border border-zinc-200/80 rounded-xl px-2.5 py-1.5">
             <span className="font-medium text-zinc-800">{result.finding}</span>
             {typeof result.numericValue === "number" && (
-              <span className="ml-1 text-zinc-500">
-                ({result.numericValue})
-              </span>
+              <span className="ml-1 text-zinc-500">({result.numericValue})</span>
             )}
           </div>
         )}
@@ -135,57 +132,61 @@ export function PhysicalExamTab({ sessionId, patientPrompt, caseId, onExamResult
   };
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl bg-white/80 border border-zinc-200/80 p-3 h-[420px] overflow-y-auto text-xs">
-      <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as typeof activeSection)}>
+    <div className="flex h-[420px] flex-col gap-3 overflow-y-auto rounded-2xl border border-zinc-200/80 bg-white/80 p-3 text-xs">
+      <p className="text-[11px] leading-relaxed text-slate-500">
+        I parametri vitali (PA, FC, SpO₂, T, FR) sono sul Monitor multiparametrico. Qui registra i
+        reperti sistemici dell&apos;esame obiettivo.
+      </p>
+      <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as ExamSection)}>
         <TabsList className="w-full justify-between">
           <TabsTrigger
-            value="vitals"
+            value="general"
             currentValue={activeSection}
-            onSelect={(value) => setActiveSection(value as typeof activeSection)}
+            onSelect={(value) => setActiveSection(value as ExamSection)}
             className="flex-1 justify-center"
           >
             <span className="inline-flex items-center gap-1.5">
-              <Gauge className="w-3.5 h-3.5 text-sky-600" />
-              Vitals
+              <UserRound className="h-3.5 w-3.5 text-sky-600" />
+              Generale
             </span>
           </TabsTrigger>
           <TabsTrigger
             value="thorax"
             currentValue={activeSection}
-            onSelect={(value) => setActiveSection(value as typeof activeSection)}
+            onSelect={(value) => setActiveSection(value as ExamSection)}
             className="flex-1 justify-center"
           >
             <span className="inline-flex items-center gap-1.5">
-              <Stethoscope className="w-3.5 h-3.5 text-sky-600" />
+              <Stethoscope className="h-3.5 w-3.5 text-sky-600" />
               Torace
             </span>
           </TabsTrigger>
           <TabsTrigger
             value="abdomen"
             currentValue={activeSection}
-            onSelect={(value) => setActiveSection(value as typeof activeSection)}
+            onSelect={(value) => setActiveSection(value as ExamSection)}
             className="flex-1 justify-center"
           >
             <span className="inline-flex items-center gap-1.5">
-              <Thermometer className="w-3.5 h-3.5 text-amber-600" />
+              <Activity className="h-3.5 w-3.5 text-amber-600" />
               Addome
             </span>
           </TabsTrigger>
           <TabsTrigger
             value="neuro"
             currentValue={activeSection}
-            onSelect={(value) => setActiveSection(value as typeof activeSection)}
+            onSelect={(value) => setActiveSection(value as ExamSection)}
             className="flex-1 justify-center"
           >
             <span className="inline-flex items-center gap-1.5">
-              <Brain className="w-3.5 h-3.5 text-purple-600" />
+              <Brain className="h-3.5 w-3.5 text-purple-600" />
               Neuro
             </span>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="vitals" currentValue={activeSection} className="mt-1">
-          <div className="space-y-1.5">{vitalExams.map(renderExamButton)}</div>
+        <TabsContent value="general" currentValue={activeSection} className="mt-1">
+          <div className="space-y-1.5">{generalExams.map(renderExamButton)}</div>
         </TabsContent>
         <TabsContent value="thorax" currentValue={activeSection} className="mt-1">
           <div className="space-y-1.5">{thoraxExams.map(renderExamButton)}</div>
@@ -200,4 +201,3 @@ export function PhysicalExamTab({ sessionId, patientPrompt, caseId, onExamResult
     </div>
   );
 }
-
