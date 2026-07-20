@@ -16,20 +16,22 @@ export default function PrivacyPage() {
     <LegalPageShell title="Privacy Policy (GDPR)" lastUpdated="20 luglio 2026">
       <LegalSection title="1. Titolare del trattamento">
         <p>
-          Il <strong>Titolare del trattamento</strong> dei dati personali è{" "}
-          <strong>Christopher Uguzzoni</strong>, con residenza / sede legale in{" "}
+          Il <strong>Titolare del trattamento</strong> dei dati personali — anche per fatturazione,
+          abbonamenti Stripe e richieste fiscali, fino a eventuale aggiornamento con diversa entità
+          societaria — è <strong>Christopher Uguzzoni</strong>, con residenza / sede legale in{" "}
           <strong>Pavullo nel Frignano (MO), Italia</strong>, Codice Fiscale{" "}
           <strong>GZZCRS01T12G393M</strong>.
         </p>
         <p>
-          Contatto ufficiale per privacy e esercizio dei diritti:{" "}
+          Contatto ufficiale per privacy, billing e esercizio dei diritti:{" "}
           <a
             href="mailto:chris01.ugo@gmail.com"
             className="font-mono text-xs font-medium text-[#1E324E] underline-offset-2 hover:underline"
           >
             chris01.ugo@gmail.com
           </a>
-          . Al momento non è stato nominato un Responsabile della protezione dei dati (DPO).
+          . Foro competente: <strong>Tribunale di Modena</strong>. Al momento non è stato nominato
+          un Responsabile della protezione dei dati (DPO).
         </p>
       </LegalSection>
 
@@ -59,7 +61,7 @@ export default function PrivacyPage() {
         <ul className="list-disc space-y-1.5 pl-5">
           <li>
             <strong>Esecuzione del contratto</strong> — creazione account, erogazione della
-            simulazione formativa, assistenza.
+            simulazione formativa, gestione abbonamenti, assistenza.
           </li>
           <li>
             <strong>Obbligo legale</strong> — adempimenti fiscali/contabili ove applicabili.
@@ -69,7 +71,7 @@ export default function PrivacyPage() {
             miglioramento del servizio (nel rispetto dei diritti dell&apos;interessato).
           </li>
           <li>
-            <strong>Consenso</strong> — ove richiesto (es. cookie non necessari, comunicazioni di
+            <strong>Consenso</strong> — ove richiesto (es. cookie non necessari, analitici o di
             marketing). Il consenso può essere revocato in qualsiasi momento.
           </li>
         </ul>
@@ -96,7 +98,8 @@ export default function PrivacyPage() {
         <p>
           I dati dell&apos;account sono conservati per la durata del rapporto e, dopo la
           cancellazione, per il tempo necessario ad obblighi di legge o difesa in giudizio. I
-          timestamp di accettazione legale sono conservati a fini di prova del consenso.
+          timestamp di accettazione legale e i dati di fatturazione/abbonamento sono conservati per
+          il tempo richiesto dalla normativa fiscale e civilistica applicabile.
         </p>
       </LegalSection>
 
@@ -121,11 +124,29 @@ export default function PrivacyPage() {
           <strong>legge italiana</strong> e al <strong>GDPR</strong>. Per le controversie relative
           al trattamento dei dati o all&apos;uso della Piattaforma è competente in via esclusiva il{" "}
           <strong>Tribunale di Modena</strong> (Foro di Modena), fatto salvo quanto obbligatorio a
-          tutela dell&apos;interessato.
+          tutela dell&apos;interessato / consumatore.
         </p>
       </LegalSection>
 
-      <LegalSection title="7. Sicurezza">
+      <LegalSection title="7. Cookie e tecnologie di tracciamento (GDPR & ePrivacy)">
+        <p>
+          Attualmente Aequan utilizza esclusivamente{" "}
+          <strong>cookie e tecnologie strettamente necessari</strong> per l&apos;autenticazione di
+          sessione, la sicurezza della piattaforma e l&apos;integrità dei pagamenti elaborati tramite
+          Stripe. Tali cookie tecnici non richiedono consenso preventivo ai sensi della normativa
+          ePrivacy, in quanto indispensabili al servizio richiesto dall&apos;utente.
+        </p>
+        <p>
+          Qualora in futuro fossero attivati strumenti di analitica o marketing di terze parti
+          (ad esempio Google Analytics, Meta Pixel o equivalenti), verrà richiesto{" "}
+          <strong>consenso esplicito preventivo</strong> tramite un banner interattivo di gestione
+          dei cookie, e nessuno script di tracciamento non essenziale sarà inizializzato prima
+          dell&apos;accettazione (o della scelta granulare) da parte dell&apos;utente, in conformità
+          al GDPR e alla Direttiva ePrivacy.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="8. Sicurezza">
         <p>
           Adottiamo misure tecniche e organizzative adeguate (hash delle password, controlli di
           accesso, rate limiting). Nessun sistema è immune al rischio: si invitano password robuste
@@ -133,7 +154,7 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="8. Minori">
+      <LegalSection title="9. Minori">
         <p>
           La Piattaforma è destinata esclusivamente a{" "}
           <strong>studenti di medicina e professionisti sanitari</strong> che abbiano compiuto{" "}
@@ -143,7 +164,7 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="9. Aggiornamenti">
+      <LegalSection title="10. Aggiornamenti">
         <p>
           Questa informativa può essere aggiornata. La data in cima alla pagina indica la versione
           corrente. Per i Termini di servizio vedi{" "}
@@ -157,7 +178,7 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="10. Conformità EU AI Act (Reg. UE 2024/1689) & Limiti del Modello">
+      <LegalSection title="11. Conformità EU AI Act (Reg. UE 2024/1689) & Limiti del Modello">
         <p>
           In conformità agli obblighi di <strong>trasparenza</strong> (art. 50) e di promozione della{" "}
           <strong>AI literacy</strong> (art. 4) del Regolamento (UE) 2024/1689 (AI Act), il Titolare

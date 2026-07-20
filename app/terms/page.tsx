@@ -23,16 +23,18 @@ export default function TermsPage() {
           Termini.
         </p>
         <p>
-          Il <strong>Titolare del Servizio</strong> è <strong>Christopher Uguzzoni</strong>, con
-          residenza / sede legale in <strong>Pavullo nel Frignano (MO), Italia</strong>, Codice
-          Fiscale <strong>GZZCRS01T12G393M</strong>. Email ufficiale di contatto:{" "}
+          Il <strong>Titolare del Servizio</strong> — anche per fatturazione, adempimenti fiscali e
+          richieste commerciali, fino a eventuale aggiornamento con diversa entità societaria — è{" "}
+          <strong>Christopher Uguzzoni</strong>, con residenza / sede legale in{" "}
+          <strong>Pavullo nel Frignano (MO), Italia</strong>, Codice Fiscale{" "}
+          <strong>GZZCRS01T12G393M</strong>. Email ufficiale:{" "}
           <a
             href="mailto:chris01.ugo@gmail.com"
             className="font-mono text-xs font-medium text-[#1E324E] underline-offset-2 hover:underline"
           >
             chris01.ugo@gmail.com
           </a>
-          .
+          . Foro competente: <strong>Tribunale di Modena</strong>.
         </p>
       </LegalSection>
 
@@ -96,7 +98,52 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="5. Limitazione di responsabilità">
+      <LegalSection title="5. Piani a Pagamento, Abbonamenti e Diritto di Recesso">
+        <p>
+          Alcune funzionalità di Aequan possono essere offerte mediante{" "}
+          <strong>piani a pagamento o abbonamenti</strong> (SaaS). I pagamenti sono elaborati in
+          modo sicuro tramite <strong>Stripe</strong>. I prezzi sono indicati in{" "}
+          <strong>Euro (€)</strong> e, salvo diversa indicazione esplicita in fase di checkout,
+          si intendono comprensivi delle imposte applicabili.
+        </p>
+        <p>
+          <strong>Diritto di recesso (14 giorni)</strong> — In conformità alla Direttiva UE
+          2011/83/UE e alla normativa italiana di recepimento, il consumatore ha diritto di
+          recedere dall&apos;acquisto di un abbonamento entro <strong>14 (quattordici) giorni</strong>{" "}
+          dalla conclusione del contratto, senza obbligo di fornire motivazioni, con diritto al
+          rimborso integrale tramite Stripe, salve le eccezioni di seguito.
+        </p>
+        <p>
+          <strong>Esecuzione immediata del servizio digitale</strong> — Se l&apos;utente richiede
+          espressamente e inizia l&apos;accesso immediato ai contenuti digitali / simulazioni durante
+          il periodo di recesso, riconosce che, ai sensi della normativa UE: (i) il diritto di
+          recesso può essere esercitato in misura proporzionale all&apos;uso già effettuato del
+          servizio, oppure (ii) può venir meno una volta che l&apos;esecuzione del servizio digitale
+          è pienamente iniziata con il consenso informato dell&apos;utente, secondo quanto previsto
+          dalla legge.
+        </p>
+        <p>
+          <strong>Disdetta e rinnovo automatico</strong> — Gli abbonamenti possono rinnovarsi
+          automaticamente al termine di ciascun ciclo di fatturazione. L&apos;utente può disattivare
+          il rinnovo automatico in qualsiasi momento prima del successivo addebito, dal{" "}
+          <strong>dashboard del proprio account</strong> oppure tramite il{" "}
+          <strong>Stripe Customer Portal</strong>. La disdetta del rinnovo non comporta di per sé
+          il rimborso del periodo già pagato e non ancora scaduto, salvo quanto dovuto in caso di
+          legittimo esercizio del diritto di recesso.
+        </p>
+        <p>
+          Per fatturazione, rimborsi e questioni fiscali relative ai piani a pagamento:{" "}
+          <a
+            href="mailto:chris01.ugo@gmail.com"
+            className="font-mono text-xs font-medium text-[#1E324E] underline-offset-2 hover:underline"
+          >
+            chris01.ugo@gmail.com
+          </a>{" "}
+          (Titolare: Christopher Uguzzoni, CF GZZCRS01T12G393M).
+        </p>
+      </LegalSection>
+
+      <LegalSection title="6. Limitazione di responsabilità">
         <p>
           Nei limiti consentiti dalla legge applicabile, Christopher Uguzzoni non risponde di danni
           derivanti dall&apos;uso improprio di Aequan, da interruzioni del servizio o da
@@ -104,11 +151,12 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="6. Legge applicabile e Foro competente">
+      <LegalSection title="7. Legge applicabile e Foro competente">
         <p>
           I presenti Termini sono regolati dalla <strong>legge italiana</strong> e dalla normativa
           dell&apos;Unione Europea in materia di protezione dei dati personali (
-          <strong>GDPR</strong> — Regolamento UE 2016/679), ove applicabile.
+          <strong>GDPR</strong> — Regolamento UE 2016/679) e di tutela del consumatore (ivi inclusa
+          la Direttiva 2011/83/UE), ove applicabile.
         </p>
         <p>
           Per ogni controversia derivante da o connessa all&apos;uso della Piattaforma o ai presenti
@@ -118,9 +166,10 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="7. Contatti">
+      <LegalSection title="8. Contatti">
         <p>
-          Per qualsiasi richiesta relativa ai presenti Termini scrivere esclusivamente a:{" "}
+          Per qualsiasi richiesta relativa ai presenti Termini, alla fatturazione o agli
+          abbonamenti scrivere a:{" "}
           <a
             href="mailto:chris01.ugo@gmail.com"
             className="font-mono text-xs font-medium text-[#1E324E] underline-offset-2 hover:underline"
@@ -131,7 +180,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="8. Minori">
+      <LegalSection title="9. Minori">
         <p>
           La Piattaforma è destinata esclusivamente a studenti di medicina e professionisti
           sanitari maggiorenni. L&apos;età minima richiesta è di <strong>18 anni</strong>. Non è
@@ -139,7 +188,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="9. Conformità EU AI Act (Reg. UE 2024/1689) & Limiti del Modello">
+      <LegalSection title="10. Conformità EU AI Act (Reg. UE 2024/1689) & Limiti del Modello">
         <p>
           In conformità agli obblighi di <strong>trasparenza</strong> (art. 50) e di promozione della{" "}
           <strong>AI literacy</strong> (art. 4) del Regolamento (UE) 2024/1689 (AI Act), Aequan
