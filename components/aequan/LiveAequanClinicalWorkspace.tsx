@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ClinicalActionBar, type ClinicalAction } from "@/components/aequan/ClinicalActionBar";
 import { Badge } from "@/app/ui/badge";
+import { AiTransparencyBadge } from "@/components/legal/AiTransparencyBadge";
 
 export type LiveAequanCaseMeta = {
   title: string;
@@ -68,6 +69,10 @@ export function LiveAequanClinicalWorkspace({
 
       <div className="shrink-0 overflow-x-hidden">
         <ClinicalActionBar onAction={handleAction} />
+      </div>
+
+      <div className="mt-2 shrink-0 overflow-x-hidden">
+        <AiTransparencyBadge variant="workspace" />
       </div>
 
       <div className="mt-2 min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">

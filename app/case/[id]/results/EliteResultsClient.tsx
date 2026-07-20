@@ -29,6 +29,7 @@ import { ScoreProgressRing } from "./ScoreProgressRing";
 import { ResultsRadarClient, type RadarDatum } from "./ResultsRadarClient";
 import { EconomicBudgetGauge } from "./EconomicBudgetGauge";
 import { GoldStandardCompare } from "./GoldStandardCompare";
+import { AiTransparencyBadge } from "@/components/legal/AiTransparencyBadge";
 
 type RadarDatumWithKey = RadarDatum & { key?: string };
 
@@ -163,6 +164,8 @@ export function EliteResultsClient({
 
   return (
     <div className="space-y-6 font-[family-name:var(--font-inter)]">
+      <AiTransparencyBadge variant="report" />
+
       {/* ── A. Banner abbandono ── */}
       {dismissed ? (
         <p className="rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-2 text-xs text-amber-950">

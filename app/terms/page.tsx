@@ -138,6 +138,31 @@ export default function TermsPage() {
           consentita la registrazione o l&apos;uso da parte di minori.
         </p>
       </LegalSection>
+
+      <LegalSection title="9. Conformità EU AI Act (Reg. UE 2024/1689) & Limiti del Modello">
+        <p>
+          In conformità agli obblighi di <strong>trasparenza</strong> (art. 50) e di promozione della{" "}
+          <strong>AI literacy</strong> (art. 4) del Regolamento (UE) 2024/1689 (AI Act), Aequan
+          informa gli utenti quanto segue.
+        </p>
+        <ul className="list-disc space-y-1.5 pl-5">
+          <li>
+            Aequan utilizza <strong>Large Language Models (LLM)</strong> esclusivamente per la
+            simulazione medica didattica e per lo scoring / report formativo.
+          </li>
+          <li>
+            Gli output dell&apos;IA sono <strong>non deterministici</strong> e possono presentare
+            allucinazioni o inesattezze. L&apos;utente deve sempre confrontare i risultati con le
+            linee guida cliniche ufficiali basate su Evidence-Based Medicine (EBM) e con il proprio
+            giudizio professionale.
+          </li>
+          <li>
+            È <strong>rigorosamente vietato</strong> inserire nelle interfacce di prompt AI dati di
+            pazienti reali, Protected Health Information (PHI) o altri dati personali sanitari di
+            soggetti identificabili. La Piattaforma è destinata solo a scenari simulati.
+          </li>
+        </ul>
+      </LegalSection>
     </LegalPageShell>
   );
 }

@@ -51,6 +51,7 @@ import { ScoreProgressRing } from "@/app/case/[id]/results/ScoreProgressRing";
 import { patientDisplayName, deriveDemoVitals } from "@/lib/prassi/demo-vitals";
 import { resolveCaseStressProfile } from "@/lib/simulator/patient-stress-engine";
 import { AequanLogo } from "@/components/AequanLogo";
+import { AiTransparencyBadge } from "@/components/legal/AiTransparencyBadge";
 import { EXAM_DEFAULT_VALUES, type ExamClinicalMeta } from "../../lib/exam-default-values";
 import { EXAM_CATALOG_STRUCTURE } from "@/lib/exam-catalog-structure";
 import {
@@ -1203,7 +1204,8 @@ export function SimulatorClient({
           >
             <Card className="w-full min-w-0 overflow-x-hidden overflow-hidden rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
               <CardHeader className="flex flex-col gap-3 border-b border-border-subtle bg-ui-bg/80 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
+                <div className="min-w-0 space-y-2">
+                  <AiTransparencyBadge variant="workspace" />
                   <CardTitle className="font-display text-sm font-bold tracking-tight text-brand-primary">
                     Cartella clinica elettronica
                   </CardTitle>
