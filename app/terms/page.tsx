@@ -4,23 +4,28 @@ import { LegalPageShell, LegalSection } from "@/components/legal/LegalPageShell"
 export const metadata = {
   title: "Termini di servizio · Aequan",
   description:
-    "Termini di servizio e disclaimer medico di Aequan — piattaforma educativa di simulazione clinica.",
+    "Termini di servizio di Aequan — Titolare Christopher Uguzzoni, Pavullo nel Frignano (MO).",
 };
 
+/**
+ * Termini di servizio definitivi.
+ * Titolare: Christopher Uguzzoni — CF GZZCRS01T12G393M — chris01.ugo@gmail.com
+ */
 export default function TermsPage() {
   return (
     <LegalPageShell title="Termini di servizio" lastUpdated="20 luglio 2026">
       <LegalSection title="1. Oggetto del servizio e Titolare">
         <p>
-          Aequan (di seguito anche &quot;la Piattaforma&quot;) è un ambiente digitale di{" "}
+          Aequan (di seguito &quot;la Piattaforma&quot;) è un ambiente digitale di{" "}
           <strong>formazione e simulazione clinica e medico-legale</strong> destinato a studenti di
-          medicina e professionisti sanitari maggiorenni. L&apos;accesso e l&apos;uso della
-          Piattaforma presuppongono l&apos;accettazione integrale dei presenti Termini.
+          medicina e professionisti sanitari che abbiano compiuto 18 anni. L&apos;accesso e
+          l&apos;uso della Piattaforma presuppongono l&apos;accettazione integrale dei presenti
+          Termini.
         </p>
         <p>
           Il <strong>Titolare del Servizio</strong> è <strong>Christopher Uguzzoni</strong>, con
-          sede / residenza in <strong>Pavullo nel Frignano (MO), Italia</strong>, Codice Fiscale{" "}
-          <strong>GZZCRS01T12G393M</strong>. Contatti:{" "}
+          residenza / sede legale in <strong>Pavullo nel Frignano (MO), Italia</strong>, Codice
+          Fiscale <strong>GZZCRS01T12G393M</strong>. Email ufficiale di contatto:{" "}
           <a
             href="mailto:chris01.ugo@gmail.com"
             className="font-mono text-xs font-medium text-[#1E324E] underline-offset-2 hover:underline"
@@ -41,9 +46,9 @@ export default function TermsPage() {
               diagnosi, terapie o consulenza sanitaria.
             </li>
             <li>
-              I contenuti, le simulazioni, i punteggi e i report generati (anche tramite intelligenza
-              artificiale) <strong>non sostituiscono</strong> il giudizio clinico di un medico
-              abilitato, le linee guida ufficiali né le procedure del proprio ente.
+              I contenuti, le simulazioni, i punteggi e i report generati (anche tramite
+              intelligenza artificiale) <strong>non sostituiscono</strong> il giudizio clinico di un
+              medico abilitato, le linee guida ufficiali né le procedure del proprio ente.
             </li>
             <li>
               È vietato utilizzare Aequan per prendere decisioni su pazienti reali, per attività
@@ -61,42 +66,41 @@ export default function TermsPage() {
         <p>
           Per utilizzare alcune funzionalità è necessario creare un account fornendo dati veritieri
           e accettando i presenti Termini e la{" "}
-          <Link href="/privacy" className="font-medium text-[#1E324E] underline-offset-2 hover:underline">
+          <Link
+            href="/privacy"
+            className="font-medium text-[#1E324E] underline-offset-2 hover:underline"
+          >
             Privacy Policy
           </Link>
-          . L&apos;utente è responsabile della riservatezza delle credenziali. La Piattaforma è
-          riservata a persone che abbiano compiuto <strong>18 anni</strong>.
+          . L&apos;utente è responsabile della riservatezza delle credenziali. La registrazione è
+          consentita esclusivamente a soggetti che abbiano compiuto{" "}
+          <strong>18 (diciotto) anni</strong>.
         </p>
       </LegalSection>
 
-      <LegalSection title="4. Proprietà intellettuale e contenuti generati">
+      <LegalSection title="4. Proprietà intellettuale">
         <p>
-          Tutti i diritti di proprietà intellettuale relativi alla Piattaforma — inclusa
-          l&apos;architettura software, il database dei casi clinici, gli algoritmi Aequan, i
+          L&apos;intera architettura software, il database dei casi clinici, gli algoritmi Aequan, i
           materiali del simulatore, i marchi, i loghi, i testi formativi e ogni altro contenuto
-          predefinito — appartengono in via <strong>esclusiva</strong> a{" "}
-          <strong>Christopher Uguzzoni</strong>, salvo diversa indicazione espressa.
+          predefinito della Piattaforma appartengono in via{" "}
+          <strong>esclusiva a Christopher Uguzzoni</strong>.
         </p>
         <p>
           È vietato riprodurre, distribuire, modificare, estrarre, pubblicare o sfruttare
           commercialmente tali materiali senza previa autorizzazione scritta del Titolare.
-        </p>
-        <p>
-          L&apos;utente conserva i diritti sui propri dati personali e sulle{" "}
-          <strong>metriche di performance personali</strong> generate dall&apos;uso della
-          Piattaforma (punteggi, report di sessione, progressi formativi). Gli output generati da
-          modelli di intelligenza artificiale nell&apos;ambito della simulazione restano strumenti
-          formativi interni alla Piattaforma e non attribuiscono all&apos;utente diritti di
-          proprietà sull&apos;architettura, sugli algoritmi o sul corpus clinico di Aequan.
+          L&apos;utente conserva diritti solo sulle proprie{" "}
+          <strong>metriche di performance personali</strong> (punteggi, report di sessione,
+          progressi formativi). Gli output generati da modelli di intelligenza artificiale restano
+          strumenti formativi interni e non attribuiscono all&apos;utente diritti di proprietà
+          sull&apos;architettura, sugli algoritmi o sul corpus clinico di Aequan.
         </p>
       </LegalSection>
 
       <LegalSection title="5. Limitazione di responsabilità">
         <p>
-          Nei limiti consentiti dalla legge applicabile, Christopher Uguzzoni e gli operatori della
-          Piattaforma non rispondono di danni derivanti dall&apos;uso improprio di Aequan, da
-          interruzioni del servizio o da errori/omissioni nei contenuti formativi o nei report
-          automatici.
+          Nei limiti consentiti dalla legge applicabile, Christopher Uguzzoni non risponde di danni
+          derivanti dall&apos;uso improprio di Aequan, da interruzioni del servizio o da
+          errori/omissioni nei contenuti formativi o nei report automatici.
         </p>
       </LegalSection>
 
@@ -109,20 +113,29 @@ export default function TermsPage() {
         <p>
           Per ogni controversia derivante da o connessa all&apos;uso della Piattaforma o ai presenti
           Termini è competente in via <strong>esclusiva</strong> il{" "}
-          <strong>Foro di Modena</strong> (Tribunale di Modena), fatto salvo quanto obbligatoriamente
-          previsto dalla legge a tutela del consumatore, ove applicabile.
+          <strong>Tribunale di Modena</strong> (Foro di Modena), fatto salvo quanto
+          obbligatoriamente previsto dalla legge a tutela del consumatore, ove applicabile.
         </p>
       </LegalSection>
 
       <LegalSection title="7. Contatti">
         <p>
-          Per richieste relative ai presenti Termini:{" "}
+          Per qualsiasi richiesta relativa ai presenti Termini scrivere esclusivamente a:{" "}
           <a
             href="mailto:chris01.ugo@gmail.com"
             className="font-mono text-xs font-medium text-[#1E324E] underline-offset-2 hover:underline"
           >
             chris01.ugo@gmail.com
           </a>
+          .
+        </p>
+      </LegalSection>
+
+      <LegalSection title="8. Minori">
+        <p>
+          La Piattaforma è destinata esclusivamente a studenti di medicina e professionisti
+          sanitari maggiorenni. L&apos;età minima richiesta è di <strong>18 anni</strong>. Non è
+          consentita la registrazione o l&apos;uso da parte di minori.
         </p>
       </LegalSection>
     </LegalPageShell>
