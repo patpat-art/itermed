@@ -130,19 +130,19 @@ export default function PrivacyPage() {
 
       <LegalSection title="7. Cookie e tecnologie di tracciamento (GDPR & ePrivacy)">
         <p>
-          Attualmente Aequan utilizza esclusivamente{" "}
-          <strong>cookie e tecnologie strettamente necessari</strong> per l&apos;autenticazione di
-          sessione, la sicurezza della piattaforma e l&apos;integrità dei pagamenti elaborati tramite
-          Stripe. Tali cookie tecnici non richiedono consenso preventivo ai sensi della normativa
-          ePrivacy, in quanto indispensabili al servizio richiesto dall&apos;utente.
+          Attualmente Aequan utilizza <strong>unicamente cookie tecnici essenziali</strong>{" "}
+          necessari all&apos;autenticazione di sessione e alla sicurezza dei pagamenti elaborati
+          tramite Stripe. Tali cookie strettamente necessari non richiedono consenso preventivo ai
+          sensi della normativa ePrivacy, in quanto indispensabili al servizio richiesto
+          dall&apos;utente.
         </p>
         <p>
-          Qualora in futuro fossero attivati strumenti di analitica o marketing di terze parti
-          (ad esempio Google Analytics, Meta Pixel o equivalenti), verrà richiesto{" "}
-          <strong>consenso esplicito preventivo</strong> tramite un banner interattivo di gestione
-          dei cookie, e nessuno script di tracciamento non essenziale sarà inizializzato prima
-          dell&apos;accettazione (o della scelta granulare) da parte dell&apos;utente, in conformità
-          al GDPR e alla Direttiva ePrivacy.
+          Avviso esplicito: se in futuro saranno abilitati strumenti di analitica o pubblicità di
+          terze parti (ad esempio <strong>Google Analytics</strong>, <strong>Meta Pixel</strong> o
+          equivalenti), verrà fornito un <strong>banner interattivo GDPR</strong> di gestione dei
+          cookie per raccogliere il <strong>consenso esplicito preventivo</strong> dell&apos;utente
+          prima di qualsiasi inizializzazione di script di tracciamento non essenziale, in
+          conformità al GDPR e alla Direttiva ePrivacy.
         </p>
       </LegalSection>
 

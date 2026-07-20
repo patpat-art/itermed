@@ -101,32 +101,36 @@ export default function TermsPage() {
       <LegalSection title="5. Piani a Pagamento, Abbonamenti e Diritto di Recesso">
         <p>
           Alcune funzionalità di Aequan possono essere offerte mediante{" "}
-          <strong>piani a pagamento o abbonamenti</strong> (SaaS). I pagamenti sono elaborati in
-          modo sicuro tramite <strong>Stripe</strong>. I prezzi sono indicati in{" "}
-          <strong>Euro (€)</strong> e, salvo diversa indicazione esplicita in fase di checkout,
-          si intendono comprensivi delle imposte applicabili.
+          <strong>piani a pagamento o abbonamenti</strong> (SaaS). L&apos;accesso ai tier a
+          pagamento è fatturato in modo <strong>automatico e ricorrente</strong> tramite{" "}
+          <strong>Stripe</strong>, secondo la cadenza selezionata in checkout (
+          <strong>mensile</strong> o <strong>annuale</strong>, ove disponibili). I prezzi sono
+          indicati in <strong>Euro (€)</strong> e, salvo diversa indicazione esplicita in fase di
+          checkout, si intendono comprensivi delle imposte applicabili.
         </p>
         <p>
           <strong>Diritto di recesso (14 giorni)</strong> — In conformità alla Direttiva UE
-          2011/83/UE e alla normativa italiana di recepimento, il consumatore ha diritto di
-          recedere dall&apos;acquisto di un abbonamento entro <strong>14 (quattordici) giorni</strong>{" "}
-          dalla conclusione del contratto, senza obbligo di fornire motivazioni, con diritto al
-          rimborso integrale tramite Stripe, salve le eccezioni di seguito.
+          2011/83/UE e alla normativa italiana di recepimento, gli utenti consumatori hanno il
+          diritto legale di cancellare / recedere dall&apos;abbonamento entro{" "}
+          <strong>14 (quattordici) giorni</strong> dall&apos;acquisto, senza obbligo di fornire
+          giustificazione, con diritto al <strong>rimborso integrale</strong> tramite Stripe, salve
+          le eccezioni di seguito.
         </p>
         <p>
-          <strong>Esecuzione immediata del servizio digitale</strong> — Se l&apos;utente richiede
-          espressamente e inizia l&apos;accesso immediato ai contenuti digitali / simulazioni durante
-          il periodo di recesso, riconosce che, ai sensi della normativa UE: (i) il diritto di
-          recesso può essere esercitato in misura proporzionale all&apos;uso già effettuato del
-          servizio, oppure (ii) può venir meno una volta che l&apos;esecuzione del servizio digitale
-          è pienamente iniziata con il consenso informato dell&apos;utente, secondo quanto previsto
-          dalla legge.
+          <strong>Eccezione per servizio digitale ad esecuzione immediata</strong> — Se l&apos;utente
+          richiede espressamente e inizia immediatamente a utilizzare le simulazioni cliniche
+          digitali durante la finestra di 14 giorni, acconsente all&apos;esecuzione immediata del
+          servizio e riconosce, ai sensi della normativa UE, la perdita o la riduzione
+          proporzionale del diritto di recesso rispetto all&apos;uso già effettuato, fino alla
+          perdita del diritto quando l&apos;esecuzione del servizio digitale è pienamente iniziata
+          con consenso informato, secondo quanto previsto dalla legge.
         </p>
         <p>
-          <strong>Disdetta e rinnovo automatico</strong> — Gli abbonamenti possono rinnovarsi
-          automaticamente al termine di ciascun ciclo di fatturazione. L&apos;utente può disattivare
-          il rinnovo automatico in qualsiasi momento prima del successivo addebito, dal{" "}
-          <strong>dashboard del proprio account</strong> oppure tramite il{" "}
+          <strong>Rinnovo automatico e cancellazione</strong> — Gli abbonamenti si rinnovano
+          automaticamente al termine di ciascun ciclo di fatturazione (mensile o annuale).
+          L&apos;utente può cancellare il rinnovo automatico in qualsiasi momento prima della
+          successiva data di addebito, direttamente dalle{" "}
+          <strong>impostazioni / dashboard del proprio account</strong> oppure tramite il{" "}
           <strong>Stripe Customer Portal</strong>. La disdetta del rinnovo non comporta di per sé
           il rimborso del periodo già pagato e non ancora scaduto, salvo quanto dovuto in caso di
           legittimo esercizio del diritto di recesso.
@@ -138,8 +142,10 @@ export default function TermsPage() {
             className="font-mono text-xs font-medium text-[#1E324E] underline-offset-2 hover:underline"
           >
             chris01.ugo@gmail.com
-          </a>{" "}
-          (Titolare: Christopher Uguzzoni, CF GZZCRS01T12G393M).
+          </a>
+          . Titolare del Servizio: <strong>Christopher Uguzzoni</strong>, Pavullo nel Frignano
+          (MO), Italia, CF <strong>GZZCRS01T12G393M</strong>. Foro competente:{" "}
+          <strong>Modena</strong> (Tribunale di Modena).
         </p>
       </LegalSection>
 
