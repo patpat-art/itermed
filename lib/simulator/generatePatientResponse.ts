@@ -19,8 +19,8 @@ type ChatTurn = { role: "user" | "assistant" | "system"; content: string };
 export type GeneratePatientResponseParams = {
   caseData: PatientSimulatorCaseInput;
   messages: ChatTurn[];
-  /** OpenAI model — gated by billing plan (gpt-4o-mini for FREE, gpt-4o for paid). */
-  model?: "gpt-4o-mini" | "gpt-4o";
+  /** OpenAI model for patient chat — always gpt-4o-mini (all plans). gpt-4o is evaluation/RAG only. */
+  model?: "gpt-4o-mini";
   /** Runs after the stream completes — safe for async DB persistence. */
   onFinish?: (event: { text: string }) => void | Promise<void>;
 };

@@ -1,7 +1,7 @@
 type ChatTurn = { role: "user" | "assistant" | "system"; content: string };
 
 /** Last N user/assistant turns sent to the patient LLM — no generative summaries. */
-export const PATIENT_CHAT_WINDOW_SIZE = 10;
+export const PATIENT_CHAT_WINDOW_SIZE = 8;
 
 /**
  * Returns the trailing dialogue window for the virtual patient model.

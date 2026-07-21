@@ -17,6 +17,7 @@ import {
 } from "@/lib/security/prompt-injection-guard";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { AI_RATE_LIMITS } from "@/lib/security/ai-rate-limits";
+import { applyPatientChatWindow } from "@/lib/simulator/chat-context-window";
 import { buildPatientSimulatorCaseInput } from "@/lib/simulator/patientCaseContext";
 import { generatePatientResponse } from "@/lib/simulator/generatePatientResponse";
 import { persistChatTurn } from "@/lib/simulator/persist-chat-turn";
@@ -294,11 +295,15 @@ export async function POST(req: Request) {
 
   const lastUserMessage = getLastUserMessage(chatMessages);
 
+  // Trailing dialogue only — system prompt is always prepended in generatePatientResponse.
+  const windowedMessages = applyPatientChatWindow(chatMessages);
+
   chatLogger.info("Patient chat stream started", {
     userId,
     sessionId: liveSessionId ?? undefined,
     caseId: typeof caseId === "string" ? caseId : undefined,
     messageCount: chatMessages.length,
+    windowedMessageCount: windowedMessages.length,
     patientStress: stressClamped,
     chatModel,
     planType: billingProfile.planType,
@@ -308,7 +313,7 @@ export async function POST(req: Request) {
 
   const stream = generatePatientResponse({
     caseData,
-    messages: chatMessages,
+    messages: windowedMessages,
     model: chatModel,
     onFinish: liveSessionId
       ? async ({ text }) => {

@@ -8,7 +8,8 @@ import {
 } from "@/lib/billing/plans";
 import type { UserBillingProfile } from "@/lib/billing/user-billing";
 
-export type ChatModelId = "gpt-4o-mini" | "gpt-4o";
+/** Patient chat always uses gpt-4o-mini. gpt-4o is reserved for evaluation/RAG. */
+export type ChatModelId = "gpt-4o-mini";
 
 export type GateResult =
   | { allowed: true }
@@ -94,27 +95,17 @@ export function assertCanSendChatMessage(
   return { allowed: true };
 }
 
-export function resolveChatModel(profile: UserBillingProfile): ChatModelId {
-  if (hasActiveSubscription(profile) || isAdmin(profile)) {
-    return "gpt-4o";
-  }
+/** Patient chat model — always gpt-4o-mini for every plan. */
+export function resolveChatModel(_profile?: UserBillingProfile): ChatModelId {
   return "gpt-4o-mini";
 }
 
 export function assertAllowedChatModel(
-  profile: UserBillingProfile,
-  requestedModel: unknown,
+  _profile: UserBillingProfile,
+  _requestedModel: unknown,
 ): GateResult {
-  if (requestedModel == null || requestedModel === "") return { allowed: true };
-  const model = String(requestedModel).toLowerCase();
-  const allowed = resolveChatModel(profile);
-  if (model === allowed || model.includes(allowed)) return { allowed: true };
-  return {
-    allowed: false,
-    code: "MODEL_FORBIDDEN",
-    status: 403,
-    message: "Modello AI non consentito per il tuo piano. Aggiorna l'abbonamento.",
-  };
+  // Client-requested model is ignored — chat is always gpt-4o-mini (resolveChatModel).
+  return { allowed: true };
 }
 
 export function gateToResponse(gate: Extract<GateResult, { allowed: false }>): Response {
