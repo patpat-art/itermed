@@ -11,27 +11,21 @@ export default async function AnalyticsPage() {
   const data = await fetchAnalyticsPageData(user.id);
 
   return (
-    <div className="flex flex-col gap-5">
-      <header className="border-b border-border pb-4">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-secondary">
-          Performance Hub · Aequan
-        </p>
-        <h1 className="mt-1 font-display text-xl font-semibold tracking-tight text-brand-primary">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-6 md:p-8">
+      <header className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">
           Analytics & Classifiche
         </h1>
-        <p className="mt-1 max-w-2xl text-sm text-slate-600">
-          Profilo performance, registro classifiche, radar competenze e analisi longitudinale delle
-          simulazioni cliniche completate.
+        <p className="mt-1 text-base text-slate-500">
+          Performance e progressi sulle simulazioni completate.
         </p>
       </header>
 
       {data.leaderboard.top50.length === 0 && data.statistics.completedCount === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-5 py-4 text-sm text-slate-600">
-          <p className="font-medium text-slate-800">Nessuna simulazione completata ancora</p>
-          <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-            Il registro classifiche e i trend si popolano dopo la prima sessione con report
-            completato. Nel frattempo puoi aggiornare nickname e preferenze di privacy nel pannello
-            profilo qui sotto.
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-5 py-5 text-sm text-slate-600 shadow-sm">
+          <p className="text-base font-medium text-slate-800">Nessuna simulazione completata</p>
+          <p className="mt-1 text-sm text-slate-500">
+            Completa il primo caso in Prassi Clinica per vedere classifiche e trend.
           </p>
         </div>
       ) : null}

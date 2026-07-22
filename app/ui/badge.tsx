@@ -3,24 +3,25 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "../utils/cn";
 
-type BadgeVariant = "default" | "info" | "success" | "warning";
+type BadgeVariant = "default" | "info" | "success" | "warning" | "danger";
 
 type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
   variant?: BadgeVariant;
 };
 
 const variants: Record<BadgeVariant, string> = {
-  default: "bg-white text-slate-600 border-slate-200 shadow-sm",
-  info: "bg-slate-50 text-[#345884] border-slate-200 shadow-sm",
-  success: "bg-slate-50 text-[#1E324E] border-slate-200 shadow-sm",
-  warning: "bg-amber-50/80 text-amber-800 border-amber-200/80 shadow-sm",
+  default: "bg-slate-100 text-slate-600 border-transparent",
+  info: "bg-[#EAF1FB] text-[#1E324E] border-transparent",
+  success: "bg-emerald-50 text-emerald-700 border-transparent",
+  warning: "bg-amber-50 text-amber-800 border-transparent",
+  danger: "bg-rose-50 text-rose-700 border-transparent",
 };
 
 export function Badge({ className, variant = "default", ...props }: BadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium",
+        "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold",
         variants[variant],
         className,
       )}

@@ -42,11 +42,13 @@ export default async function DashboardGuidelinesPage(props: PageProps) {
   }));
 
   return (
-    <GuidelinesHub
-      docs={serializable}
-      isAdmin={isAdmin}
-      loadError={loadError}
-      initialTab={initialTab}
-    />
+    <div className="mx-auto w-full max-w-7xl p-6 md:p-8">
+      <GuidelinesHub
+        docs={serializable}
+        isAdmin={isAdmin}
+        loadError={loadError}
+        initialTab={initialTab}
+      />
+    </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { UserCircle2 } from "lucide-react";
 import type { LeaderboardNameType } from "@prisma/client";
 import type {
   LeaderboardPreferences,
@@ -86,10 +87,17 @@ export function PersonalProfilePanel({
   return (
     <Card className="h-full flex flex-col">
       <CardHeader>
-        <CardTitle>Il tuo Profilo Performance</CardTitle>
-        <CardDescription>
-          Metriche personali aggregate da simulazioni cliniche completate.
-        </CardDescription>
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+            <UserCircle2 className="h-4 w-4" />
+          </div>
+          <div>
+            <CardTitle>Il tuo Profilo Performance</CardTitle>
+            <CardDescription>
+              Metriche personali aggregate da simulazioni cliniche completate.
+            </CardDescription>
+          </div>
+        </div>
       </CardHeader>
 
       <CardContent className="space-y-4 flex-1">

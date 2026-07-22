@@ -7,17 +7,25 @@ import { useChat } from "ai/react";
 import {
   Activity,
   ArrowLeft,
+  BookOpen,
+  Building2,
+  CheckCheck,
   FlaskConical,
   Clock,
   EuroIcon,
+  FolderOpen,
+  HelpCircle,
+  MessageCircle,
   Microscope,
+  Pause,
+  Play,
   ScanLine,
   Search,
+  Send,
   Sparkles,
-  FolderOpen,
   TestTube2,
   User,
-  Stethoscope,
+  X,
 } from "lucide-react";
 import {
   Dialog,
@@ -32,12 +40,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../..
 import { Button } from "../../app/ui/button";
 import { Textarea } from "../../app/ui/textarea";
 import { handleTextareaEnterSubmit } from "@/lib/hooks/textarea-submit";
+import { cn } from "@/app/utils/cn";
 import { Badge } from "../../app/ui/badge";
 import { PhysicalExamTab } from "./PhysicalExamTab";
 import { PatientStressBar } from "./PatientStressBar";
 import { SafeLlmText } from "@/components/ui/safe-llm-content";
 import { SkeletonChatBubble } from "@/components/ui/Skeleton";
 import { VitalSignsBoard } from "./VitalSignsBoard";
+import { SimulationProcessStepper } from "./SimulationProcessStepper";
+import {
+  SessionEventTimeline,
+  type SessionTimelineEvent,
+} from "./SessionEventTimeline";
+import { LiveCoachingPanel } from "./LiveCoachingPanel";
 import {
   ClinicalDischargeReportPanel,
   composeClinicalReport,
@@ -47,9 +62,8 @@ import {
 } from "./ClinicalDischargeReportPanel";
 import { MetricBar } from "@/app/case/[id]/results/MetricBar";
 import { ScoreProgressRing } from "@/app/case/[id]/results/ScoreProgressRing";
-import { ClinicalActionBar, type ClinicalAction } from "@/components/aequan/ClinicalActionBar";
-import { AiTransparencyBadge } from "@/components/legal/AiTransparencyBadge";
-import { patientDisplayName } from "@/lib/prassi/demo-vitals";
+import { deriveDemoVitals, patientDisplayName } from "@/lib/prassi/demo-vitals";
+import { classifyVitals, maxVitalStatus } from "@/lib/clinical/vital-status";
 import { resolveCaseStressProfile } from "@/lib/simulator/patient-stress-engine";
 import { EXAM_DEFAULT_VALUES, type ExamClinicalMeta } from "../../lib/exam-default-values";
 import { EXAM_CATALOG_STRUCTURE } from "@/lib/exam-catalog-structure";
@@ -315,10 +329,14 @@ export function SimulatorClient({
   const router = useRouter();
 
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"history" | "exam" | "labs" | "imaging">("history");
+  const [activeTab, setActiveTab] = useState<"history" | "exam" | "labs" | "imaging" | "notes">(
+    "history",
+  );
+  const [sessionNotes, setSessionNotes] = useState("");
   const [selectedExamIds, setSelectedExamIds] = useState<string[]>([]);
   const selectedExamIdsRef = useRef<string[]>([]);
   const [isPatientChartOpen, setIsPatientChartOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [patientChartTab, setPatientChartTab] = useState<"base" | "referto">("base");
 
   const [examFindings, setExamFindings] = useState<
@@ -364,6 +382,8 @@ export function SimulatorClient({
   const [clockMinutes, setClockMinutes] = useState(0);
   /** Wall-clock session elapsed seconds for MM:SS display. */
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  /** User-triggered pause ("Interruzione") — freezes clocks without ending the session. */
+  const [isPaused, setIsPaused] = useState(false);
   const effectiveSessionIdRef = useRef(effectiveSessionId);
   const examIdsChargedForStressRef = useRef<Set<string>>(new Set());
   const stressInitializedRef = useRef(false);
@@ -422,44 +442,31 @@ export function SimulatorClient({
 
   // Timer clinico: +1 minuto simulato ogni 15s reali mentre il caso è in corso.
   useEffect(() => {
-    if (!disclaimerAccepted || gameStatus !== "playing") return;
+    if (!disclaimerAccepted || gameStatus !== "playing" || isPaused) return;
     const id = window.setInterval(() => {
       setClockMinutes((m) => m + 1);
       bumpPatientStress(1);
     }, 15_000);
     return () => window.clearInterval(id);
-  }, [disclaimerAccepted, gameStatus, bumpPatientStress]);
+  }, [disclaimerAccepted, gameStatus, isPaused, bumpPatientStress]);
 
   // Wall-clock MM:SS — increments every real second during active play.
   useEffect(() => {
-    if (!disclaimerAccepted || gameStatus !== "playing") return;
+    if (!disclaimerAccepted || gameStatus !== "playing" || isPaused) return;
     const id = window.setInterval(() => {
       setElapsedSeconds((s) => s + 1);
     }, 1_000);
     return () => window.clearInterval(id);
-  }, [disclaimerAccepted, gameStatus]);
+  }, [disclaimerAccepted, gameStatus, isPaused]);
 
   // Pressione temporale aggiuntiva (più lenta).
   useEffect(() => {
-    if (!disclaimerAccepted || gameStatus !== "playing") return;
+    if (!disclaimerAccepted || gameStatus !== "playing" || isPaused) return;
     const id = window.setInterval(() => {
       bumpPatientStress(2);
     }, 45_000);
     return () => window.clearInterval(id);
-  }, [disclaimerAccepted, gameStatus, bumpPatientStress]);
-
-  const handleClinicalHeaderAction = useCallback((action: ClinicalAction) => {
-    if (action === "prescribe") setActiveTab("labs");
-    if (action === "consult") setActiveTab("history");
-    if (typeof document === "undefined") return;
-    const targetId =
-      action === "prescribe"
-        ? "aequan-sim-exams"
-        : action === "diagnose"
-          ? "aequan-sim-conclusion"
-          : "aequan-sim-chat";
-    document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+  }, [disclaimerAccepted, gameStatus, isPaused, bumpPatientStress]);
 
   const demoChat = initialCaseData.demographics ?? {};
   const patientAgeForChat = demoChat.age ?? 58;
@@ -606,7 +613,11 @@ export function SimulatorClient({
         const newSessionId = data?.sessionId as string | undefined;
         if (!cancelled && newSessionId) {
           setEffectiveSessionId(newSessionId);
-          router.replace(`/case/${initialCaseData.id}?sessionId=${newSessionId}`);
+          router.replace(
+            embedded
+              ? `/dashboard/prassi/play/${initialCaseData.id}?sessionId=${newSessionId}`
+              : `/case/${initialCaseData.id}?sessionId=${newSessionId}`,
+          );
         }
       } catch {
         // ignore
@@ -827,6 +838,161 @@ export function SimulatorClient({
     id: `CASE-${String(initialCaseData.id ?? "").slice(0, 6).toUpperCase() || "DEMO"}`,
   };
 
+  const processStep = useMemo(() => {
+    if (gameStatus !== "playing" || isClinicalReportComplete(reportSections)) return 6;
+    if (selectedExamIds.length > 0 || Object.keys(examFindings).length > 0) return 4;
+    if (activeTab === "exam") return 3;
+    if (messages.some((m) => m.role === "user")) return 2;
+    return 1;
+  }, [activeTab, examFindings, gameStatus, messages, reportSections, selectedExamIds.length]);
+
+  const [stepTimes, setStepTimes] = useState<Record<number, string>>({});
+  useEffect(() => {
+    const label = new Date().toLocaleTimeString("it-IT", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    setStepTimes((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (let step = 1; step <= processStep; step++) {
+        if (!next[step]) {
+          next[step] = label;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [processStep]);
+
+  const sessionTimelineEvents = useMemo((): SessionTimelineEvent[] => {
+    const sessionStartMs = Date.now() - elapsedSeconds * 1000;
+    const wallClockAt = (secondsOffset: number) =>
+      new Date(sessionStartMs + Math.min(elapsedSeconds, secondsOffset) * 1000).toLocaleTimeString(
+        "it-IT",
+        { hour: "2-digit", minute: "2-digit" },
+      );
+
+    const events: SessionTimelineEvent[] = [
+      {
+        id: "ingresso",
+        timeLabel: wallClockAt(0),
+        title: "Ingresso in PS",
+        detail: patient.mainComplaint?.slice(0, 90) || "Accettazione paziente",
+        kind: "ingresso",
+      },
+    ];
+    const userTurns = messages.filter((m) => m.role === "user").length;
+    if (userTurns > 0) {
+      events.push({
+        id: "anamnesi",
+        timeLabel: wallClockAt(60),
+        title: "Anamnesi",
+        detail: "Raccolta anamnesi e sintomi principali.",
+        kind: "dialogo",
+      });
+    }
+    if (Object.keys(examFindings).length > 0 || activeTab === "exam") {
+      events.push({
+        id: "esame-obiettivo",
+        timeLabel: wallClockAt(180),
+        title: "Esame obiettivo",
+        detail: "Valutazione parametri vitali e reperti clinici.",
+        kind: "vitale",
+        current: processStep === 3,
+      });
+    }
+    selectedExamsRecentFirst.slice(0, 4).forEach((exam, idx) => {
+      events.push({
+        id: `exam-${exam.id}`,
+        timeLabel: wallClockAt(240 + idx * 30),
+        title: `Esame: ${exam.name}`,
+        detail: `Costo SSN €${exam.cost.toFixed(0)}`,
+        kind: "esame",
+      });
+    });
+    if (selectedExamIds.length === 0) {
+      events.push({
+        id: "esami-pending",
+        timeLabel: "",
+        title: "Esami richiesti",
+        detail: "In attesa di prescrizione.",
+        kind: "esame",
+        pending: true,
+      });
+    }
+    events.push({
+      id: "diagnosi-pending",
+      timeLabel: "",
+      title: "Diagnosi",
+      detail: "In attesa di definizione.",
+      kind: "nota",
+      pending: true,
+    });
+    return events.slice(0, 12);
+  }, [
+    activeTab,
+    elapsedSeconds,
+    examFindings,
+    messages,
+    patient.mainComplaint,
+    processStep,
+    selectedExamIds.length,
+    selectedExamsRecentFirst,
+  ]);
+
+  const liveCoaching = useMemo(() => {
+    const chatTurns = messages.filter((m) => m.role === "user").length;
+    const examCount = selectedExamIds.length;
+    const appropriateness = Math.max(20, Math.min(95, 55 + chatTurns * 6 - Math.max(0, examCount - 3) * 8));
+    const objectiveExam = activeTab === "exam" || Object.keys(examFindings).length > 0 ? 72 : 38;
+    const timeMgmt = Math.max(25, Math.min(92, 88 - Math.floor(elapsedSeconds / 45)));
+    const completeness = Math.max(
+      15,
+      Math.min(90, chatTurns * 12 + examCount * 8 + (reportSections.anamnesisObjective ? 15 : 0)),
+    );
+    const score = Math.round((appropriateness + objectiveExam + timeMgmt + completeness) / 4);
+    const vitals = classifyVitals(deriveDemoVitals(initialCaseData.id, patientStress));
+    const unstable = maxVitalStatus(vitals.map((v) => v.status)) !== "stable";
+    return {
+      score,
+      metrics: [
+        { label: "Appropriatezza anamnesi", value: appropriateness, tone: "good" as const },
+        {
+          label: "Esame obiettivo",
+          value: objectiveExam,
+          tone: (objectiveExam >= 60 ? "good" : "warn") as "good" | "warn",
+        },
+        {
+          label: "Gestione tempo",
+          value: timeMgmt,
+          tone: (timeMgmt >= 60 ? "good" : "warn") as "good" | "warn",
+        },
+        {
+          label: "Completezza dati",
+          value: completeness,
+          tone: (completeness >= 55 ? "good" : "warn") as "good" | "warn",
+        },
+      ],
+      tip: unstable
+        ? "Paziente instabile: valuta subito ABC e saturazione prima di approfondire l’anamnesi."
+        : chatTurns < 2
+          ? "Inizia con un’anamnesi mirata sul motivo di accesso e i fattori di rischio."
+          : examCount === 0
+            ? "Considera gli esami di primo livello solo dopo aver raccolto i dati clinici essenziali."
+            : "Documenta i reperti chiave nella cartella prima di formulare la diagnosi.",
+    };
+  }, [
+    activeTab,
+    elapsedSeconds,
+    examFindings,
+    initialCaseData.id,
+    messages,
+    patientStress,
+    reportSections.anamnesisObjective,
+    selectedExamIds.length,
+  ]);
+
   const handleExamFinding = (payload: {
     id: string;
     label: string;
@@ -934,7 +1100,11 @@ export function SimulatorClient({
                 outcome: "success",
               }),
             });
-            router.replace(`/case/${initialCaseData.id}?sessionId=${sid}`);
+            router.replace(
+              embedded
+                ? `/dashboard/prassi/play/${initialCaseData.id}?sessionId=${sid}`
+                : `/case/${initialCaseData.id}?sessionId=${sid}`,
+            );
           }
           return;
         }
@@ -952,7 +1122,11 @@ export function SimulatorClient({
               outcome: "wrong_diagnosis",
             }),
           });
-          router.replace(`/case/${initialCaseData.id}?sessionId=${sid}`);
+          router.replace(
+            embedded
+              ? `/dashboard/prassi/play/${initialCaseData.id}?sessionId=${sid}`
+              : `/case/${initialCaseData.id}?sessionId=${sid}`,
+          );
         }
       } catch {
         // fallback safe: don't block the flow; treat as success but without surprise
@@ -985,7 +1159,7 @@ export function SimulatorClient({
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              <div className="scrollbar-aequan flex items-center gap-2 overflow-x-auto pb-1">
                 {(
                   [
                     { id: "clinical", label: "Accuratezza clinica" },
@@ -1141,78 +1315,96 @@ export function SimulatorClient({
         }
       >
         {embedded ? (
-          <header className="flex w-full min-w-0 flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-4 sm:py-3">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-3">
-              <Link
-                href={backHref}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                Libreria
-              </Link>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {initialCaseData.title}
-                </p>
-                <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                  <span className="inline-flex rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
-                    {initialCaseData.specialty?.trim() || "Specialità N/D"}
+          <header className="flex w-full min-w-0 flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-3.5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1E324E]/8 text-[#1E324E]">
+                <Building2 className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="truncate text-sm font-bold text-slate-900">
+                    {patient.context?.trim() &&
+                    patient.context.trim().toLowerCase() !== "pronto soccorso"
+                      ? patient.context.trim()
+                      : "Ospedale San Carlo"}
+                  </p>
+                  <span className="inline-flex shrink-0 items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+                    Pronto Soccorso
                   </span>
-                  <AiTransparencyBadge variant="workspace" />
                 </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 sm:justify-end">
-              <div
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 dark:border-slate-700 dark:bg-slate-950"
-                title="Tempo di sessione"
-              >
-                <Clock className="h-3.5 w-3.5 text-slate-500" />
-                <span className="font-mono text-sm font-semibold tabular-nums text-slate-800 dark:text-slate-100">
-                  {formatElapsedClock(elapsedSeconds)}
+                <span className="mt-0.5 inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                  Sessione attiva
                 </span>
               </div>
+            </div>
 
-              <div className="min-w-[7.5rem] max-w-[10rem] flex-1 sm:flex-none">
-                <div className="mb-0.5 flex items-center justify-between gap-2 text-[10px] text-slate-500">
-                  <span className="inline-flex items-center gap-1 font-semibold uppercase tracking-wide">
-                    <EuroIcon className="h-3 w-3" />
-                    Budget SSN
-                  </span>
-                  <span className="font-mono tabular-nums">€{totalCost.toFixed(0)}</span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-[#1E324E] to-[#345884] transition-all duration-500"
-                    style={{ width: `${Math.min(100, (totalCost / 250) * 100)}%` }}
-                  />
-                </div>
+            <div className="flex shrink-0 items-center gap-2.5 self-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-2">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[#1E324E] shadow-sm">
+                <Clock className="h-4 w-4" />
+              </span>
+              <div className="leading-tight">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                  Tempo simulazione
+                </p>
+                <p className="text-base font-bold tabular-nums text-slate-900">
+                  {formatElapsedClock(elapsedSeconds)}
+                </p>
               </div>
+            </div>
 
-              {disclaimerAccepted ? (
-                <ClinicalActionBar
-                  variant="header"
-                  onAction={handleClinicalHeaderAction}
-                  disabled={gameStatus !== "playing"}
-                />
-              ) : null}
-
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  document.getElementById("aequan-sim-chat")?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Dialogo guidato
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsPaused((v) => !v)}
+                aria-pressed={isPaused}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2.5 text-sm font-medium transition",
+                  isPaused
+                    ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                )}
+              >
+                {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                {isPaused ? "Riprendi" : "Interruzione"}
+              </button>
               {persistReports && disclaimerAccepted ? (
-                <Button
+                <button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-lg border-rose-200/80 text-xs text-rose-800 hover:bg-rose-50"
                   disabled={dismissLoading}
                   onClick={handleDismissCase}
-                  title="Abbandona caso — punteggi azzerati"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
                 >
-                  {dismissLoading ? "Uscita…" : "Abbandona"}
-                </Button>
-              ) : null}
+                  <X className="h-4 w-4" />
+                  {dismissLoading ? "Uscita…" : "Termina caso"}
+                </button>
+              ) : (
+                <Link
+                  href={backHref}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Esci
+                </Link>
+              )}
             </div>
           </header>
+        ) : null}
+        {embedded && isPaused ? (
+          <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-800">
+            <Pause className="h-4 w-4" />
+            Simulazione in pausa — i timer sono fermi. Premi &quot;Riprendi&quot; per continuare.
+          </div>
         ) : null}
 
         {!embedded ? (
@@ -1223,7 +1415,7 @@ export function SimulatorClient({
               age={patient.age}
               sex={patient.sex}
               stress={patientStress}
-              className="w-full shrink-0 overflow-x-hidden rounded-xl border border-slate-900/60 shadow-md"
+              className="w-full shrink-0 overflow-x-hidden rounded-xl shadow-md"
             />
             <header className="flex w-full items-center justify-between gap-4 overflow-x-hidden px-0.5">
               <div className="min-w-0 space-y-1">
@@ -1252,7 +1444,7 @@ export function SimulatorClient({
           </>
         ) : null}
 
-        {/* Embedded: main EHR 8 | diagnostic 4. Standalone: same. */}
+        {/* Embedded mockup: center workspace | right tools. Standalone: EHR 8 | diagnostic 4. */}
         <div
           className={
             embedded
@@ -1260,14 +1452,83 @@ export function SimulatorClient({
               : "grid w-full min-w-0 grid-cols-1 gap-6 overflow-x-hidden lg:grid-cols-12 lg:items-start"
           }
         >
-          {/* Main focus — header + EHR tabs + chat */}
+          {embedded ? (
+            <div
+              id="aequan-sim-chat"
+              className="col-span-1 flex min-w-0 flex-col gap-3 lg:col-span-8"
+            >
+              <div className="flex w-full min-w-0 flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h1 className="truncate font-display text-base font-bold tracking-tight text-slate-900 sm:text-lg">
+                      {initialCaseData.title}
+                    </h1>
+                    <p className="mt-1 truncate text-xs text-slate-500">
+                      {initialCaseData.specialty?.trim() || "Pronto Soccorso"}
+                      <span className="mx-1.5 text-slate-300">·</span>
+                      Paziente {patient.age} anni ({patient.sex})
+                      <span className="mx-1.5 text-slate-300">·</span>
+                      ID: {patient.id}
+                    </p>
+                  </div>
+                  {maxVitalStatus(
+                    classifyVitals(deriveDemoVitals(initialCaseData.id, patientStress)).map(
+                      (v) => v.status,
+                    ),
+                  ) !== "stable" ? (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-rose-50 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-rose-600 ring-1 ring-rose-200">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-rose-500" />
+                      Paziente instabile
+                    </span>
+                  ) : (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-emerald-600 ring-1 ring-emerald-200">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      Stabile
+                    </span>
+                  )}
+                </div>
+
+                <VitalSignsBoard
+                  caseId={initialCaseData.id}
+                  title={initialCaseData.title}
+                  age={patient.age}
+                  sex={patient.sex}
+                  stress={patientStress}
+                  showHeader={false}
+                  className="w-full shrink-0"
+                />
+              </div>
+
+              <SimulationProcessStepper activeStep={processStep} stepTimes={stepTimes} />
+
+              <div className="grid min-h-0 grid-cols-1 gap-3 xl:grid-cols-2">
+                <div className="flex min-h-[26rem] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <div className="flex shrink-0 items-center gap-2 border-b border-slate-100 px-4 py-3">
+                    <MessageCircle className="h-4 w-4 text-slate-400" />
+                    <p className="text-sm font-semibold text-slate-800">Dialogo con il paziente</p>
+                  </div>
+                  <div className="flex min-h-0 flex-1 flex-col p-3">
+                    <HistoryChat
+                      messages={messages}
+                      input={input}
+                      onInputChange={handleInputChange}
+                      onSubmit={handleSubmit}
+                      isLoading={isChatLoading}
+                      compact
+                      fill
+                    />
+                  </div>
+                </div>
+                <SessionEventTimeline
+                  events={sessionTimelineEvents}
+                  className="min-h-[26rem]"
+                />
+              </div>
+            </div>
+          ) : (
           <div
             id="aequan-sim-chat"
-            className={
-              embedded
-                ? "col-span-1 flex min-w-0 flex-col gap-4 p-6 lg:col-span-8"
-                : "flex min-w-0 flex-col gap-4 overflow-x-hidden lg:col-span-8"
-            }
+            className="flex min-w-0 flex-col gap-4 overflow-x-hidden lg:col-span-8"
           >
             {/* Compact patient banner (no duplicate Cartella Clinica Attiva card) */}
             <div className="flex w-full min-w-0 shrink-0 items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -1394,27 +1655,167 @@ export function SimulatorClient({
               </CardContent>
             </Card>
           </div>
+          )}
 
           {/* Right diagnostic panel — monitor, exams, referto */}
           <div
             id="aequan-sim-exams"
             className={
               embedded
-                ? "col-span-1 flex min-w-0 flex-col gap-4 lg:col-span-4"
+                ? "col-span-1 flex min-w-0 flex-col gap-3 lg:col-span-4"
                 : "flex min-w-0 flex-col gap-4 overflow-x-hidden pb-8 lg:col-span-4"
             }
           >
             {embedded ? (
-              <VitalSignsBoard
-                caseId={initialCaseData.id}
-                title={initialCaseData.title}
-                age={patient.age}
-                sex={patient.sex}
-                stress={patientStress}
-                className="w-full shrink-0"
-              />
+              <>
+                <Card className="overflow-hidden rounded-2xl border-slate-200 shadow-sm">
+                  <CardHeader className="border-b border-slate-100 pb-3">
+                    <CardTitle className="text-sm font-semibold text-slate-800">
+                      Cartella clinica
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-3">
+                    <TabsList wrap className="mb-3 w-full">
+                      <TabsTrigger
+                        value="history"
+                        currentValue={activeTab}
+                        onSelect={(value) => setActiveTab(value as typeof activeTab)}
+                        className="shrink-0 whitespace-nowrap"
+                      >
+                        Anamnesi
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="exam"
+                        currentValue={activeTab}
+                        onSelect={(value) => setActiveTab(value as typeof activeTab)}
+                        className="shrink-0 whitespace-nowrap"
+                      >
+                        Esame obiettivo
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="labs"
+                        currentValue={activeTab}
+                        onSelect={(value) => setActiveTab(value as typeof activeTab)}
+                        className="shrink-0 whitespace-nowrap"
+                      >
+                        Esami
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="imaging"
+                        currentValue={activeTab}
+                        onSelect={(value) => setActiveTab(value as typeof activeTab)}
+                        className="shrink-0 whitespace-nowrap"
+                      >
+                        Imaging
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="notes"
+                        currentValue={activeTab}
+                        onSelect={(value) => setActiveTab(value as typeof activeTab)}
+                        className="shrink-0 whitespace-nowrap"
+                      >
+                        Note
+                      </TabsTrigger>
+                    </TabsList>
+                    <Tabs
+                      value={activeTab}
+                      onValueChange={(value) => setActiveTab(value as typeof activeTab)}
+                    >
+                      <TabsContent value="history" currentValue={activeTab} className="mt-0">
+                        <div className="space-y-4">
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                              Anamnesi iniziale
+                            </p>
+                            <p className="mt-1.5 text-sm leading-relaxed text-slate-700">
+                              {reportSections.anamnesisObjective?.trim() ||
+                                patient.mainComplaint ||
+                                "Usa il dialogo al centro per raccogliere l'anamnesi."}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                              Storia clinica
+                            </p>
+                            <p className="mt-1.5 text-sm leading-relaxed text-slate-700">
+                              {expectedConditionText && isAdmin
+                                ? expectedConditionText
+                                : "Nessuna patologia nota."}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                              Allergie
+                            </p>
+                            <p className="mt-1.5 text-sm leading-relaxed text-slate-700">
+                              Nessuna allergia nota.
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPatientChartTab("base");
+                            setIsPatientChartOpen(true);
+                          }}
+                          className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                        >
+                          <FolderOpen className="h-4 w-4" />
+                          Visualizza cartella completa
+                        </button>
+                      </TabsContent>
+                      <TabsContent value="exam" currentValue={activeTab} className="mt-0">
+                        <PhysicalExamTab
+                          sessionId={effectiveSessionId}
+                          patientPrompt={initialCaseData.patientPrompt}
+                          caseId={initialCaseData.id}
+                          onExamResult={handleExamFinding}
+                        />
+                      </TabsContent>
+                      <TabsContent value="labs" currentValue={activeTab} className="scrollbar-aequan mt-0 max-h-64 overflow-y-auto">
+                        <ExamsPanel
+                          selectedExamIds={selectedExamIds}
+                          onToggleExam={toggleExam}
+                          caseExamValues={caseAdvancedExamValues}
+                          examCatalog={examCatalog}
+                          examMacroCatalog={examMacroCatalog}
+                          availableExams={availableExams}
+                          macroFilter={["lab"]}
+                        />
+                      </TabsContent>
+                      <TabsContent value="imaging" currentValue={activeTab} className="scrollbar-aequan mt-0 max-h-64 overflow-y-auto">
+                        <ExamsPanel
+                          selectedExamIds={selectedExamIds}
+                          onToggleExam={toggleExam}
+                          caseExamValues={caseAdvancedExamValues}
+                          examCatalog={examCatalog}
+                          examMacroCatalog={examMacroCatalog}
+                          availableExams={availableExams}
+                          macroFilter={["img", "strum", "endo"]}
+                        />
+                      </TabsContent>
+                      <TabsContent value="notes" currentValue={activeTab} className="mt-0">
+                        <Textarea
+                          rows={6}
+                          value={sessionNotes}
+                          onChange={(e) => setSessionNotes(e.target.value)}
+                          placeholder="Appunti personali sulla sessione (non salvati nel referto)…"
+                          className="rounded-xl border-slate-200 text-sm shadow-none focus:border-[#345884] focus:ring-2 focus:ring-[#345884]/20"
+                        />
+                      </TabsContent>
+                    </Tabs>
+                  </CardContent>
+                </Card>
+                <LiveCoachingPanel
+                  score={liveCoaching.score}
+                  metrics={liveCoaching.metrics}
+                  tip={liveCoaching.tip}
+                />
+              </>
             ) : null}
 
+            {!embedded ? (
+              <>
             <div className="flex w-full min-w-0 flex-col gap-4 rounded-xl border border-border bg-panel-bg p-4 shadow-aequan-panel">
               <section className="space-y-2">
                 <div className="flex items-center gap-2">
@@ -1680,8 +2081,205 @@ export function SimulatorClient({
                 )}
               </CardContent>
             </Card>
+              </>
+            ) : null}
           </div>
         </div>
+
+        {embedded ? (
+          <div className="flex w-full min-w-0 flex-col gap-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-sm font-medium text-slate-500">Esami richiesti</p>
+                <p className="mt-1 text-base font-semibold text-slate-900">
+                  {selectedExams.length > 0
+                    ? `${selectedExams.length} ${selectedExams.length === 1 ? "esame" : "esami"}`
+                    : "Nessuno"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-sm font-medium text-slate-500">Costo SSN</p>
+                <p className="mt-1 text-base font-semibold tabular-nums text-slate-900">
+                  €{totalCost.toFixed(0)}
+                  <span className="text-sm font-normal text-slate-400"> / 250</span>
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="mb-2 text-sm font-medium text-slate-500">Stress paziente</p>
+                <PatientStressBar value={patientStress} />
+              </div>
+            </div>
+
+            <Card
+              id="aequan-sim-conclusion"
+              className="w-full min-w-0 overflow-x-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+            >
+              <CardHeader className="border-b border-slate-100">
+                <CardTitle className="text-lg font-semibold text-slate-900">
+                  Referto di dimissione
+                </CardTitle>
+                <CardDescription className="text-sm text-slate-500">
+                  Compila le tre sezioni e conferma la diagnosi per chiudere il caso.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 pt-4 text-sm">
+                {gameStatus === "playing" && (
+                  <div className="space-y-4">
+                    {isAdmin && debugTargetCondition && (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+                        <span className="font-medium">Debug – patologia target:</span>{" "}
+                        {debugTargetCondition}
+                      </div>
+                    )}
+                    <ClinicalDischargeReportPanel
+                      sections={reportSections}
+                      onChange={setReportSections}
+                      onConfirm={confirmDiagnosis}
+                      confirmDisabled={!isClinicalReportComplete(reportSections)}
+                      isAdminExtras={
+                        isAdmin ? (
+                          <div className="flex items-center justify-end">
+                            <button
+                              type="button"
+                              onClick={() => setForceAiSurprise((v) => !v)}
+                              className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                                forceAiSurprise
+                                  ? "border-amber-200 bg-amber-50 text-amber-900"
+                                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                              }`}
+                            >
+                              {forceAiSurprise ? "Forza imprevisto: ON" : "Forza imprevisto: OFF"}
+                            </button>
+                          </div>
+                        ) : undefined
+                      }
+                    />
+                  </div>
+                )}
+
+                {gameStatus === "checking_diagnosis" && (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-slate-700">
+                    <span className="inline-flex items-center gap-2">
+                      <Activity className="h-4 w-4 animate-spin text-[#345884]" />
+                      Verifica diagnosi in corso…
+                    </span>
+                  </div>
+                )}
+
+                {(gameStatus === "wrong_diagnosis" ||
+                  gameStatus === "success" ||
+                  gameStatus === "complication") && (
+                  <div className="space-y-3">
+                    {gameStatus === "wrong_diagnosis" && (
+                      <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-rose-800">
+                        Diagnosi errata. Il trattamento ha peggiorato il quadro.
+                      </div>
+                    )}
+                    {gameStatus === "success" && (
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800">
+                        Diagnosi corretta. Puoi generare il report finale.
+                      </div>
+                    )}
+                    {gameStatus === "complication" && (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-900">
+                        Diagnosi corretta, ma è comparsa una complicazione improvvisa.
+                      </div>
+                    )}
+                    <div className="flex justify-end gap-2">
+                      {gameStatus === "complication" ? (
+                        <Button
+                          type="button"
+                          size="md"
+                          className="rounded-xl bg-[#1E324E] px-4 text-sm text-white hover:bg-[#2A486D]"
+                          onClick={async () => {
+                            if (isStartingEmergency) return;
+                            setIsStartingEmergency(true);
+                            try {
+                              const sid = await ensureSessionId();
+                              if (!sid) return;
+                              await fetch("/api/session/complication", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  sessionId: sid,
+                                  caseId: initialCaseData.id,
+                                  basePatientPrompt: initialCaseData.patientPrompt,
+                                  complication: "anaphylaxis",
+                                }),
+                              });
+                              setDebugTargetCondition("Anafilassi / reazione allergica grave");
+                              setFinalDiagnosis("");
+                              setReportSections({
+                                anamnesisObjective: "",
+                                diagnosticFindings: "",
+                                diagnosisTreatment: "",
+                              });
+                              setGameStatus("playing");
+                            } finally {
+                              setIsStartingEmergency(false);
+                            }
+                          }}
+                          disabled={isStartingEmergency}
+                        >
+                          {isStartingEmergency ? "Avvio…" : "Gestisci emergenza"}
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="md"
+                          className="rounded-xl bg-[#1E324E] px-4 text-sm text-white hover:bg-[#2A486D]"
+                          onClick={() => void generateReportAndNavigate()}
+                          disabled={reportLoading}
+                        >
+                          {reportLoading ? "Generazione…" : "Vai al Report"}
+                        </Button>
+                      )}
+                    </div>
+                    {reportError ? (
+                      <p className="text-sm text-rose-700">{reportError}</p>
+                    ) : null}
+                    {reportLoading ? (
+                      <ReportGenerationProgress
+                        progress={reportProgress}
+                        message={reportProgressMessage}
+                      />
+                    ) : null}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        ) : null}
+
+        {embedded ? (
+          <footer className="flex w-full min-w-0 flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-500">Obiettivo del caso</p>
+              <p className="mt-0.5 line-clamp-2 text-sm text-slate-700">
+                {initialCaseData.description ||
+                  "Gestisci il paziente in PS con appropriatezza clinica e medico-legale."}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Link
+                href="/dashboard/guidelines"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                <BookOpen className="h-4 w-4" />
+                Linee guida correlate
+              </Link>
+              <button
+                type="button"
+                onClick={() => setIsHelpOpen(true)}
+                aria-label="Aiuto"
+                title="Aiuto"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </button>
+            </div>
+          </footer>
+        ) : null}
       </div>
 
       <Dialog open={isPatientChartOpen}>
@@ -1752,7 +2350,7 @@ export function SimulatorClient({
                       Nessun reperto di esame obiettivo ancora registrato.
                     </p>
                   ) : (
-                    <ul className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+                    <ul className="scrollbar-aequan space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
                       {objectiveFindingsRecentFirst.map((exam) => (
                         <li
                           key={exam.id}
@@ -1780,7 +2378,7 @@ export function SimulatorClient({
                       Nessun esame ancora richiesto in questa sessione.
                     </p>
                   ) : (
-                    <ul className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                    <ul className="scrollbar-aequan space-y-2 max-h-[220px] overflow-y-auto pr-1">
                       {selectedExamsRecentFirst.map((exam) => (
                         <li
                           key={exam.id}
@@ -1847,6 +2445,37 @@ export function SimulatorClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={isHelpOpen}>
+        <DialogContent className="max-w-lg bg-white">
+          <DialogHeader>
+            <DialogTitle>Come funziona la simulazione</DialogTitle>
+            <DialogDescription>
+              <ul className="list-disc space-y-1.5 pl-4 text-sm leading-relaxed text-slate-600">
+                <li>Usa il dialogo per raccogliere l&apos;anamnesi ponendo domande aperte.</li>
+                <li>
+                  Consulta la <span className="font-medium text-slate-800">Cartella clinica</span> a
+                  destra per anamnesi, esame obiettivo, esami e imaging.
+                </li>
+                <li>
+                  Segui la <span className="font-medium text-slate-800">Cronologia eventi</span> per
+                  ripercorrere le tappe della sessione.
+                </li>
+                <li>
+                  Il pannello <span className="font-medium text-slate-800">Coaching</span> mostra un
+                  punteggio live e suggerimenti sull&apos;appropriatezza clinica.
+                </li>
+                <li>Al termine, compila il referto di dimissione per chiudere il caso.</li>
+              </ul>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" size="sm" onClick={() => setIsHelpOpen(false)}>
+              Ho capito
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1886,6 +2515,8 @@ type HistoryChatProps = {
   isLoading: boolean;
   /** Bound height for embedded Prassi grid — avoids fixed 460px blowing layout. */
   compact?: boolean;
+  /** Stretch to fill the parent container height instead of a fixed px height. */
+  fill?: boolean;
 };
 
 function HistoryChat({
@@ -1895,6 +2526,7 @@ function HistoryChat({
   onSubmit,
   isLoading,
   compact = false,
+  fill = false,
 }: HistoryChatProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -1938,15 +2570,18 @@ function HistoryChat({
 
   return (
     <div
-      className={
-        compact
-          ? "flex h-[min(420px,52vh)] min-h-[280px] min-w-0 flex-col gap-3 overflow-x-hidden overflow-hidden rounded-xl border border-slate-100 bg-white p-4 shadow-sm"
-          : "flex h-[460px] min-w-0 flex-col gap-3 overflow-x-hidden overflow-hidden rounded-xl border border-slate-100 bg-white p-4 shadow-sm"
-      }
+      className={cn(
+        "flex min-w-0 flex-col gap-3 overflow-x-hidden overflow-hidden",
+        fill
+          ? "h-full"
+          : compact
+            ? "h-[min(420px,52vh)] min-h-[280px] rounded-xl border border-slate-100 bg-white p-4 shadow-sm"
+            : "h-[460px] rounded-xl border border-slate-100 bg-white p-4 shadow-sm",
+      )}
     >
       <div
         ref={scrollRef}
-        className="flex-1 space-y-3 overflow-y-auto overflow-x-hidden pr-1.5"
+        className="scrollbar-aequan flex-1 space-y-3 overflow-y-auto overflow-x-hidden pr-1.5"
         onWheel={(event) => {
           // Some mouse wheels on Arc do not scroll nested containers reliably.
           if (!scrollRef.current) return;
@@ -1954,9 +2589,16 @@ function HistoryChat({
         }}
       >
         {visibleMessages.length === 0 && (
-          <p className="text-[11px] text-zinc-500">
-            Inizia l&apos;anamnesi ponendo una domanda aperta al paziente (es. &quot;Mi racconti cosa è successo da quando sono iniziati i sintomi&quot;).
-          </p>
+          <div className="flex h-full min-h-[180px] flex-col items-center justify-center gap-2 px-6 text-center">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#1E324E]/8">
+              <MessageCircle className="h-5 w-5 text-[#1E324E]" />
+            </div>
+            <p className="text-sm font-semibold text-slate-700">Inizia l&apos;anamnesi</p>
+            <p className="max-w-xs text-xs leading-relaxed text-slate-500">
+              Poni una domanda aperta al paziente, ad es. &quot;Mi racconti cosa è successo da
+              quando sono iniziati i sintomi&quot;.
+            </p>
+          </div>
         )}
         {visibleMessages.map((message) => {
           const isDoctor = message.role === "user";
@@ -1968,13 +2610,11 @@ function HistoryChat({
               className={`flex ${isDoctor ? "justify-end" : "justify-start"}`}
             >
               {isDoctor ? (
-                <div className="flex max-w-[78%] items-end gap-2">
+                <div className="flex max-w-[78%] flex-col items-end gap-1">
                   <div className="rounded-2xl rounded-br-md bg-[#1E324E] p-4 text-sm font-medium leading-relaxed text-white shadow-sm">
                     {text}
                   </div>
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#2a4266] bg-[#1E324E] shadow-sm">
-                    <Stethoscope className="h-4 w-4 text-white/90" />
-                  </div>
+                  <CheckCheck className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-label="Inviato" />
                 </div>
               ) : (
                 <div className="flex max-w-[78%] items-end gap-2.5">
@@ -2000,38 +2640,39 @@ function HistoryChat({
           </div>
         ) : null}
       </div>
-      <form
-        ref={formRef}
-        onSubmit={onSubmit}
-        className="mt-1 space-y-1.5"
-      >
-        <Textarea
-          className="rounded-xl border-slate-200 text-xs shadow-sm focus:border-[#345884] focus:ring-2 focus:ring-[#345884]/25 focus-visible:outline-none"
-          rows={2}
-          placeholder="Formula la prossima domanda o esplora un sintomo (es. caratteristiche del dolore, fattori di rischio, sintomi associati)..."
-          value={input}
-          onChange={onInputChange}
-          onKeyDown={(event) =>
-            handleTextareaEnterSubmit(event, {
-              getValue: () => input,
-              isDisabled: isLoading,
-              onSubmit: () => formRef.current?.requestSubmit(),
-            })
-          }
-        />
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[11px] text-zinc-500">
-            Invio per inviare · Shift+Invio per andare a capo. L&apos;IA risponde solo come paziente.
-          </p>
+      <form ref={formRef} onSubmit={onSubmit} className="mt-1 shrink-0 space-y-1.5">
+        <div className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5 pl-3 transition focus-within:border-[#345884] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#345884]/20">
+          <Textarea
+            className="min-h-[2.25rem] flex-1 resize-none border-0 bg-transparent p-1.5 text-xs text-slate-800 shadow-none outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+            rows={2}
+            placeholder="Scrivi la prossima domanda al paziente…"
+            value={input}
+            onChange={onInputChange}
+            onKeyDown={(event) =>
+              handleTextareaEnterSubmit(event, {
+                getValue: () => input,
+                isDisabled: isLoading,
+                onSubmit: () => formRef.current?.requestSubmit(),
+              })
+            }
+          />
           <Button
             type="submit"
             disabled={isLoading || !input.trim()}
-            size="sm"
-            className="rounded-xl bg-gradient-to-r from-[#1E324E] to-[#345884] px-4 py-1.5 text-[11px] text-white shadow-sm transition-all duration-300 hover:opacity-95 hover:shadow-md"
+            size="icon"
+            aria-label="Invia domanda"
+            className="mb-0.5 h-9 w-9 shrink-0 rounded-full bg-gradient-to-br from-[#1E324E] to-[#345884] text-white shadow-sm transition-all duration-300 hover:opacity-95 hover:shadow-md disabled:opacity-40"
           >
-            {isLoading ? "Risposta in corso..." : "Invia domanda"}
+            {isLoading ? (
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         </div>
+        <p className="px-1 text-[11px] text-slate-400">
+          Invio per inviare · Shift+Invio per andare a capo · l&apos;IA risponde solo come paziente
+        </p>
       </form>
     </div>
   );
@@ -2060,9 +2701,10 @@ type ExamSelectionCardProps = {
 
 function formatElapsedClock(totalSeconds: number): string {
   const safe = Math.max(0, Math.floor(totalSeconds));
-  const minutes = Math.floor(safe / 60);
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
   const seconds = safe % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 function ExamSelectionCard({
@@ -2153,7 +2795,7 @@ function ExamsPanel({
 
   return (
     <div className="h-[420px]">
-      <div className="rounded-2xl bg-white/70 border border-zinc-200/80 p-3 overflow-y-auto text-xs h-full">
+      <div className="scrollbar-aequan rounded-2xl bg-white/70 border border-zinc-200/80 p-3 overflow-y-auto text-xs h-full">
         <div className="relative mb-3">
           <Search className="h-3.5 w-3.5 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
           <input

@@ -27,13 +27,21 @@ type TabsListProps = {
   children: ReactNode;
   className?: string;
   value?: string;
+  /**
+   * Allow tabs to wrap onto multiple rows instead of scrolling/overflowing.
+   * Uses a softer corner radius that stays correct regardless of row count
+   * (a full pill radius looks broken once the list wraps to 2+ rows).
+   */
+  wrap?: boolean;
 };
 
-export function TabsList({ children, className }: TabsListProps) {
+export function TabsList({ children, className, wrap = false }: TabsListProps) {
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1 rounded-lg bg-white p-1 border border-slate-200 shadow-sm",
+        wrap
+          ? "flex flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1"
+          : "inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 p-1",
         className,
       )}
     >
@@ -63,7 +71,7 @@ export function TabsTrigger({
       type="button"
       onClick={() => onSelect(value)}
       className={cn(
-        "px-3.5 py-1.5 text-xs font-medium rounded-md transition-colors",
+        "rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors",
         isActive
           ? "bg-[#1E324E] text-white shadow-sm"
           : "bg-transparent text-slate-500 hover:text-[#2F4156]",

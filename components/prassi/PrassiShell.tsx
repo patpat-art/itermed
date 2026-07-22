@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import type { ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import { Filter, Search } from "lucide-react";
 import {
   type CaseDifficulty,
   DIFFICULTY_LABELS,
@@ -12,6 +13,7 @@ import {
 import { cn } from "@/app/utils/cn";
 import type { ClinicalCaseRow } from "@/components/dashboard/ClinicalCaseCard";
 import { CaseFilters } from "@/components/dashboard/CaseFilters";
+import { patientDisplayName } from "@/lib/prassi/demo-vitals";
 
 type SpecialtyOption = {
   id: string;
@@ -24,13 +26,24 @@ type PrassiShellProps = {
   children: ReactNode;
 };
 
-const DIFFICULTY_BADGE: Record<CaseDifficulty, string> = {
-  EASY: "bg-slate-50 text-slate-700 border border-slate-200/60",
-  MEDIUM: "bg-amber-50/70 text-amber-800 border border-amber-200/50",
-  HARD: "bg-rose-50/70 text-rose-800 border border-rose-200/50",
+/** Difficulty conveyed as a compact colored pill, fixed width so cards never reflow. */
+const DIFFICULTY_PILL: Record<CaseDifficulty, string> = {
+  EASY: "bg-emerald-50 text-emerald-700",
+  MEDIUM: "bg-amber-50 text-amber-700",
+  HARD: "bg-rose-50 text-rose-700",
 };
 
+const DIFFICULTY_OPTIONS: Array<{ id: CaseDifficulty | "ALL"; label: string }> = [
+  { id: "ALL", label: "Tutte le difficoltà" },
+  { id: "EASY", label: "Facile" },
+  { id: "MEDIUM", label: "Media" },
+  { id: "HARD", label: "Difficile" },
+];
+
 export function PrassiShell({ cases, specialties = [], children }: PrassiShellProps) {
+  const [railQuery, setRailQuery] = useState("");
+  const [railDifficulty, setRailDifficulty] = useState<CaseDifficulty | "ALL">("ALL");
+  const [isRailFilterOpen, setIsRailFilterOpen] = useState(false);
   const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
   const queryCaseId = searchParams?.get("caseId") ?? null;
@@ -84,85 +97,169 @@ export function PrassiShell({ cases, specialties = [], children }: PrassiShellPr
     .filter(Boolean)
     .join("&");
 
-  const caseList = (
-    <>
-      <div className="shrink-0 border-b border-slate-200 px-3 py-2.5 dark:border-slate-800">
-        <p className="font-display text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-          Libreria casi
+  const railFilteredCases = useMemo(() => {
+    const q = railQuery.trim().toLowerCase();
+    return visibleCases.filter((c) => {
+      if (railDifficulty !== "ALL" && c.difficulty !== railDifficulty) return false;
+      if (!q) return true;
+      const patientLabel = patientDisplayName(c.id, c.title, c.sex);
+      const haystack = [c.title, patientLabel, displaySpecialtyName(c)]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [visibleCases, railQuery, railDifficulty]);
+
+  const renderCaseList = (list: ClinicalCaseRow[]) => (
+    <div className="scrollbar-aequan min-h-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden p-3 pb-6">
+      {list.length === 0 ? (
+        <p className="px-2 py-8 text-center text-sm text-slate-400">
+          Nessun caso disponibile con i filtri attivi.
         </p>
-        <p className="mt-0.5 truncate text-xs text-slate-400">
-          {visibleCases.length}{" "}
-          {visibleCases.length === 1 ? "caso disponibile" : "casi disponibili"}
-        </p>
-      </div>
-      <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden p-2 pr-1 pb-8">
-        {visibleCases.length === 0 ? (
-          <p className="px-3 py-8 text-center text-sm text-slate-400">
-            Nessun caso disponibile con i filtri attivi.
-          </p>
-        ) : (
-          visibleCases.map((caseRow) => {
-            const isActive = activeCaseId === caseRow.id;
-            const specialty = displaySpecialtyName(caseRow);
-            const difficultyKey = isCaseDifficulty(caseRow.difficulty)
-              ? caseRow.difficulty
-              : "MEDIUM";
-            const difficultyLabel =
-              DIFFICULTY_LABELS[difficultyKey] ?? String(caseRow.difficulty ?? "Media");
-            const href = `/dashboard/prassi?caseId=${encodeURIComponent(caseRow.id)}${
-              filterQuery ? `&${filterQuery}` : ""
-            }`;
-            return (
-              <Link
-                key={caseRow.id}
-                href={href}
-                className={cn(
-                  "block min-w-0 overflow-x-hidden rounded-lg border px-2.5 py-2.5 transition-all duration-200",
-                  isActive
-                    ? "border-l-4 border-l-brand-primary border-y-border border-r-border bg-brand-secondary/[0.04] shadow-sm"
-                    : "border-border hover:border-slate-300 hover:bg-ui-bg",
-                )}
-              >
-                <div className="mb-1.5 flex min-w-0 flex-wrap items-center gap-1">
-                  <span className="max-w-full truncate rounded-full border border-brand-secondary/15 bg-brand-secondary/10 px-2 py-0.5 text-[10px] font-medium text-brand-secondary">
-                    {specialty}
-                  </span>
+      ) : (
+        list.map((caseRow) => {
+          const isActive = activeCaseId === caseRow.id;
+          const specialty = displaySpecialtyName(caseRow);
+          const difficultyKey = isCaseDifficulty(caseRow.difficulty)
+            ? caseRow.difficulty
+            : "MEDIUM";
+          const difficultyLabel =
+            DIFFICULTY_LABELS[difficultyKey] ?? String(caseRow.difficulty ?? "Media");
+          const href = isPlaying
+            ? `/dashboard/prassi/play/${encodeURIComponent(caseRow.id)}`
+            : `/dashboard/prassi?caseId=${encodeURIComponent(caseRow.id)}${
+                filterQuery ? `&${filterQuery}` : ""
+              }`;
+          const inProgress = isActive && isPlaying;
+          return (
+            <Link
+              key={caseRow.id}
+              href={href}
+              className={cn(
+                "flex min-h-[6.5rem] min-w-0 flex-col justify-center gap-1.5 overflow-hidden rounded-xl border bg-white p-3 transition-all duration-200",
+                isActive
+                  ? "border-[#1E324E] bg-[#1E324E]/[0.04] shadow-sm ring-1 ring-[#1E324E]/10"
+                  : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/60",
+              )}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide",
+                    inProgress ? "text-[#1E324E]" : "text-slate-400",
+                  )}
+                >
                   <span
                     className={cn(
-                      "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                      DIFFICULTY_BADGE[difficultyKey],
+                      "h-1.5 w-1.5 shrink-0 rounded-full",
+                      inProgress ? "animate-pulse bg-[#1E324E]" : "bg-slate-300",
                     )}
-                  >
-                    {difficultyLabel}
-                  </span>
-                </div>
-                <p className="font-display line-clamp-2 text-sm font-semibold leading-snug text-text-primary">
-                  {caseRow.title ?? "Caso clinico"}
-                </p>
-                <p className="mt-1 truncate text-[11px] text-slate-400">
-                  {caseRow.isGlobal ? "Caso globale" : "Caso individuale"}
-                </p>
-              </Link>
-            );
-          })
-        )}
-      </div>
-    </>
+                  />
+                  {inProgress ? "In corso" : "Non iniziato"}
+                </span>
+              </div>
+              <p className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900">
+                {caseRow.title ?? "Caso clinico"}
+              </p>
+              <div className="flex items-center justify-between gap-2">
+                <span className="min-w-0 truncate text-xs text-slate-500">{specialty}</span>
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                    DIFFICULTY_PILL[difficultyKey],
+                  )}
+                >
+                  {difficultyLabel}
+                </span>
+              </div>
+            </Link>
+          );
+        })
+      )}
+    </div>
   );
 
-  /* Active simulation: hide Libreria Casi — full workspace to the session */
+  /* Immersive simulation: left case rail + full workspace (mockup layout) */
   if (isPlaying) {
     return (
-      <div className="h-[calc(100vh-5rem)] min-h-0 w-full overflow-y-auto overflow-x-hidden bg-slate-50 p-3 dark:bg-slate-950 sm:p-4">
-        {children}
+      <div className="flex h-screen min-h-0 w-full overflow-hidden bg-[#F4F6F8]">
+        <aside className="flex h-full w-[17.5rem] shrink-0 flex-col border-r border-slate-200 bg-white">
+          <div className="shrink-0 border-b border-slate-100 px-4 py-4">
+            <p className="text-sm font-bold text-slate-800">I miei casi</p>
+            <div className="relative mt-3 flex items-center gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="search"
+                  value={railQuery}
+                  onChange={(e) => setRailQuery(e.target.value)}
+                  placeholder="Cerca un caso…"
+                  aria-label="Cerca un caso tra i miei casi"
+                  className="h-9 w-full rounded-full border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[#1E324E]/30 focus:bg-white focus:ring-2 focus:ring-[#1E324E]/10"
+                />
+              </div>
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsRailFilterOpen((v) => !v)}
+                  aria-label="Filtra per difficoltà"
+                  aria-expanded={isRailFilterOpen}
+                  className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-full border transition",
+                    railDifficulty !== "ALL"
+                      ? "border-[#1E324E] bg-[#1E324E] text-white"
+                      : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100",
+                  )}
+                >
+                  <Filter className="h-3.5 w-3.5" />
+                </button>
+                {isRailFilterOpen ? (
+                  <div className="absolute right-0 top-11 z-10 w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+                    {DIFFICULTY_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => {
+                          setRailDifficulty(opt.id);
+                          setIsRailFilterOpen(false);
+                        }}
+                        className={cn(
+                          "flex w-full items-center rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition",
+                          railDifficulty === opt.id
+                            ? "bg-[#1E324E]/10 text-[#1E324E]"
+                            : "text-slate-600 hover:bg-slate-50",
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+          {renderCaseList(railFilteredCases)}
+          <div className="shrink-0 border-t border-slate-100 p-3">
+            <Link
+              href="/dashboard/prassi"
+              className="flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Carica altri casi
+            </Link>
+          </div>
+        </aside>
+        <div className="scrollbar-aequan min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4">
+          {children}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-[calc(100vh-5rem)] min-h-0 w-full flex-col gap-4 overflow-hidden p-4">
+    <div className="flex min-h-[calc(100vh-5rem)] w-full flex-col gap-4 p-4 md:p-6">
       <header className="shrink-0 space-y-1">
-        <h1 className="font-display text-xl font-semibold tracking-tight text-brand-primary">
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-brand-primary">
           Prassi Clinica
         </h1>
         <p className="max-w-3xl text-sm leading-relaxed text-slate-500">
@@ -174,7 +271,7 @@ export function PrassiShell({ cases, specialties = [], children }: PrassiShellPr
       {safeSpecialties.length > 0 ? (
         <CaseFilters specialties={safeSpecialties} resultCount={visibleCases.length} />
       ) : (
-        <div className="flex h-14 shrink-0 items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex h-14 shrink-0 items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2 shadow-sm">
           <p className="text-sm text-slate-500">Filtri non disponibili</p>
           <span className="text-xs tabular-nums text-slate-500">
             {visibleCases.length} {visibleCases.length === 1 ? "risultato" : "risultati"}
@@ -182,12 +279,21 @@ export function PrassiShell({ cases, specialties = [], children }: PrassiShellPr
         </div>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-cols-12 gap-4 overflow-hidden">
-        <aside className="col-span-12 flex h-full min-h-0 min-w-0 flex-col gap-3 overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200 bg-white pr-1 shadow-sm dark:border-slate-800 dark:bg-slate-900 md:col-span-4 lg:col-span-3">
-          {caseList}
+      <div className="grid min-h-[44rem] flex-1 grid-cols-12 gap-4">
+        <aside className="col-span-12 flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:col-span-4 lg:col-span-3">
+          <div className="shrink-0 border-b border-slate-100 px-4 py-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">
+              I miei casi
+            </p>
+            <p className="mt-0.5 text-xs text-slate-400">
+              {visibleCases.length}{" "}
+              {visibleCases.length === 1 ? "caso disponibile" : "casi disponibili"}
+            </p>
+          </div>
+          {renderCaseList(visibleCases)}
         </aside>
 
-        <section className="col-span-12 h-full min-h-0 min-w-0 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 md:col-span-8 lg:col-span-9">
+        <section className="scrollbar-aequan col-span-12 h-full min-h-0 min-w-0 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:col-span-8 lg:col-span-9">
           {children}
         </section>
       </div>

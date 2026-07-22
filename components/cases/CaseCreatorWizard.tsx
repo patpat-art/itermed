@@ -541,7 +541,7 @@ export function CaseCreatorWizard({ canPublishGlobal = false }: CaseCreatorWizar
         <Card className="border-zinc-200/80 bg-white/90 shadow-sm">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Route className="h-4 w-4 text-violet-600" />
+              <Route className="h-4 w-4 text-[#345884]" />
               Percorso Gold Standard
             </CardTitle>
             <CardDescription>

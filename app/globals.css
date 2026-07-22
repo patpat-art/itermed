@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
+/* Force light UI — dark: only when .dark is explicitly set (never via OS). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ── AEQUAN design tokens (Enterprise Institutional Theme) ────────────────── */
 
 :root {
@@ -139,6 +142,38 @@
 }
 
 @layer base {
+  /* Thin, unobtrusive scrollbars everywhere — not just the simulator.
+     Firefox: inherited scrollbar-width/color. Chromium/WebKit: pseudo-elements
+     applied globally so no per-component class is required. */
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--aequan-brand-secondary) 30%, transparent) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--aequan-brand-secondary) 30%, transparent);
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    background-clip: padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in srgb, var(--aequan-brand-secondary) 55%, transparent);
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
   body {
     background-color: #f8fafc;
     background-image:
@@ -258,23 +293,97 @@
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
 
+  /* Dashboard overview */
+  .dashboard-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-aequan-xl);
+    border: 1px solid color-mix(in srgb, var(--aequan-brand-secondary) 18%, white);
+    background:
+      linear-gradient(135deg, #ffffff 0%, #f8fafc 45%, #f1f5f9 100%);
+    box-shadow: var(--shadow-aequan-panel);
+  }
+
+  .dashboard-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 70% 80% at 100% 0%, rgba(52, 88, 132, 0.08), transparent 60%),
+      radial-gradient(ellipse 50% 60% at 0% 100%, rgba(30, 50, 78, 0.05), transparent 55%);
+    pointer-events: none;
+  }
+
+  .dashboard-stat-card {
+    position: relative;
+    border-radius: var(--radius-aequan-lg);
+    border: 1px solid var(--aequan-border);
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(8px);
+    box-shadow: var(--shadow-clinical);
+    transition: box-shadow var(--duration-aequan) ease, transform var(--duration-aequan) ease;
+  }
+
+  .dashboard-stat-card:hover {
+    box-shadow: var(--shadow-aequan);
+    transform: translateY(-1px);
+  }
+
+  .dashboard-card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.625rem;
+    background: color-mix(in srgb, var(--aequan-brand-secondary) 12%, white);
+    color: var(--aequan-brand-secondary);
+  }
+
+  .dashboard-cta-gradient {
+    background: linear-gradient(135deg, #1e324e 0%, #2a486d 50%, #345884 100%);
+    transition: box-shadow var(--duration-aequan) ease, transform var(--duration-aequan) ease;
+  }
+
+  .dashboard-cta-gradient:hover {
+    box-shadow: 0 8px 28px -6px rgba(30, 50, 78, 0.45);
+    transform: translateY(-1px);
+  }
+
+  .dashboard-timeline-line {
+    position: absolute;
+    left: 0.6875rem;
+    top: 1.75rem;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--aequan-border) 0%, transparent 100%);
+  }
+
   .font-tabular {
     font-variant-numeric: tabular-nums;
   }
 
   .scrollbar-aequan {
     scrollbar-width: thin;
-    scrollbar-color: color-mix(in srgb, var(--aequan-brand-secondary) 35%, transparent) transparent;
+    scrollbar-color: color-mix(in srgb, var(--aequan-brand-secondary) 30%, transparent) transparent;
   }
 
   .scrollbar-aequan::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
+  }
+
+  .scrollbar-aequan::-webkit-scrollbar-track {
+    background: transparent;
   }
 
   .scrollbar-aequan::-webkit-scrollbar-thumb {
-    background-color: color-mix(in srgb, var(--aequan-brand-secondary) 35%, transparent);
+    background-color: color-mix(in srgb, var(--aequan-brand-secondary) 30%, transparent);
     border-radius: 9999px;
+  }
+
+  .scrollbar-aequan::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in srgb, var(--aequan-brand-secondary) 55%, transparent);
   }
 
   .aequan-citation {

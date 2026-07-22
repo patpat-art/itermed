@@ -63,29 +63,26 @@ export function GuidelinesHub({
 
   return (
     <div className="flex w-full flex-col gap-5">
-      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-4">
+      <header className="flex flex-wrap items-end justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-brand-primary">
-            <BookOpen className="h-5 w-5" />
-            <h1 className="font-display text-xl font-semibold tracking-tight">Linee Guida</h1>
-          </div>
-          <p className="max-w-2xl text-sm text-slate-500">
-            Hub unico per consultare documenti medico-legali e protocolli clinici del motore RAG.
-            {isAdmin
-              ? " Come admin puoi anche caricare, attivare e rimuovere documenti da qui."
-              : ""}
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">
+            Linee Guida
+          </h1>
+          <p className="max-w-2xl text-base text-slate-500">
+            Documenti e protocolli clinici per la simulazione.
+            {isAdmin ? " Come admin puoi caricare e gestire i documenti." : ""}
           </p>
         </div>
         {isAdmin ? (
-          <div className="inline-flex rounded-xl border border-border bg-panel-bg p-1 shadow-sm">
+          <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1">
             <button
               type="button"
               onClick={() => setTab("browse")}
               className={cn(
-                "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                "rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors",
                 tab === "browse"
-                  ? "bg-brand-primary text-white"
-                  : "text-slate-600 hover:bg-ui-bg",
+                  ? "bg-brand-primary text-white shadow-sm"
+                  : "text-slate-600 hover:text-brand-primary",
               )}
             >
               Archivio
@@ -94,10 +91,10 @@ export function GuidelinesHub({
               type="button"
               onClick={() => setTab("ingest")}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors",
                 tab === "ingest"
-                  ? "bg-brand-primary text-white"
-                  : "text-slate-600 hover:bg-ui-bg",
+                  ? "bg-brand-primary text-white shadow-sm"
+                  : "text-slate-600 hover:text-brand-primary",
               )}
             >
               <FileUp className="h-3.5 w-3.5" />
@@ -128,7 +125,7 @@ export function GuidelinesHub({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Cerca per titolo, tag o contenuto…"
-                className="h-9 rounded-xl pl-9 text-sm"
+                className="h-10 rounded-full bg-slate-50 pl-9 text-sm shadow-none"
               />
             </div>
             <p className="text-xs text-slate-500">
