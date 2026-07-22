@@ -426,7 +426,7 @@ export default async function EditCasePage({
                   <details open className="rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-3 space-y-2">
                 <summary className="cursor-pointer list-none text-[11px] font-medium text-zinc-700">Neurologico</summary>
                 <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-700">
-                  <Brain className="h-3.5 w-3.5 text-purple-600" />
+                  <Brain className="h-3.5 w-3.5 text-[#345884]" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
                   <Input

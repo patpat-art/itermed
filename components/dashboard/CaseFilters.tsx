@@ -64,14 +64,14 @@ export function CaseFilters({ specialties, resultCount }: CaseFiltersProps) {
   }, [searchValue, activeQuery, replaceParams]);
 
   const selectClassName =
-    "h-9 max-w-[11rem] truncate rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-slate-500 dark:focus:ring-slate-800";
+    "h-9 max-w-[11rem] truncate rounded-full border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-700 outline-none transition focus:border-[#1E324E]/30 focus:bg-white focus:ring-2 focus:ring-[#1E324E]/10";
 
   return (
-    <div className="flex h-14 shrink-0 items-center justify-between gap-3 overflow-x-auto overflow-y-hidden rounded-xl border border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-900">
+    <div className="flex h-14 shrink-0 items-center justify-between gap-3 overflow-x-auto overflow-y-hidden rounded-xl border border-slate-200 bg-white px-4 py-2">
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <div className="relative w-64 shrink-0 sm:w-72">
           <Search
-            className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
             aria-hidden
           />
           <input
@@ -80,7 +80,7 @@ export function CaseFilters({ specialties, resultCount }: CaseFiltersProps) {
             onChange={(e) => setSearchValue(e.target.value)}
             placeholder="Cerca caso…"
             aria-label="Cerca caso clinico"
-            className="h-9 w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-800"
+            className="h-9 w-full rounded-full border border-slate-200 bg-slate-50 py-1.5 pl-9 pr-3 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-[#1E324E]/30 focus:bg-white focus:ring-2 focus:ring-[#1E324E]/10"
           />
         </div>
 
@@ -133,7 +133,7 @@ export function CaseFilters({ specialties, resultCount }: CaseFiltersProps) {
       </div>
 
       {typeof resultCount === "number" ? (
-        <span className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">
+        <span className="shrink-0 text-xs tabular-nums text-slate-500">
           {resultCount} {resultCount === 1 ? "risultato" : "risultati"}
         </span>
       ) : null}

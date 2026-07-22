@@ -8,10 +8,19 @@ import {
 import {
   classifyVitals,
   maxVitalStatus,
+  vitalFindingLabel,
   vitalStatusLabel,
   type VitalStatus,
 } from "@/lib/clinical/vital-status";
 import { cn } from "@/app/utils/cn";
+import {
+  Activity,
+  Droplets,
+  Heart,
+  Thermometer,
+  Wind,
+  type LucideIcon,
+} from "lucide-react";
 
 type VitalSignsBoardProps = {
   caseId: string;
@@ -20,38 +29,36 @@ type VitalSignsBoardProps = {
   sex?: string | null;
   stress?: number;
   className?: string;
+  showHeader?: boolean;
 };
 
-function statusDotClass(status: VitalStatus) {
+const VITAL_ICONS: Record<string, LucideIcon> = {
+  hr: Heart,
+  bp: Activity,
+  spo2: Droplets,
+  rr: Wind,
+  temp: Thermometer,
+};
+
+function findingTextTone(status: VitalStatus) {
   switch (status) {
     case "critical":
-      return "bg-rose-500";
+      return "text-rose-600";
     case "borderline":
-      return "bg-amber-400";
+      return "text-amber-600";
     default:
-      return "bg-emerald-400";
+      return "text-slate-400";
   }
 }
 
-function statusTextClass(status: VitalStatus) {
+function iconTone(status: VitalStatus) {
   switch (status) {
     case "critical":
-      return "text-rose-400";
+      return "text-rose-500";
     case "borderline":
-      return "text-amber-300";
+      return "text-amber-500";
     default:
-      return "text-emerald-400";
-  }
-}
-
-function statusValueClass(status: VitalStatus) {
-  switch (status) {
-    case "critical":
-      return "text-rose-400";
-    case "borderline":
-      return "text-amber-300";
-    default:
-      return "text-emerald-400";
+      return "text-[#345884]";
   }
 }
 
@@ -62,6 +69,7 @@ export function VitalSignsBoard({
   sex,
   stress = 0,
   className,
+  showHeader = true,
 }: VitalSignsBoardProps) {
   const vitals = deriveDemoVitals(caseId, stress);
   const classified = classifyVitals(vitals);
@@ -69,74 +77,67 @@ export function VitalSignsBoard({
   const resolvedAge = typeof age === "number" ? age : estimateAgeFromTitle(title, Number(age) || 58);
   const name = patientDisplayName(caseId, title, sex);
   const sexLabel = sex === "F" ? "F" : sex === "M" ? "M" : null;
+  const unstable = overall !== "stable";
 
   return (
     <div
       className={cn(
-        "w-full min-w-0 overflow-hidden rounded-xl bg-slate-900 text-white shadow-lg",
+        "w-full min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm",
         className,
       )}
       role="region"
-      aria-label="Monitor multiparametrico parametri vitali"
+      aria-label="Monitor parametri vitali"
     >
-      <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
-        <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-            Monitor multiparametrico
-          </p>
-          <p className="mt-0.5 truncate text-sm font-semibold text-white">
-            {name}
-            <span className="font-normal text-slate-400">
-              {" "}
-              · {resolvedAge} anni
-              {sexLabel ? ` · ${sexLabel}` : ""}
-            </span>
-          </p>
-        </div>
-        <span
-          className={cn(
-            "inline-flex shrink-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide",
-            statusTextClass(overall),
-          )}
-        >
-          <span className={cn("h-1.5 w-1.5 rounded-full", statusDotClass(overall))} />
-          {vitalStatusLabel(overall)}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-5 gap-2 p-3">
-        {classified.map((vital) => (
-          <div
-            key={vital.id}
-            className="flex min-w-0 flex-col gap-1 overflow-hidden rounded-lg bg-slate-950/60 px-2 py-2"
-            title={`${vital.fullLabel}: ${vital.value} ${vital.unit}`}
-          >
-            <div className="flex min-w-0 items-center justify-between gap-1">
-              <span className="truncate text-xs text-slate-400" title={vital.fullLabel}>
-                {vital.label}
+      {showHeader ? (
+        <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-slate-800">
+              {name}
+              <span className="font-normal text-slate-400">
+                {" "}
+                · {resolvedAge} anni
+                {sexLabel ? ` · ${sexLabel}` : ""}
               </span>
-              <span
-                className={cn("h-1.5 w-1.5 shrink-0 rounded-full", statusDotClass(vital.status))}
-                title={vitalStatusLabel(vital.status)}
-                aria-label={vitalStatusLabel(vital.status)}
-              />
-            </div>
-            <p
-              className={cn(
-                "truncate text-base font-bold tabular-nums leading-none md:text-lg",
-                statusValueClass(vital.status),
-              )}
-            >
-              {vital.value}
             </p>
-            <div className="flex min-w-0 items-center justify-between gap-1">
-              <span className="truncate text-[10px] text-slate-500">{vital.unit}</span>
-              <span className={cn("truncate text-[10px] font-medium", statusTextClass(vital.status))}>
-                {vitalStatusLabel(vital.status)}
-              </span>
-            </div>
           </div>
-        ))}
+          <span
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold uppercase tracking-wide",
+              unstable ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600",
+            )}
+          >
+            {unstable ? "Instabile" : vitalStatusLabel(overall)}
+          </span>
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-2 divide-y divide-slate-100 sm:grid-cols-3 sm:divide-y-0 sm:divide-x lg:grid-cols-5">
+        {classified.map((vital) => {
+          const Icon = VITAL_ICONS[vital.id] ?? Activity;
+          const finding = vitalFindingLabel(vital).toUpperCase();
+          return (
+            <div
+              key={vital.id}
+              className="flex min-w-0 flex-col gap-1 px-4 py-3.5"
+              title={`${vital.fullLabel}: ${vital.value} ${vital.unit}`}
+            >
+              <div className="flex items-center gap-1.5">
+                <Icon className={cn("h-4 w-4 shrink-0", iconTone(vital.status))} />
+                <span className="text-sm font-semibold text-slate-500">{vital.label}</span>
+              </div>
+              <p className="text-2xl font-bold tabular-nums leading-none text-slate-900 md:text-[1.75rem]">
+                {vital.value}
+                {vital.id === "spo2" ? <span className="text-lg">%</span> : null}
+              </p>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                {vital.id === "spo2" ? "aria ambiente" : vital.unit}
+              </p>
+              <p className={cn("text-xs font-bold uppercase tracking-wide", findingTextTone(vital.status))}>
+                {finding}
+              </p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

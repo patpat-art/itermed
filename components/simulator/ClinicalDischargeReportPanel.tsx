@@ -74,14 +74,14 @@ export function ClinicalDischargeReportPanel({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-indigo-200/70 bg-gradient-to-br from-indigo-50/60 to-white px-3 py-2.5">
+      <div className="rounded-2xl border border-[#1E324E]/15 bg-gradient-to-br from-[#1E324E]/[0.04] to-white px-3 py-2.5">
         <div className="flex items-start gap-2">
-          <FileText className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
+          <FileText className="h-4 w-4 text-[#1E324E] shrink-0 mt-0.5" />
           <div>
-            <p className="text-[11px] font-semibold text-indigo-950">
+            <p className="text-[11px] font-semibold text-[#1E324E]">
               Stilazione del Referto di Dimissione / Trasferimento
             </p>
-            <p className="text-[10px] text-indigo-800/80 mt-0.5 leading-relaxed">
+            <p className="text-[10px] text-slate-500 mt-0.5 leading-relaxed">
               Compila un referto clinico strutturato secondo gli standard di Pronto Soccorso e tutela medico-legale.
             </p>
           </div>

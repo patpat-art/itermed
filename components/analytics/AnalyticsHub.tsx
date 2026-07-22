@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState, useTransition } from "react";
+import { Activity, BarChart3, Euro, Lightbulb, TrendingUp } from "lucide-react";
 import type { AnalyticsPageData } from "@/lib/analytics/analytics-types";
 import { PersonalProfilePanel } from "@/components/analytics/PersonalProfilePanel";
 import { ClinicalPerformanceRegistry } from "@/components/analytics/ClinicalPerformanceRegistry";
@@ -69,13 +70,18 @@ export function AnalyticsHub({ initialData }: AnalyticsHubProps) {
 
       <section className="grid grid-cols-1 gap-5 lg:grid-cols-12">
         <div className="rounded-xl border border-border bg-panel-bg shadow-aequan-panel lg:col-span-7">
-          <div className="border-b border-border-subtle px-5 py-4">
-            <h2 className="font-display text-sm font-semibold text-brand-primary">
-              Radar competenze aggregate
-            </h2>
-            <p className="mt-1 text-xs text-slate-500">
-              Media sulle simulazioni completate vs target formativo (100).
-            </p>
+          <div className="flex items-center gap-2.5 border-b border-border-subtle px-5 py-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+              <Activity className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="font-display text-sm font-semibold text-brand-primary">
+                Radar competenze aggregate
+              </h2>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Media sulle simulazioni completate vs target formativo (100).
+              </p>
+            </div>
           </div>
           <div className="h-80 px-4 py-4">
             {statistics.completedCount === 0 ? (
@@ -89,13 +95,18 @@ export function AnalyticsHub({ initialData }: AnalyticsHubProps) {
         </div>
 
         <div className="rounded-xl border border-brand-secondary/15 bg-brand-secondary/[0.04] shadow-aequan-panel lg:col-span-5">
-          <div className="border-b border-border-subtle px-5 py-4">
-            <h2 className="font-display text-sm font-semibold text-brand-primary">
-              Indice appropriatezza prescrittiva
-            </h2>
-            <p className="mt-1 text-xs text-slate-500">
-              Proxy economico dalla media di sostenibilità (0–100).
-            </p>
+          <div className="flex items-center gap-2.5 border-b border-border-subtle px-5 py-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-slate-600 shadow-sm">
+              <Euro className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="font-display text-sm font-semibold text-brand-primary">
+                Indice appropriatezza prescrittiva
+              </h2>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Proxy economico dalla media di sostenibilità (0–100).
+              </p>
+            </div>
           </div>
           <div className="px-5 py-4">
             {statistics.completedCount === 0 ? (
@@ -115,11 +126,18 @@ export function AnalyticsHub({ initialData }: AnalyticsHubProps) {
 
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <div className="rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
-          <div className="border-b border-border-subtle px-5 py-4">
-            <h2 className="font-display text-sm font-semibold text-brand-primary">Trend punteggi</h2>
-            <p className="mt-1 text-xs text-slate-500">
-              Andamento del punteggio totale nelle ultime sessioni completate.
-            </p>
+          <div className="flex items-center gap-2.5 border-b border-border-subtle px-5 py-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+              <TrendingUp className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="font-display text-sm font-semibold text-brand-primary">
+                Trend punteggi
+              </h2>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Andamento del punteggio totale nelle ultime sessioni completate.
+              </p>
+            </div>
           </div>
           <div className="px-5 py-4">
             <ScoreTrendChart data={statistics.trend} />
@@ -127,11 +145,16 @@ export function AnalyticsHub({ initialData }: AnalyticsHubProps) {
         </div>
 
         <div className="rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
-          <div className="border-b border-border-subtle px-5 py-4">
-            <h2 className="font-display text-sm font-semibold text-brand-primary">
-              Medie per dimensione
-            </h2>
-            <p className="mt-1 text-xs text-slate-500">Snapshot su tutti i report completati.</p>
+          <div className="flex items-center gap-2.5 border-b border-border-subtle px-5 py-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+              <BarChart3 className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="font-display text-sm font-semibold text-brand-primary">
+                Medie per dimensione
+              </h2>
+              <p className="mt-0.5 text-xs text-slate-500">Snapshot su tutti i report completati.</p>
+            </div>
           </div>
           <div className="px-5 py-4">
             {statistics.completedCount === 0 ? (
@@ -156,13 +179,18 @@ export function AnalyticsHub({ initialData }: AnalyticsHubProps) {
       </section>
 
       <div className="rounded-xl border border-border bg-panel-bg shadow-aequan-panel">
-        <div className="border-b border-border-subtle px-5 py-4">
-          <h2 className="font-display text-sm font-semibold text-brand-primary">
-            Raccomandazioni clinico-legali
-          </h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Aree prioritarie di miglioramento basate sulle tue performance aggregate.
-          </p>
+        <div className="flex items-center gap-2.5 border-b border-border-subtle px-5 py-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+            <Lightbulb className="h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="font-display text-sm font-semibold text-brand-primary">
+              Raccomandazioni clinico-legali
+            </h2>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Aree prioritarie di miglioramento basate sulle tue performance aggregate.
+            </p>
+          </div>
         </div>
         <div className="px-5 py-4">
           <AiClinicalCoach insights={statistics.coachInsights} />

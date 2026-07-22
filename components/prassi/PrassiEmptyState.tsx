@@ -1,10 +1,11 @@
+import type { ElementType } from "react";
 import {
   ClipboardCheck,
   Euro,
   HeartHandshake,
   Pill,
   Scale,
-  Shield,
+  Stethoscope,
   Target,
 } from "lucide-react";
 
@@ -18,6 +19,48 @@ type PrassiWelcomeDashboardProps = {
   stats?: PrassiWelcomeStats;
 };
 
+function InfoTile({
+  icon: Icon,
+  children,
+}: {
+  icon: ElementType;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-xl bg-slate-50 px-4 py-4 text-center">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-[#345884] shadow-sm">
+        <Icon className="h-4 w-4" />
+      </div>
+      <p className="text-xs leading-relaxed text-slate-600">{children}</p>
+    </div>
+  );
+}
+
+function StatTile({
+  icon: Icon,
+  label,
+  value,
+  caption,
+}: {
+  icon: ElementType;
+  label: string;
+  value: string;
+  caption: string;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{label}</p>
+        <p className="truncate text-lg font-semibold tabular-nums text-slate-900">{value}</p>
+        <p className="truncate text-[11px] text-slate-400">{caption}</p>
+      </div>
+    </div>
+  );
+}
+
 export function PrassiWelcomeDashboard({ stats }: PrassiWelcomeDashboardProps) {
   const casesThisWeek = stats?.casesThisWeek ?? 0;
   const averageScore =
@@ -25,101 +68,59 @@ export function PrassiWelcomeDashboard({ stats }: PrassiWelcomeDashboardProps) {
   const focusShort = stats?.focusShort?.trim() || "Appropriatezza prescrittiva";
 
   return (
-    <div className="flex h-full min-h-0 flex-col justify-between gap-6">
-      <div className="space-y-6">
-        <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#345884]/15 bg-[#345884]/10">
-              <Shield className="h-6 w-6 text-[#345884]" strokeWidth={1.75} />
-            </div>
-            <div className="min-w-0 space-y-2">
-              <h2 className="font-display text-lg font-semibold tracking-tight text-[#2F4156]">
-                Seleziona un caso clinico a sinistra per iniziare la simulazione
-              </h2>
-              <p className="text-sm leading-relaxed text-slate-500">
-                La Prassi Clinica è il tuo ambiente di esercitazione medico-legale: dialoga con il
-                paziente, richiedi esami e chiudi il caso rispettando linee guida e sostenibilità SSN.
-              </p>
-            </div>
-          </div>
-
-          <ul className="mt-5 space-y-2.5 border-t border-slate-100 pt-5">
-            <li className="flex items-start gap-2.5 text-sm text-slate-600">
-              <Euro className="mt-0.5 h-4 w-4 shrink-0 text-[#345884]" />
-              <span>
-                Ogni prescrizione consuma budget del SSN e richiede tempo clinico simulato.
-              </span>
-            </li>
-            <li className="flex items-start gap-2.5 text-sm text-slate-600">
-              <HeartHandshake className="mt-0.5 h-4 w-4 shrink-0 text-[#345884]" />
-              <span>
-                L&apos;empatia con il paziente influenza il punteggio finale della sessione.
-              </span>
-            </li>
-            <li className="flex items-start gap-2.5 text-sm text-slate-600">
-              <Scale className="mt-0.5 h-4 w-4 shrink-0 text-[#345884]" />
-              <span>
-                La documentazione e l&apos;aderenza alle linee guida proteggono la tutela
-                medico-legale (Gelli-Bianco).
-              </span>
-            </li>
-          </ul>
+    <div className="flex h-full min-h-0 flex-col justify-center gap-8 py-4">
+      <div className="mx-auto w-full max-w-2xl space-y-6 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#1E324E]/8">
+          <Stethoscope className="h-7 w-7 text-[#1E324E]" strokeWidth={1.75} />
+        </div>
+        <div className="space-y-2">
+          <h2 className="font-display text-xl font-semibold tracking-tight text-slate-900">
+            Seleziona un caso clinico a sinistra
+          </h2>
+          <p className="mx-auto max-w-lg text-sm leading-relaxed text-slate-500">
+            La Prassi Clinica è il tuo ambiente di esercitazione medico-legale: dialoga con il
+            paziente, richiedi esami e chiudi il caso rispettando linee guida e sostenibilità SSN.
+          </p>
         </div>
 
-        <blockquote className="rounded-xl border border-slate-100 border-l-4 border-l-[#345884] bg-white px-5 py-4 shadow-sm">
-          <p className="font-display text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-            Promemoria istituzionale · Legge Gelli-Bianco
-          </p>
-          <p className="mt-2 text-sm italic leading-relaxed text-[#2F4156]">
-            &ldquo;La tutela legale del medico si fonda sull&apos;aderenza rigorosa alle buone
-            pratiche clinico-assistenziali e alle raccomandazioni previste dalle linee guida
-            ufficiali (Art. 5, Legge 24/2017).&rdquo;
-          </p>
-        </blockquote>
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          <InfoTile icon={Euro}>
+            Ogni prescrizione consuma budget SSN e tempo clinico simulato.
+          </InfoTile>
+          <InfoTile icon={HeartHandshake}>
+            L&apos;empatia con il paziente influenza il punteggio finale.
+          </InfoTile>
+          <InfoTile icon={Scale}>
+            Documentazione e linee guida proteggono la tutela medico-legale.
+          </InfoTile>
+        </div>
+
+        <p className="mx-auto max-w-lg text-xs italic leading-relaxed text-slate-400">
+          &ldquo;La tutela legale del medico si fonda sull&apos;aderenza rigorosa alle buone
+          pratiche clinico-assistenziali e alle linee guida ufficiali&rdquo; — Art. 5, Legge
+          24/2017 (Gelli-Bianco)
+        </p>
       </div>
 
-            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
-          <div className="mb-2 flex items-center gap-2 text-slate-500">
-            <ClipboardCheck className="h-4 w-4 text-[#345884]" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">
-              Questa settimana
-            </span>
-          </div>
-          <p className="font-display text-2xl font-semibold tabular-nums text-[#2F4156]">
-            {casesThisWeek}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            {casesThisWeek === 1 ? "caso completato" : "casi completati"}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
-          <div className="mb-2 flex items-center gap-2 text-slate-500">
-            <Target className="h-4 w-4 text-[#345884]" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">
-              Punteggio medio
-            </span>
-          </div>
-          <p className="font-display text-2xl font-semibold tabular-nums text-[#2F4156]">
-            {averageScore != null ? `${averageScore}` : "—"}
-            <span className="text-sm font-medium text-slate-400">/100</span>
-          </p>
-          <p className="mt-1 text-xs text-slate-500">Media sulle sessioni completate</p>
-        </div>
-
-        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
-          <div className="mb-2 flex items-center gap-2 text-slate-500">
-            <Pill className="h-4 w-4 text-[#345884]" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">
-              Focus consigliato
-            </span>
-          </div>
-          <p className="font-display text-base font-semibold leading-snug text-[#2F4156]">
-            {focusShort}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">Dimensione da rafforzare</p>
-        </div>
+      <div className="mx-auto grid w-full max-w-2xl grid-cols-1 gap-3 border-t border-slate-100 pt-6 sm:grid-cols-3">
+        <StatTile
+          icon={ClipboardCheck}
+          label="Questa settimana"
+          value={String(casesThisWeek)}
+          caption={casesThisWeek === 1 ? "caso completato" : "casi completati"}
+        />
+        <StatTile
+          icon={Target}
+          label="Punteggio medio"
+          value={averageScore != null ? `${averageScore}/100` : "—"}
+          caption="Media sessioni completate"
+        />
+        <StatTile
+          icon={Pill}
+          label="Focus consigliato"
+          value={focusShort}
+          caption="Dimensione da rafforzare"
+        />
       </div>
     </div>
   );

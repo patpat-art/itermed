@@ -132,18 +132,18 @@ export function PhysicalExamTab({ sessionId, patientPrompt, caseId, onExamResult
   };
 
   return (
-    <div className="flex h-[420px] flex-col gap-3 overflow-y-auto rounded-2xl border border-zinc-200/80 bg-white/80 p-3 text-xs">
+    <div className="flex h-[420px] flex-col gap-3 overflow-y-auto overflow-x-hidden rounded-2xl border border-zinc-200/80 bg-white/80 p-3 text-xs scrollbar-aequan">
       <p className="text-[11px] leading-relaxed text-slate-500">
         I parametri vitali (PA, FC, SpO₂, T, FR) sono sul Monitor multiparametrico. Qui registra i
         reperti sistemici dell&apos;esame obiettivo.
       </p>
       <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as ExamSection)}>
-        <TabsList className="w-full justify-between">
+        <TabsList wrap className="w-full">
           <TabsTrigger
             value="general"
             currentValue={activeSection}
             onSelect={(value) => setActiveSection(value as ExamSection)}
-            className="flex-1 justify-center"
+            className="shrink-0 whitespace-nowrap"
           >
             <span className="inline-flex items-center gap-1.5">
               <UserRound className="h-3.5 w-3.5 text-sky-600" />
@@ -154,7 +154,7 @@ export function PhysicalExamTab({ sessionId, patientPrompt, caseId, onExamResult
             value="thorax"
             currentValue={activeSection}
             onSelect={(value) => setActiveSection(value as ExamSection)}
-            className="flex-1 justify-center"
+            className="shrink-0 whitespace-nowrap"
           >
             <span className="inline-flex items-center gap-1.5">
               <Stethoscope className="h-3.5 w-3.5 text-sky-600" />
@@ -165,7 +165,7 @@ export function PhysicalExamTab({ sessionId, patientPrompt, caseId, onExamResult
             value="abdomen"
             currentValue={activeSection}
             onSelect={(value) => setActiveSection(value as ExamSection)}
-            className="flex-1 justify-center"
+            className="shrink-0 whitespace-nowrap"
           >
             <span className="inline-flex items-center gap-1.5">
               <Activity className="h-3.5 w-3.5 text-amber-600" />
@@ -176,10 +176,10 @@ export function PhysicalExamTab({ sessionId, patientPrompt, caseId, onExamResult
             value="neuro"
             currentValue={activeSection}
             onSelect={(value) => setActiveSection(value as ExamSection)}
-            className="flex-1 justify-center"
+            className="shrink-0 whitespace-nowrap"
           >
             <span className="inline-flex items-center gap-1.5">
-              <Brain className="h-3.5 w-3.5 text-purple-600" />
+              <Brain className="h-3.5 w-3.5 text-[#345884]" />
               Neuro
             </span>
           </TabsTrigger>

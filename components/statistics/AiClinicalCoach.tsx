@@ -18,7 +18,7 @@ export function AiClinicalCoach({ insights }: AiClinicalCoachProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-sm font-medium text-zinc-900">
-        <Sparkles className="h-4 w-4 text-violet-600" />
+        <Sparkles className="h-4 w-4 text-[#1E324E]" />
         AI Clinical Coach
       </div>
       <p className="text-xs text-zinc-500 leading-relaxed">
@@ -29,16 +29,16 @@ export function AiClinicalCoach({ insights }: AiClinicalCoachProps) {
         {insights.map((insight, index) => (
           <article
             key={insight.priorityArea}
-            className="rounded-2xl border border-violet-200/80 bg-gradient-to-br from-violet-50/80 to-white p-4"
+            className="rounded-2xl border border-[#1E324E]/15 bg-gradient-to-br from-[#1E324E]/[0.04] to-white p-4"
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-700">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#345884]">
                   Priorità {index + 1}
                 </p>
                 <h3 className="text-sm font-semibold text-zinc-950 mt-0.5">{insight.priorityArea}</h3>
               </div>
-              <span className="rounded-xl bg-white border border-violet-200 px-2.5 py-1 text-xs font-semibold text-violet-800">
+              <span className="rounded-xl bg-white border border-[#1E324E]/15 px-2.5 py-1 text-xs font-semibold text-[#1E324E]">
                 {insight.score}/100
               </span>
             </div>

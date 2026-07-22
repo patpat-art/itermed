@@ -28,9 +28,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="it">
+    <html lang="it" className="light" style={{ colorScheme: "light" }}>
       <body
-        className={`${inter.variable} ${plusJakarta.variable} antialiased bg-ui-bg text-text-primary font-sans`}
+        className={`${inter.variable} ${plusJakarta.variable} antialiased bg-[#F4F6F8] text-text-primary font-sans`}
       >
         <Providers>
           <div className="flex min-h-screen flex-col">

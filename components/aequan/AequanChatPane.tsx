@@ -2,7 +2,6 @@
 
 import type { MockChatMessage } from "@/lib/mock-data/aequan-mock-data";
 import { cn } from "@/app/utils/cn";
-import { AiTransparencyBadge } from "@/components/legal/AiTransparencyBadge";
 
 type AequanChatPaneProps = {
   messages: MockChatMessage[];
@@ -14,21 +13,15 @@ export function AequanChatPane({ messages, className }: AequanChatPaneProps) {
   return (
     <div
       className={cn(
-        "flex flex-col flex-1 min-h-0 rounded-aequan-lg border border-border bg-panel-bg shadow-aequan-panel overflow-hidden",
+        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm",
         className,
       )}
     >
-      <div className="shrink-0 space-y-2 border-b border-border px-4 py-3">
-        <AiTransparencyBadge variant="workspace" />
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-primary">
-          Simulazione Clinica
-        </p>
-        <p className="text-xs text-text-secondary mt-0.5">
-          Interazione medico-paziente · Anamnesi in corso
-        </p>
+      <div className="shrink-0 border-b border-slate-100 px-4 py-3">
+        <p className="text-sm font-semibold text-slate-800">Dialogo con il paziente</p>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-aequan p-4 space-y-3">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
         {messages.map((msg) => {
           const isDoctor = msg.role === "doctor";
           return (
@@ -38,17 +31,17 @@ export function AequanChatPane({ messages, className }: AequanChatPaneProps) {
             >
               <div
                 className={cn(
-                  "max-w-[82%] rounded-aequan-lg px-3.5 py-2.5 text-sm leading-relaxed aequan-interactive",
+                  "max-w-[82%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed",
                   isDoctor
-                    ? "bg-brand-primary text-white rounded-br-sm"
-                    : "bg-ui-bg text-text-secondary border border-border rounded-bl-sm",
+                    ? "rounded-br-sm bg-[#1E324E] text-white"
+                    : "rounded-bl-sm border border-slate-200 bg-slate-50 text-slate-700",
                 )}
               >
                 <p>{msg.content}</p>
                 <span
                   className={cn(
-                    "mt-1 block text-[10px] font-mono font-tabular",
-                    isDoctor ? "text-white/70" : "text-text-secondary/60",
+                    "mt-1 block font-mono text-xs",
+                    isDoctor ? "text-white/70" : "text-slate-400",
                   )}
                 >
                   {msg.timestamp}
@@ -59,16 +52,11 @@ export function AequanChatPane({ messages, className }: AequanChatPaneProps) {
         })}
       </div>
 
-      <div className="shrink-0 border-t border-border p-3 bg-panel-bg">
+      <div className="shrink-0 border-t border-slate-100 bg-white p-3">
         <textarea
           rows={2}
-          placeholder="Formula la prossima domanda al paziente..."
-          className={cn(
-            "w-full resize-none rounded-aequan border border-border bg-ui-bg px-3 py-2",
-            "text-sm text-text-primary placeholder:text-text-secondary/50",
-            "focus:outline-none focus:ring-2 focus:ring-brand-primary/25 focus:border-brand-primary",
-            "aequan-interactive",
-          )}
+          placeholder="Scrivi la prossima domanda al paziente…"
+          className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#1E324E] focus:outline-none focus:ring-2 focus:ring-[#1E324E]/20"
         />
       </div>
     </div>

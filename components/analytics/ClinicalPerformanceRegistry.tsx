@@ -1,5 +1,6 @@
 "use client";
 
+import { Trophy } from "lucide-react";
 import type { LeaderboardEntry } from "@/lib/leaderboard/leaderboard-queries";
 import { cn } from "@/app/utils/cn";
 
@@ -35,14 +36,19 @@ export function ClinicalPerformanceRegistry({
   currentUserOutsideTop50,
 }: ClinicalPerformanceRegistryProps) {
   return (
-    <div className="border border-slate-200 bg-white h-full">
-      <div className="border-b border-slate-100 px-5 py-4">
-        <h2 className="text-sm font-semibold text-slate-900 tracking-tight">
-          Registro di Rendimento Clinico
-        </h2>
-        <p className="text-xs text-slate-500 mt-1">
-          Classifica comparativa nazionale — top 50 per punteggio medio (/30).
-        </p>
+    <div className="h-full rounded-xl border border-slate-200 bg-white shadow-aequan-panel">
+      <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-4">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+          <Trophy className="h-4 w-4" />
+        </div>
+        <div>
+          <h2 className="text-sm font-semibold tracking-tight text-slate-900">
+            Registro di Rendimento Clinico
+          </h2>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Classifica comparativa nazionale — top 50 per punteggio medio (/30).
+          </p>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -69,7 +75,7 @@ export function ClinicalPerformanceRegistry({
                   key={`${entry.rank}-${entry.displayName}`}
                   className={cn(
                     "hover:bg-slate-50/60",
-                    entry.isCurrentUser && "bg-indigo-50/30",
+                    entry.isCurrentUser && "bg-[#1E324E]/[0.04]",
                   )}
                 >
                   <td className="px-5 py-2.5">
@@ -78,7 +84,7 @@ export function ClinicalPerformanceRegistry({
                   <td className="px-5 py-2.5">
                     <span className="font-medium text-slate-900">{entry.displayName}</span>
                     {entry.isCurrentUser ? (
-                      <span className="ml-2 text-[10px] uppercase tracking-wide text-indigo-700">
+                      <span className="ml-2 text-[10px] uppercase tracking-wide text-[#1E324E]">
                         Tu
                       </span>
                     ) : null}

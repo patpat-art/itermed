@@ -126,3 +126,40 @@ export function vitalStatusLabel(status: VitalStatus): string {
       return "Normale";
   }
 }
+
+/** Short clinical finding labels (mockup-style: TACHICARDIA, IPOSSIA, …). */
+export function vitalFindingLabel(vital: ClassifiedVital): string {
+  const n = Number(String(vital.value).replace(",", "."));
+  switch (vital.id) {
+    case "hr":
+      if (!Number.isFinite(n)) return vitalStatusLabel(vital.status);
+      if (n > 100) return "Tachicardia";
+      if (n < 55) return "Bradicardia";
+      return "Normale";
+    case "bp": {
+      const match = vital.value.match(/(\d+)\s*\/\s*(\d+)/);
+      if (!match) return vitalStatusLabel(vital.status);
+      const sys = Number(match[1]);
+      if (sys >= 140) return "Ipertesa";
+      if (sys < 100) return "Ipotesa";
+      return "Normale";
+    }
+    case "spo2":
+      if (!Number.isFinite(n)) return vitalStatusLabel(vital.status);
+      if (n < 90) return "Ipossia";
+      if (n < 94) return "Borderline";
+      return "Normale";
+    case "rr":
+      if (!Number.isFinite(n)) return vitalStatusLabel(vital.status);
+      if (n > 20) return "Tachipnea";
+      if (n < 12) return "Bradipnea";
+      return "Normale";
+    case "temp":
+      if (!Number.isFinite(n)) return vitalStatusLabel(vital.status);
+      if (n >= 37.8) return "Febbre";
+      if (n < 36) return "Ipotermia";
+      return "Normale";
+    default:
+      return vitalStatusLabel(vital.status);
+  }
+}

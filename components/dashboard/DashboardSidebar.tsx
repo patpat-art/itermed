@@ -11,13 +11,12 @@ import {
   LayoutDashboard,
   Settings,
   Trophy,
-  UserCircle2,
   Users,
   TestTubeDiagonal,
   type LucideIcon,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
-import { AequanLogo } from "@/components/AequanLogo";
+import { initialsFromLabel } from "@/lib/avatar-initials";
 import { specialtyFilterHref, type SsmSpecialtyLink } from "@/lib/ssm-specialties";
 import { cn } from "@/app/utils/cn";
 
@@ -33,7 +32,7 @@ type NavItem = {
 type DashboardSidebarProps = {
   userLabel: string;
   isAdmin: boolean;
-  ssmSpecialties: SsmSpecialtyLink[];
+  ssmSpecialties?: SsmSpecialtyLink[];
 };
 
 const CREATE_CASE_HREF = "/dashboard/cases/create";
@@ -50,7 +49,6 @@ function isCaseCreationPath(pathname: string): boolean {
   );
 }
 
-/** Primary nav — consolidated HealthTech IA. */
 const primaryNavItems: NavItem[] = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   {
@@ -66,7 +64,7 @@ const primaryNavItems: NavItem[] = [
   },
   {
     href: "/dashboard/analytics",
-    label: "Analytics & Classifiche",
+    label: "Analytics",
     icon: Trophy,
     matchPrefixes: ["/dashboard/analytics", "/dashboard/classifiche", "/dashboard/statistics"],
   },
@@ -110,143 +108,129 @@ function NavLink({ item }: { item: NavItem }) {
     <Link
       href={item.href}
       className={cn(
-        "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors aequan-interactive",
-        isActive
-          ? "bg-brand-primary/[0.06] text-brand-primary"
-          : "text-slate-600 hover:bg-slate-50 hover:text-brand-primary-hover",
+        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+        isActive ? "bg-[#1E324E] text-white" : "text-slate-600 hover:bg-slate-100",
       )}
       aria-current={isActive ? "page" : undefined}
     >
-      {isActive ? (
-        <span
-          className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-brand-primary"
-          aria-hidden
-        />
-      ) : null}
-      <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-brand-primary" : "text-slate-500")} />
-      <span className="font-display min-w-0 truncate">{item.label}</span>
+      <Icon className={cn("h-[18px] w-[18px] shrink-0", isActive ? "text-white" : "text-slate-400")} />
+      <span className="min-w-0 truncate">{item.label}</span>
     </Link>
   );
 }
 
-export function DashboardSidebar({ userLabel, isAdmin, ssmSpecialties }: DashboardSidebarProps) {
+export function DashboardSidebar({ userLabel, isAdmin, ssmSpecialties = [] }: DashboardSidebarProps) {
   const pathname = usePathname();
-  const [ssmOpen, setSsmOpen] = useState(true);
   const isCreateActive = isCaseCreationPath(pathname);
+  const [ssmOpen, setSsmOpen] = useState(false);
 
   return (
-    <aside className="flex h-full w-full min-w-0 flex-col justify-between overflow-hidden bg-panel-bg">
+    <aside className="flex h-full w-full min-w-0 flex-col justify-between overflow-hidden bg-white">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <header className="flex shrink-0 flex-col items-center px-3 pb-3 pt-5 text-center">
+        <div className="px-3 pb-4 pt-6">
           <Link
-            href="/dashboard"
-            className="aequan-interactive inline-flex max-w-full items-center justify-center hover:opacity-90"
+            href={CREATE_CASE_HREF}
+            className={cn(
+              "flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold shadow-sm transition-colors",
+              isCreateActive
+                ? "bg-[#1E324E] text-white"
+                : "bg-[#1E324E] text-white hover:bg-[#2A486D]",
+            )}
+            aria-current={isCreateActive ? "page" : undefined}
           >
-            <AequanLogo height={40} />
+            <FilePlus className="h-4 w-4 shrink-0" />
+            <span>Crea Caso</span>
           </Link>
-          <p className="mt-1.5 truncate text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            Medical-Legal Training
-          </p>
-        </header>
+        </div>
 
-        <Link
-          href={CREATE_CASE_HREF}
-          className={cn(
-            "relative mx-3 mb-3 flex shrink-0 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium shadow-sm transition-colors aequan-interactive",
-            isCreateActive
-              ? "bg-brand-primary text-white ring-2 ring-brand-secondary/40"
-              : "aequan-btn-primary",
-          )}
-          aria-current={isCreateActive ? "page" : undefined}
-        >
-          <FilePlus className="h-4 w-4 shrink-0" />
-          <span className="truncate">Crea Caso</span>
-        </Link>
-
-        {/* Single scroll region — no nested scrollbars */}
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-2">
-          <nav className="space-y-0.5 text-sm" aria-label="Navigazione principale">
+          <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Menu
+          </p>
+          <nav className="space-y-1" aria-label="Navigazione principale">
             {primaryNavItems.map((item) => (
               <NavLink key={item.href} item={item} />
             ))}
-            {isAdmin ? (
-              <>
-                <div className="my-3 border-t border-border-subtle" />
-                <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  Admin
-                </p>
+          </nav>
+
+          {isAdmin ? (
+            <>
+              <p className="mt-5 px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Admin
+              </p>
+              <nav className="space-y-1" aria-label="Navigazione amministratore">
                 {adminNavItems.map((item) => (
                   <NavLink key={item.href} item={item} />
                 ))}
-              </>
-            ) : null}
-          </nav>
+              </nav>
+            </>
+          ) : null}
 
-          <div className="mt-4 border-t border-border-subtle pt-3">
-            <button
-              type="button"
-              onClick={() => setSsmOpen((open) => !open)}
-              className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 transition-colors hover:bg-slate-50 hover:text-text-primary aequan-interactive"
-              aria-expanded={ssmOpen}
-            >
-              <span className="truncate">Specialità (SSM)</span>
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 shrink-0 transition-transform",
-                  ssmOpen ? "rotate-180" : "rotate-0",
-                )}
-              />
-            </button>
-            {ssmOpen ? (
-              <div className="mt-1 space-y-0.5 pr-0.5">
-                {ssmSpecialties.map((specialty) => (
-                  <Link
-                    key={specialty.name}
-                    href={specialtyFilterHref(specialty)}
-                    className="block truncate rounded-lg px-3 py-1.5 text-[12px] text-slate-500 transition-colors hover:bg-slate-50 hover:text-text-primary aequan-interactive"
-                    title={specialty.name}
-                  >
-                    {specialty.name}
-                  </Link>
-                ))}
-              </div>
-            ) : null}
-          </div>
+          {ssmSpecialties.length > 0 ? (
+            <div className="mt-5">
+              <button
+                type="button"
+                onClick={() => setSsmOpen((open) => !open)}
+                className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                aria-expanded={ssmOpen}
+              >
+                <span className="truncate">Reparti (SSM)</span>
+                <ChevronDown
+                  className={cn("h-3.5 w-3.5 shrink-0 transition-transform", ssmOpen ? "rotate-180" : "rotate-0")}
+                />
+              </button>
+              {ssmOpen ? (
+                <nav className="mt-1 space-y-0.5" aria-label="Reparti SSM">
+                  {ssmSpecialties.map((specialty) => (
+                    <Link
+                      key={specialty.name}
+                      href={specialtyFilterHref(specialty)}
+                      className="block truncate rounded-lg px-3 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-800"
+                      title={specialty.name}
+                    >
+                      {specialty.name}
+                    </Link>
+                  ))}
+                </nav>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
 
-      <div className="shrink-0 space-y-2 border-t border-border-subtle px-3 pb-4 pt-3 text-xs text-slate-500">
-        <p className="truncate px-1 text-[11px] text-slate-400" title={userLabel}>
-          {userLabel}
-        </p>
-        <div className="flex items-center justify-between gap-2">
-          <Link
-            href="/dashboard/profile"
-            className="inline-flex min-w-0 items-center gap-2 rounded-xl px-2.5 py-1.5 transition-colors hover:bg-slate-50 aequan-interactive"
-          >
-            <UserCircle2 className="h-4 w-4 shrink-0" />
-            <span className="truncate">Profilo</span>
-          </Link>
+      <div className="shrink-0 border-t border-slate-100 p-3">
+        <div className="flex items-center gap-2.5 rounded-lg px-2 py-2">
+          <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
+            {initialsFromLabel(userLabel)}
+            <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-slate-800" title={userLabel}>
+              {userLabel}
+            </p>
+            <Link href="/dashboard/profile" className="text-xs text-slate-400 hover:text-slate-600">
+              Profilo
+            </Link>
+          </div>
           <Link
             href="/dashboard/settings"
-            className="inline-flex shrink-0 items-center justify-center rounded-xl p-1.5 transition-colors hover:bg-slate-50 aequan-interactive"
+            className="inline-flex shrink-0 items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
             aria-label="Impostazioni"
           >
             <Settings className="h-4 w-4" />
           </Link>
         </div>
-        <nav
-          className="flex flex-wrap gap-x-3 gap-y-1 px-1 text-[10px] text-slate-400"
-          aria-label="Documenti legali"
-        >
-          <Link href="/terms" className="hover:text-brand-primary hover:underline">
-            Termini
-          </Link>
-          <Link href="/privacy" className="hover:text-brand-primary hover:underline">
-            Privacy
-          </Link>
-        </nav>
-        <SignOutButton />
+        <div className="mt-1 flex items-center justify-between px-2">
+          <nav className="flex gap-x-3 text-xs text-slate-400" aria-label="Documenti legali">
+            <Link href="/terms" className="hover:text-slate-600 hover:underline">
+              Termini
+            </Link>
+            <Link href="/privacy" className="hover:text-slate-600 hover:underline">
+              Privacy
+            </Link>
+          </nav>
+          <SignOutButton />
+        </div>
       </div>
     </aside>
   );
